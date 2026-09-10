@@ -268,6 +268,20 @@
           </button>
         </div>
 
+        <!-- Info Paket & Biaya Langganan (POV Pelanggan) -->
+        <template x-if="selectedOrder">
+          <div class="mt-3 p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl flex items-center justify-between text-xs">
+            <div>
+              <span class="text-slate-500 text-[10px] uppercase font-bold block">Paket Berlangganan:</span>
+              <span class="font-bold text-slate-900 text-xs" x-text="selectedOrder.package_name + ' (' + (selectedOrder.speed || '20 Mbps') + ')'"></span>
+            </div>
+            <div class="text-right">
+              <span class="text-slate-500 text-[10px] uppercase font-bold block">Tarif Paket:</span>
+              <span class="font-black text-amber-700 text-xs" x-text="'Rp ' + Number(selectedOrder.total || 110000).toLocaleString('id-ID')"></span>
+            </div>
+          </div>
+        </template>
+
         <form :action="'{{ url('/teknisi/pemasangan') }}/' + (selectedOrder ? selectedOrder.id : '') + '/status'" method="POST" class="mt-4 space-y-4 text-xs">
           @csrf
 

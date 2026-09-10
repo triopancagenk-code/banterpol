@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Package;
 use App\Models\User;
+use App\Services\BillingService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -13,6 +15,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // 1. Akun Pengguna (Admin, Pelanggan, Teknisi, Kolektor)
         User::updateOrCreate(
             ['email' => 'admin@banterpool.net'],
             [
@@ -70,5 +73,42 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
+
+        // 2. Sinkronisasi Master Paket Berlangganan (Sesuai POV Pelanggan)
+        $packages = [
+            [
+                'name' => 'Paket 20 Mbps',
+                'speed' => '20 Mbps',
+                'price' => 110000,
+                'description' => 'Kecepatan 20 Mbps, Untuk Penggunaan Ringan & Keluarga Kecil, 3 - 5 Perangkat, Support Prioritas',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Paket 30 Mbps',
+                'speed' => '30 Mbps',
+                'price' => 165000,
+                'description' => 'Kecepatan 30 Mbps, Untuk Kebutuhan Keluarga, 5 - 7 Perangkat, Support Prioritas',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Paket 50 Mbps',
+                'speed' => '50 Mbps',
+                'price' => 220000,
+                'description' => 'Kecepatan 50 Mbps, Streaming & Gaming Lancar, 7 - 10 Perangkat, Support 24/7',
+                'is_active' => true,
+            ],
+        ];
+
+        foreach ($packages as $pkg) {
+            Package::updateOrCreate(
+                ['name' => $pkg['name']],
+                $pkg
+            );
+        }
+
+        // 3. Bagian Pemesanan, Tagihan, dan Laporan dibiarkan bersih/kosong sesuai permintaan
+        // Jika dibutuhkan sample data di masa mendatang, aktifkan OrderSeeder:
+        // $this->call(OrderSeeder::class);
+        // BillingService::syncCompletedOrdersWithoutBills();
     }
 }

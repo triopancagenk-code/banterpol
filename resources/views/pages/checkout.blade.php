@@ -126,6 +126,19 @@
             </p>
           </div>
           <div>
+            <p class="text-gray-400 text-[10px] mb-0.5">No. KTP (NIK)</p>
+            <p class="font-bold text-black flex items-center gap-2 font-mono">
+              <i class="fa-regular fa-id-card text-brand font-sans"></i> {{ $customerData['id_card_number'] ?? '-' }}
+            </p>
+          </div>
+          <div>
+            <p class="text-gray-400 text-[10px] mb-0.5">Tempat, Tanggal Lahir</p>
+            <p class="font-bold text-black flex items-center gap-2">
+              <i class="fa-regular fa-calendar text-brand"></i> 
+              {{ $customerData['birth_place'] ?? '' }}{{ (!empty($customerData['birth_place']) && !empty($customerData['birth_date'])) ? ', ' : '' }}{{ !empty($customerData['birth_date']) ? \Carbon\Carbon::parse($customerData['birth_date'])->translatedFormat('d F Y') : '-' }}
+            </p>
+          </div>
+          <div class="sm:col-span-2">
             <p class="text-gray-400 text-[10px] mb-0.5">Alamat Lengkap</p>
             <div class="font-bold text-black flex items-start gap-2">
               <i class="fa-solid fa-location-dot text-brand mt-0.5 shrink-0"></i>

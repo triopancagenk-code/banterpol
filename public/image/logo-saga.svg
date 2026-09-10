@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Saga Hexagonal S Logo -->
+  <g stroke="#F36F21" stroke-width="12" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Top hook of S -->
+    <path d="M78 26 L50 10 L22 26 L22 45 L50 61 L78 45"/>
+    <!-- Bottom hook of S -->
+    <path d="M22 74 L50 90 L78 74 L78 55 L50 39 L22 55"/>
+  </g>
+</svg>

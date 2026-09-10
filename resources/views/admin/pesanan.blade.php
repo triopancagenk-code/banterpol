@@ -289,11 +289,20 @@
 
               <!-- 8. Actions -->
               <td class="py-3.5 px-4 text-center whitespace-nowrap">
-                <button type="button" @click="viewOrder({{ Js::from($order) }})"
-                        class="bg-brand hover:bg-brand-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1 shadow-2xs">
-                  <i class="fa-solid fa-pen-to-square text-[10px]"></i>
-                  <span>Kelola</span>
-                </button>
+                <div class="flex items-center justify-center gap-1.5">
+                  <a href="{{ route('admin.pesanan.formulir', $order->id) }}"
+                     target="_blank"
+                     title="Cetak Formulir Pendaftaran / Berlangganan"
+                     class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs px-2.5 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 shadow-2xs">
+                    <i class="fa-solid fa-print text-slate-500 text-xs"></i>
+                    <span>Formulir</span>
+                  </a>
+                  <button type="button" @click="viewOrder({{ Js::from($order) }})"
+                          class="bg-brand hover:bg-brand-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1 shadow-2xs">
+                    <i class="fa-solid fa-pen-to-square text-[10px]"></i>
+                    <span>Kelola</span>
+                  </button>
+                </div>
               </td>
 
             </tr>
@@ -346,13 +355,23 @@
           <div class="space-y-6">
             
             <!-- Header Modal -->
-            <div class="border-b border-slate-100 pb-4">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg" x-text="selectedOrder.order_number"></span>
-                <span class="text-xs font-bold text-brand" x-text="selectedOrder.package_name"></span>
+            <div class="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg" x-text="selectedOrder.order_number"></span>
+                  <span class="text-xs font-bold text-brand" x-text="selectedOrder.package_name"></span>
+                </div>
+                <h3 class="text-lg font-black text-slate-900">Kelola & Detail Pesanan Pelanggan</h3>
+                <p class="text-xs text-slate-400">Atur progres instalasi dan penugasan teknisi Banterpool</p>
               </div>
-              <h3 class="text-lg font-black text-slate-900">Kelola & Detail Pesanan Pelanggan</h3>
-              <p class="text-xs text-slate-400">Atur progres instalasi dan penugasan teknisi Banterpool</p>
+              <div class="pr-8 sm:pr-0">
+                <a :href="'{{ url('admin/pesanan') }}/' + selectedOrder.id + '/formulir'"
+                   target="_blank"
+                   class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition inline-flex items-center gap-1.5 shadow-2xs">
+                  <i class="fa-solid fa-print"></i>
+                  <span>Cetak Formulir</span>
+                </a>
+              </div>
             </div>
 
             <!-- Customer & Installation Overview -->
@@ -362,6 +381,12 @@
                 <p class="font-black text-slate-900 text-sm" x-text="selectedOrder.customer_name"></p>
                 <p class="text-slate-600"><i class="fa-solid fa-phone text-slate-400 mr-1"></i> <span x-text="selectedOrder.customer_phone"></span></p>
                 <p class="text-slate-600"><i class="fa-solid fa-envelope text-slate-400 mr-1"></i> <span x-text="selectedOrder.customer_email"></span></p>
+                <template x-if="selectedOrder.id_card_number">
+                  <p class="text-slate-600"><i class="fa-regular fa-id-card text-slate-400 mr-1"></i> KTP: <span class="font-mono font-bold" x-text="selectedOrder.id_card_number"></span></p>
+                </template>
+                <template x-if="selectedOrder.birth_place || selectedOrder.birth_date">
+                  <p class="text-slate-600"><i class="fa-regular fa-calendar text-slate-400 mr-1"></i> TTL: <span x-text="(selectedOrder.birth_place ? selectedOrder.birth_place + ', ' : '') + (selectedOrder.birth_date ? new Date(selectedOrder.birth_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '')"></span></p>
+                </template>
                 <p class="text-slate-600 leading-relaxed"><i class="fa-solid fa-location-dot text-brand mr-1"></i> <span x-text="selectedOrder.address"></span></p>
                 
                 <template x-if="selectedOrder.latitude && selectedOrder.longitude">
@@ -414,6 +439,21 @@
                   </select>
                 </div>
 
+                <!-- Paket Berlangganan (Sinkron POV Pelanggan) -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Paket Berlangganan</label>
+                  <select name="package_name" x-model="selectedOrder.package_name"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-semibold text-slate-800">
+                    <option value="Paket 20 Mbps">Paket 20 Mbps (Rp 110.000 / bln)</option>
+                    <option value="Paket 30 Mbps">Paket 30 Mbps (Rp 165.000 / bln)</option>
+                    <option value="Paket 50 Mbps">Paket 50 Mbps (Rp 220.000 / bln)</option>
+                  </select>
+                </div>
+
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
                 <!-- Status Pembayaran -->
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Status Pembayaran</label>
@@ -425,10 +465,6 @@
                   </select>
                 </div>
 
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
                 <!-- Teknisi yang Ditugaskan -->
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Tugaskan Teknisi</label>
@@ -437,18 +473,18 @@
                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
                 </div>
 
-                <!-- Titik ODP Penugasan -->
-                <div>
-                  <label class="block font-bold text-slate-700 mb-1">Titik ODP Penyambungan (GIS Cilongok)</label>
-                  <select name="assigned_odp" x-model="selectedOrder.assigned_odp"
-                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
-                    <option value="">Pilih ODP Terdekat</option>
-                    @foreach($odpList as $odpId => $odpName)
-                      <option value="{{ $odpId }}">{{ $odpId }} - {{ $odpName }}</option>
-                    @endforeach
-                  </select>
-                </div>
+              </div>
 
+              <!-- Titik ODP Penugasan -->
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Titik ODP Penyambungan (GIS Cilongok)</label>
+                <select name="assigned_odp" x-model="selectedOrder.assigned_odp"
+                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                  <option value="">Pilih ODP Terdekat</option>
+                  @foreach($odpList as $odpId => $odpName)
+                    <option value="{{ $odpId }}">{{ $odpId }} - {{ $odpName }}</option>
+                  @endforeach
+                </select>
               </div>
 
               <!-- Catatan Admin / NOC -->

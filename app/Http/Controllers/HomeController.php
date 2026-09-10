@@ -196,6 +196,9 @@ class HomeController extends Controller
             'name' => $request->input('name', 'Nama Pelanggan'),
             'phone' => $request->input('phone', '08xxxxxxxxxx'),
             'email' => $request->input('email', 'emailpelanggan@gmail.com'),
+            'id_card_number' => $request->input('id_card_number'),
+            'birth_place' => $request->input('birth_place'),
+            'birth_date' => $request->input('birth_date'),
             'address' => $request->input('address', 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas'),
             'latitude' => $request->input('latitude', '-7.413200'),
             'longitude' => $request->input('longitude', '109.138800'),
@@ -216,6 +219,9 @@ class HomeController extends Controller
             'name' => $request->input('name', 'Nama Pelanggan'),
             'phone' => $request->input('phone', '08xxxxxxxxxx'),
             'email' => $request->input('email', 'emailpelanggan@gmail.com'),
+            'id_card_number' => $request->input('id_card_number'),
+            'birth_place' => $request->input('birth_place'),
+            'birth_date' => $request->input('birth_date'),
             'address' => $request->input('address', 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas'),
             'latitude' => $request->input('latitude', '-7.413200'),
             'longitude' => $request->input('longitude', '109.138800'),
@@ -255,6 +261,9 @@ class HomeController extends Controller
                         'customer_name' => $request->input('name', auth()->user() ? auth()->user()->name : 'Pelanggan Baru'),
                         'customer_phone' => $request->input('phone', (auth()->user() && auth()->user()->phone) ? auth()->user()->phone : '081234567890'),
                         'customer_email' => $request->input('email', auth()->user() ? auth()->user()->email : 'pelanggan@gmail.com'),
+                        'id_card_number' => $request->input('id_card_number'),
+                        'birth_place' => $request->input('birth_place'),
+                        'birth_date' => $request->input('birth_date'),
                         'address' => $request->input('address', (auth()->user() && auth()->user()->address) ? auth()->user()->address : 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas'),
                         'latitude' => $request->input('latitude', '-7.413200'),
                         'longitude' => $request->input('longitude', '109.138800'),
@@ -282,6 +291,9 @@ class HomeController extends Controller
             'name' => $request->input('name', 'Nama Pelanggan'),
             'phone' => $request->input('phone', '08xxxxxxxxxx'),
             'email' => $request->input('email', 'emailpelanggan@gmail.com'),
+            'id_card_number' => $request->input('id_card_number'),
+            'birth_place' => $request->input('birth_place'),
+            'birth_date' => $request->input('birth_date'),
             'address' => $request->input('address', 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas'),
             'latitude' => $request->input('latitude', '-7.413200'),
             'longitude' => $request->input('longitude', '109.138800'),
@@ -305,16 +317,28 @@ class HomeController extends Controller
             try {
                 $order = Order::where('order_number', $orderNumber)->first();
             } catch (\Exception $e) {}
+        } elseif (auth()->check()) {
+            try {
+                $order = Order::where('user_id', auth()->id())
+                    ->orWhere('customer_email', auth()->user()->email)
+                    ->latest()
+                    ->first();
+            } catch (\Exception $e) {}
         }
 
+        $hasOrder = ($order !== null);
+
         $customerData = [
-            'order_number' => $order ? $order->order_number : ($orderNumber ?: 'ORD-' . date('Ymd') . '-000123'),
-            'name' => $order ? $order->customer_name : $request->input('name', 'Nama Pelanggan'),
-            'phone' => $order ? $order->customer_phone : $request->input('phone', '08xxxxxxxxxx'),
-            'email' => $order ? $order->customer_email : $request->input('email', 'emailpelanggan@gmail.com'),
-            'address' => $order ? $order->address : $request->input('address', 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas'),
-            'latitude' => $order ? $order->latitude : $request->input('latitude', '-7.413200'),
-            'longitude' => $order ? $order->longitude : $request->input('longitude', '109.138800'),
+            'order_number' => $order ? $order->order_number : ($orderNumber ?: '-'),
+            'name' => $order ? $order->customer_name : $request->input('name', (auth()->user() ? auth()->user()->name : 'Nama Pelanggan')),
+            'phone' => $order ? $order->customer_phone : $request->input('phone', (auth()->user() && auth()->user()->phone ? auth()->user()->phone : '-')),
+            'email' => $order ? $order->customer_email : $request->input('email', (auth()->user() ? auth()->user()->email : '-')),
+            'id_card_number' => $order ? $order->id_card_number : $request->input('id_card_number'),
+            'birth_place' => $order ? $order->birth_place : $request->input('birth_place'),
+            'birth_date' => $order ? ($order->birth_date ? $order->birth_date->format('Y-m-d') : null) : $request->input('birth_date'),
+            'address' => $order ? $order->address : $request->input('address', (auth()->user() && auth()->user()->address ? auth()->user()->address : '-')),
+            'latitude' => $order ? $order->latitude : $request->input('latitude', null),
+            'longitude' => $order ? $order->longitude : $request->input('longitude', null),
             'installation_date' => $order ? ($order->installation_date ? $order->installation_date->format('Y-m-d') : null) : $request->input('installation_date'),
             'installation_time' => $order ? $order->installation_time : $request->input('installation_time', 'pagi'),
             'package_name' => $order ? $order->package_name : $request->input('package_name', 'Paket 20 Mbps'),
@@ -328,7 +352,7 @@ class HomeController extends Controller
             'technician' => $order ? $order->technician : null,
         ];
 
-        return view('pages.order-detail', compact('customerData', 'order'));
+        return view('pages.order-detail', compact('customerData', 'order', 'hasOrder'));
     }
 
     public function laporanMasalah(Request $request)

@@ -14,6 +14,9 @@ class Order extends Model
         'customer_name',
         'customer_phone',
         'customer_email',
+        'id_card_number',
+        'birth_place',
+        'birth_date',
         'address',
         'latitude',
         'longitude',
@@ -43,6 +46,7 @@ class Order extends Model
         'tax' => 'float',
         'total' => 'float',
         'installation_date' => 'date',
+        'birth_date' => 'date',
     ];
 
     /**

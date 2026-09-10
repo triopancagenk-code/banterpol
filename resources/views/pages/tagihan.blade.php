@@ -228,10 +228,21 @@
   <!-- SECTION: BANNER INFORMASI KETENTUAN TAGIHAN (BAGIAN BAWAH) -->
   <div class="bg-[#fff1f1] border border-[#fecaca] rounded-2xl p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-center">
 
-    <!-- Kolom 1: Tagihan Dibuat -->
-    <div>
-      <h4 class="font-bold text-xs text-black">Tagihan Dibuat</h4>
-      <p class="text-[11px] text-gray-600 mt-1">Setiap Tanggal 28 setiap bulannya</p>
+    <!-- Kolom 1: Tagihan Dibuat (dengan ikon invoice/tagihan merah) -->
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full border-2 border-brand flex items-center justify-center text-brand shrink-0">
+        <svg class="w-5 h-5 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <line x1="10" y1="9" x2="8" y2="9"/>
+        </svg>
+      </div>
+      <div>
+        <h4 class="font-bold text-xs text-black">Tagihan Dibuat</h4>
+        <p class="text-[11px] text-gray-600 mt-1">Setiap Tanggal 28 setiap bulannya</p>
+      </div>
     </div>
 
     <!-- Kolom 2: Jatuh Tempo (dengan ikon jam merah) -->
@@ -249,16 +260,26 @@
       </div>
     </div>
 
-    <!-- Kolom 3: Pengingat -->
-    <div>
-      <h4 class="font-bold text-xs text-black">Pengingat</h4>
-      <p class="text-[11px] text-gray-600 mt-1">Kami akan mengirim pengingat sebelum jatuh tempo</p>
+    <!-- Kolom 3: Pengingat (dengan ikon lonceng/notifikasi merah) -->
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full border-2 border-brand flex items-center justify-center text-brand shrink-0">
+        <svg class="w-5 h-5 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </div>
+      <div>
+        <h4 class="font-bold text-xs text-black">Pengingat</h4>
+        <p class="text-[11px] text-gray-600 mt-1">Kami akan mengirim pengingat sebelum jatuh tempo</p>
+      </div>
     </div>
 
-    <!-- Kolom 4: Keamanan Terjamin (dengan perisai centang merah) -->
+    <!-- Kolom 4: Keamanan Terjamin -->
     <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl bg-brand text-white flex items-center justify-center shrink-0 shadow-sm">
-        <i class="fa-solid fa-check text-base"></i>
+      <div class="w-10 h-10 rounded-full border-2 border-brand flex items-center justify-center text-brand shrink-0">
+        <svg class="w-5 h-5 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
       </div>
       <div>
         <h4 class="font-bold text-xs text-black">Keamanan Terjamin</h4>

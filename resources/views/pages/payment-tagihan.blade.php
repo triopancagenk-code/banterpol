@@ -10,7 +10,6 @@
         selectedBank: 'bca',
         selectedEwallet: 'gopay',
         selectedVA: 'bca',
-        selectedMinimarket: 'alfamart',
 
         // Timer State (24 Jam)
         totalSeconds: 23 * 3600 + 59 * 60 + 59,
@@ -33,26 +32,28 @@
 
         // Payment Info Data
         banks: {
-            'bca': { name: 'BCA (Bank Central Asia)', norek: '8271 9028 1928 001', owner: 'PT. BANTERPOOL TELEKOMUNIKASI INDONESIA', code: '014' },
-            'mandiri': { name: 'Bank Mandiri', norek: '1370 0029 8812 345', owner: 'PT. BANTERPOOL TELEKOMUNIKASI INDONESIA', code: '008' },
-            'bni': { name: 'Bank BNI', norek: '0988 7766 5544 332', owner: 'PT. BANTERPOOL TELEKOMUNIKASI INDONESIA', code: '009' },
-            'bri': { name: 'Bank BRI', norek: '0123 0100 8899 501', owner: 'PT. BANTERPOOL TELEKOMUNIKASI INDONESIA', code: '002' }
+            'bca': { name: 'BCA (Bank Central Asia)', norek: '8271 9028 1928 001', owner: 'PT. BANTERPOOL TELEKOMUNIKASI INDONESIA', code: '014', logo: '{{ asset('image/banks/bca.svg') }}' },
+            'mandiri': { name: 'Bank Mandiri', norek: '1370 0029 8812 345', owner: 'PT. BANTERPOOL TELEKOMUNIKASI INDONESIA', code: '008', logo: '{{ asset('image/banks/mandiri.svg') }}' },
+            'bni': { name: 'Bank BNI', norek: '0988 7766 5544 332', owner: 'PT. BANTERPOOL TELEKOMUNIKASI INDONESIA', code: '009', logo: '{{ asset('image/banks/bni.svg') }}' },
+            'bri': { name: 'Bank BRI', norek: '0123 0100 8899 501', owner: 'PT. BANTERPOOL TELEKOMUNIKASI INDONESIA', code: '002', logo: '{{ asset('image/banks/bri.svg') }}' }
         },
         virtualAccounts: {
-            'bca': { name: 'BCA Virtual Account', va: '8800 1209 8876 221', owner: 'BANTERPOOL - {{ auth()->user()->name ?? 'Pelanggan' }}' },
-            'mandiri': { name: 'Mandiri Livin VA', va: '8900 9812 3345 678', owner: 'BANTERPOOL - {{ auth()->user()->name ?? 'Pelanggan' }}' },
-            'bni': { name: 'BNI Virtual Account', va: '8808 1199 4433 221', owner: 'BANTERPOOL - {{ auth()->user()->name ?? 'Pelanggan' }}' },
-            'bri': { name: 'BRI BRIVA', va: '7701 5599 8822 110', owner: 'BANTERPOOL - {{ auth()->user()->name ?? 'Pelanggan' }}' }
+            'bca': { name: 'BCA Virtual Account', va: '8800 1209 8876 221', owner: 'BANTERPOOL - {{ auth()->user()->name ?? 'Pelanggan' }}', logo: '{{ asset('image/banks/bca.svg') }}' },
+            'mandiri': { name: 'Mandiri Livin VA', va: '8900 9812 3345 678', owner: 'BANTERPOOL - {{ auth()->user()->name ?? 'Pelanggan' }}', logo: '{{ asset('image/banks/mandiri.svg') }}' },
+            'bni': { name: 'BNI Virtual Account', va: '8808 1199 4433 221', owner: 'BANTERPOOL - {{ auth()->user()->name ?? 'Pelanggan' }}', logo: '{{ asset('image/banks/bni.svg') }}' },
+            'bri': { name: 'BRI BRIVA', va: '7701 5599 8822 110', owner: 'BANTERPOOL - {{ auth()->user()->name ?? 'Pelanggan' }}', logo: '{{ asset('image/banks/bri.svg') }}' }
         },
         ewallets: {
-            'gopay': { name: 'GoPay', number: '0812 3456 7890', owner: 'BANTERPOOL OFFICIAL' },
-            'ovo': { name: 'OVO', number: '0812 3456 7890', owner: 'BANTERPOOL OFFICIAL' },
-            'dana': { name: 'DANA', number: '0812 3456 7890', owner: 'BANTERPOOL OFFICIAL' },
-            'shopeepay': { name: 'ShopeePay', number: '0812 3456 7890', owner: 'BANTERPOOL OFFICIAL' }
+            'gopay': { name: 'GoPay', number: '0812 3456 7890', owner: 'BANTERPOOL OFFICIAL', logo: '{{ asset('image/banks/gopay.svg') }}' },
+            'ovo': { name: 'OVO', number: '0812 3456 7890', owner: 'BANTERPOOL OFFICIAL', logo: '{{ asset('image/banks/ovo.svg') }}' },
+            'dana': { name: 'DANA', number: '0812 3456 7890', owner: 'BANTERPOOL OFFICIAL', logo: '{{ asset('image/banks/dana.svg') }}' }
         },
-        minimarkets: {
-            'alfamart': { name: 'Alfamart / Alfamidi', code: 'ALFA-BTR-{{ substr(str_replace("-", "", $billData["invoice"]), -6) }}', instruction: 'Sebutkan pembayaran internet BANTERPOOL kepada kasir Alfamart.' },
-            'indomaret': { name: 'Indomaret / Ceriamart', code: 'INDO-BTR-{{ substr(str_replace("-", "", $billData["invoice"]), -6) }}', instruction: 'Sebutkan kode bayar BANTERPOOL kepada kasir Indomaret.' }
+        qris: {
+            name: 'QRIS',
+            merchant: 'PT. BANTERPOOL TELEKOMUNIKASI INDONESIA',
+            nmid: 'ID1020038829101',
+            logo: '{{ asset('image/banks/qris.svg') }}',
+            qrImage: '{{ asset('image/banks/qris-code.svg') }}'
         },
 
         init() {
@@ -260,7 +261,7 @@
                 </div>
                 <div class="mt-3">
                   <p class="text-xs font-bold text-black leading-tight">E - Wallet</p>
-                  <p class="text-[10px] text-gray-400 mt-0.5 leading-tight">GoPay, OVO, Dana, ShopeePay</p>
+                  <p class="text-[10px] text-gray-400 mt-0.5 leading-tight">GoPay, OVO, Dana</p>
                 </div>
               </div>
 
@@ -280,19 +281,19 @@
                 </div>
               </div>
 
-              <!-- 4. Alfamart/Indomart -->
-              <div @click="paymentMethod = 'minimarket'"
-                   :class="paymentMethod === 'minimarket' ? 'border-brand bg-[#fff5f5] ring-2 ring-brand/20' : 'border-gray-200 hover:border-gray-300 bg-white'"
+              <!-- 4. Scan QRIS -->
+              <div @click="paymentMethod = 'qris'"
+                   :class="paymentMethod === 'qris' ? 'border-brand bg-[#fff5f5] ring-2 ring-brand/20' : 'border-gray-200 hover:border-gray-300 bg-white'"
                    class="border rounded-2xl p-4 cursor-pointer relative transition flex flex-col justify-between min-h-[110px] text-left">
                 <div class="flex items-center justify-between w-full">
                   <div class="w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center">
-                    <div x-show="paymentMethod === 'minimarket'" class="w-2.5 h-2.5 rounded-full bg-brand"></div>
+                    <div x-show="paymentMethod === 'qris'" class="w-2.5 h-2.5 rounded-full bg-brand"></div>
                   </div>
-                  <i class="fa-solid fa-store text-amber-500 text-lg"></i>
+                  <i class="fa-solid fa-qrcode text-red-600 text-lg"></i>
                 </div>
                 <div class="mt-3">
-                  <p class="text-xs font-bold text-black leading-tight">Alfamart/Indomart</p>
-                  <p class="text-[10px] text-gray-400 mt-0.5 leading-tight">Gerai terdekat</p>
+                  <p class="text-xs font-bold text-black leading-tight">Scan QRIS</p>
+                  <p class="text-[10px] text-gray-400 mt-0.5 leading-tight">Semua E-Wallet & Bank</p>
                 </div>
               </div>
 
@@ -308,10 +309,9 @@
                   <template x-for="(bank, key) in banks" :key="key">
                     <button type="button"
                             @click="selectedBank = key"
-                            :class="selectedBank === key ? 'border-brand bg-red-50/50 text-brand font-bold' : 'border-gray-200 text-gray-700 hover:border-gray-300 font-medium'"
-                            class="border rounded-xl p-3 text-xs flex items-center justify-center gap-2 transition">
-                      <span class="w-2 h-2 rounded-full" :class="selectedBank === key ? 'bg-brand' : 'bg-gray-300'"></span>
-                      <span x-text="key.toUpperCase()"></span>
+                            :class="selectedBank === key ? 'border-brand bg-red-50/50 ring-1 ring-brand' : 'border-gray-200 bg-white hover:border-gray-300'"
+                            class="border rounded-xl p-2.5 h-12 flex items-center justify-center transition shadow-sm">
+                      <img :src="bank.logo" :alt="bank.name" class="h-6 max-w-[85px] object-contain">
                     </button>
                   </template>
                 </div>
@@ -320,14 +320,13 @@
               <!-- Sub-pilihan: E-Wallet -->
               <div x-show="paymentMethod === 'ewallet'" class="space-y-3" style="display: none;">
                 <p class="text-xs font-semibold text-gray-700">Pilih Layanan Dompet Digital:</p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div class="grid grid-cols-3 gap-2.5">
                   <template x-for="(ewallet, key) in ewallets" :key="key">
                     <button type="button"
                             @click="selectedEwallet = key"
-                            :class="selectedEwallet === key ? 'border-cyan-500 bg-cyan-50/50 text-cyan-800 font-bold' : 'border-gray-200 text-gray-700 hover:border-gray-300 font-medium'"
-                            class="border rounded-xl p-3 text-xs flex items-center justify-center gap-2 transition">
-                      <span class="w-2 h-2 rounded-full" :class="selectedEwallet === key ? 'bg-cyan-500' : 'bg-gray-300'"></span>
-                      <span x-text="ewallet.name"></span>
+                            :class="selectedEwallet === key ? 'border-cyan-500 bg-cyan-50/50 ring-1 ring-cyan-500' : 'border-gray-200 bg-white hover:border-gray-300'"
+                            class="border rounded-xl p-2.5 h-12 flex items-center justify-center transition shadow-sm">
+                      <img :src="ewallet.logo" :alt="ewallet.name" class="h-6 max-w-[85px] object-contain">
                     </button>
                   </template>
                 </div>
@@ -340,28 +339,27 @@
                   <template x-for="(va, key) in virtualAccounts" :key="key">
                     <button type="button"
                             @click="selectedVA = key"
-                            :class="selectedVA === key ? 'border-blue-500 bg-blue-50/50 text-blue-800 font-bold' : 'border-gray-200 text-gray-700 hover:border-gray-300 font-medium'"
-                            class="border rounded-xl p-3 text-xs flex items-center justify-center gap-2 transition">
-                      <span class="w-2 h-2 rounded-full" :class="selectedVA === key ? 'bg-blue-500' : 'bg-gray-300'"></span>
-                      <span x-text="key.toUpperCase() + ' VA'"></span>
+                            :class="selectedVA === key ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500' : 'border-gray-200 bg-white hover:border-gray-300'"
+                            class="border rounded-xl p-2.5 h-12 flex items-center justify-center transition shadow-sm">
+                      <img :src="va.logo" :alt="va.name" class="h-6 max-w-[85px] object-contain">
                     </button>
                   </template>
                 </div>
               </div>
 
-              <!-- Sub-pilihan: Minimarket -->
-              <div x-show="paymentMethod === 'minimarket'" class="space-y-3" style="display: none;">
-                <p class="text-xs font-semibold text-gray-700">Pilih Gerai Minimarket:</p>
-                <div class="grid grid-cols-2 gap-2.5">
-                  <template x-for="(store, key) in minimarkets" :key="key">
-                    <button type="button"
-                            @click="selectedMinimarket = key"
-                            :class="selectedMinimarket === key ? 'border-amber-500 bg-amber-50/50 text-amber-900 font-bold' : 'border-gray-200 text-gray-700 hover:border-gray-300 font-medium'"
-                            class="border rounded-xl p-3 text-xs flex items-center justify-center gap-2 transition">
-                      <span class="w-2 h-2 rounded-full" :class="selectedMinimarket === key ? 'bg-amber-500' : 'bg-gray-300'"></span>
-                      <span x-text="store.name"></span>
-                    </button>
-                  </template>
+              <!-- Sub-pilihan: QRIS -->
+              <div x-show="paymentMethod === 'qris'" class="space-y-3" style="display: none;">
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div class="flex items-center gap-2.5">
+                    <img src="{{ asset('image/banks/qris.svg') }}" alt="QRIS" class="h-6 w-auto object-contain">
+                    <div>
+                      <p class="font-bold text-gray-900">Pembayaran Instan & Otomatis</p>
+                      <p class="text-[11px] text-gray-500">Mendukung BCA, Mandiri, BRI, BNI, GoPay, OVO, DANA, ShopeePay, LinkAja</p>
+                    </div>
+                  </div>
+                  <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg shrink-0">
+                    <i class="fa-solid fa-bolt"></i> Terverifikasi Otomatis
+                  </span>
                 </div>
               </div>
 
@@ -429,14 +427,28 @@
           <div class="border border-gray-200 rounded-2xl p-5 sm:p-6 space-y-5 bg-white">
             
             <div class="flex items-center justify-between border-b border-gray-100 pb-4">
-              <div>
-                <p class="text-xs text-gray-400 font-medium">Metode Pembayaran Terpilih</p>
-                <h4 class="text-base font-extrabold text-black mt-0.5">
-                  <span x-show="paymentMethod === 'transfer'">Transfer Bank (<span x-text="selectedBank.toUpperCase()"></span>)</span>
-                  <span x-show="paymentMethod === 'ewallet'">E-Wallet (<span x-text="ewallets[selectedEwallet].name"></span>)</span>
-                  <span x-show="paymentMethod === 'va'">Virtual Account (<span x-text="virtualAccounts[selectedVA].name"></span>)</span>
-                  <span x-show="paymentMethod === 'minimarket'">Gerai Minimarket (<span x-text="minimarkets[selectedMinimarket].name"></span>)</span>
-                </h4>
+              <div class="flex items-center gap-3">
+                <template x-if="paymentMethod === 'transfer'">
+                  <img :src="banks[selectedBank].logo" :alt="banks[selectedBank].name" class="h-8 max-w-[90px] object-contain">
+                </template>
+                <template x-if="paymentMethod === 'ewallet'">
+                  <img :src="ewallets[selectedEwallet].logo" :alt="ewallets[selectedEwallet].name" class="h-8 max-w-[90px] object-contain">
+                </template>
+                <template x-if="paymentMethod === 'va'">
+                  <img :src="virtualAccounts[selectedVA].logo" :alt="virtualAccounts[selectedVA].name" class="h-8 max-w-[90px] object-contain">
+                </template>
+                <template x-if="paymentMethod === 'qris'">
+                  <img :src="qris.logo" alt="QRIS" class="h-8 max-w-[90px] object-contain">
+                </template>
+                <div>
+                  <p class="text-xs text-gray-400 font-medium">Metode Pembayaran Terpilih</p>
+                  <h4 class="text-base font-extrabold text-black mt-0.5">
+                    <span x-show="paymentMethod === 'transfer'">Transfer Bank (<span x-text="selectedBank.toUpperCase()"></span>)</span>
+                    <span x-show="paymentMethod === 'ewallet'">E-Wallet (<span x-text="ewallets[selectedEwallet].name"></span>)</span>
+                    <span x-show="paymentMethod === 'va'">Virtual Account (<span x-text="virtualAccounts[selectedVA].name"></span>)</span>
+                    <span x-show="paymentMethod === 'qris'">Scan QRIS (Semua Pembayaran)</span>
+                  </h4>
+                </div>
               </div>
               <button type="button" @click="step = 1" class="text-xs text-brand hover:underline font-bold">
                 Ganti Metode
@@ -447,9 +459,12 @@
             <div x-show="paymentMethod === 'transfer'" class="space-y-4">
               <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-3">
                 <div class="flex items-center justify-between">
-                  <div>
-                    <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">Nomor Rekening</p>
-                    <p class="text-lg sm:text-xl font-mono font-black text-black tracking-wider" x-text="banks[selectedBank].norek"></p>
+                  <div class="flex items-center gap-3 sm:gap-4">
+                    <img :src="banks[selectedBank].logo" :alt="banks[selectedBank].name" class="h-9 max-w-[100px] object-contain">
+                    <div>
+                      <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">Nomor Rekening</p>
+                      <p class="text-lg sm:text-xl font-mono font-black text-black tracking-wider" x-text="banks[selectedBank].norek"></p>
+                    </div>
                   </div>
                   <button type="button"
                           @click="copyText(banks[selectedBank].norek, 'Nomor Rekening')"
@@ -480,9 +495,12 @@
             <div x-show="paymentMethod === 'va'" class="space-y-4" style="display: none;">
               <div class="bg-blue-50/50 rounded-xl p-4 border border-blue-200 space-y-3">
                 <div class="flex items-center justify-between">
-                  <div>
-                    <p class="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Nomor Virtual Account</p>
-                    <p class="text-lg sm:text-xl font-mono font-black text-blue-900 tracking-wider" x-text="virtualAccounts[selectedVA].va"></p>
+                  <div class="flex items-center gap-3 sm:gap-4">
+                    <img :src="virtualAccounts[selectedVA].logo" :alt="virtualAccounts[selectedVA].name" class="h-9 max-w-[100px] object-contain">
+                    <div>
+                      <p class="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Nomor Virtual Account</p>
+                      <p class="text-lg sm:text-xl font-mono font-black text-blue-900 tracking-wider" x-text="virtualAccounts[selectedVA].va"></p>
+                    </div>
                   </div>
                   <button type="button"
                           @click="copyText(virtualAccounts[selectedVA].va, 'Nomor Virtual Account')"
@@ -513,9 +531,12 @@
             <div x-show="paymentMethod === 'ewallet'" class="space-y-4" style="display: none;">
               <div class="bg-cyan-50/50 rounded-xl p-4 border border-cyan-200 space-y-3">
                 <div class="flex items-center justify-between">
-                  <div>
-                    <p class="text-[11px] text-cyan-800 uppercase tracking-wider font-semibold">Nomor Telepon Akun E-Wallet</p>
-                    <p class="text-lg sm:text-xl font-mono font-black text-cyan-950 tracking-wider" x-text="ewallets[selectedEwallet].number"></p>
+                  <div class="flex items-center gap-3 sm:gap-4">
+                    <img :src="ewallets[selectedEwallet].logo" :alt="ewallets[selectedEwallet].name" class="h-9 max-w-[100px] object-contain">
+                    <div>
+                      <p class="text-[11px] text-cyan-800 uppercase tracking-wider font-semibold">Nomor Telepon Akun E-Wallet</p>
+                      <p class="text-lg sm:text-xl font-mono font-black text-cyan-950 tracking-wider" x-text="ewallets[selectedEwallet].number"></p>
+                    </div>
                   </div>
                   <button type="button"
                           @click="copyText(ewallets[selectedEwallet].number, 'Nomor E-Wallet')"
@@ -542,29 +563,47 @@
               </div>
             </div>
 
-            <!-- KONTEN: MINIMARKET -->
-            <div x-show="paymentMethod === 'minimarket'" class="space-y-4" style="display: none;">
-              <div class="bg-amber-50/50 rounded-xl p-4 border border-amber-200 space-y-3">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <p class="text-[11px] text-amber-800 uppercase tracking-wider font-semibold">Kode Pembayaran Gerai</p>
-                    <p class="text-lg sm:text-xl font-mono font-black text-amber-950 tracking-wider" x-text="minimarkets[selectedMinimarket].code"></p>
+            <!-- KONTEN: SCAN QRIS -->
+            <div x-show="paymentMethod === 'qris'" class="space-y-4" style="display: none;">
+              <div class="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
+                  <div class="sm:col-span-5 flex flex-col items-center justify-center text-center">
+                    <img :src="qris.qrImage" alt="QRIS Code" class="w-48 sm:w-52 h-auto rounded-xl shadow-sm border border-gray-200 bg-white">
+                    <a :href="qris.qrImage" download="QRIS-Banterpool-Tagihan.svg" class="mt-2 text-[11px] font-bold text-brand hover:underline inline-flex items-center gap-1">
+                      <i class="fa-solid fa-download"></i> Unduh QR Code
+                    </a>
                   </div>
-                  <button type="button"
-                          @click="copyText(minimarkets[selectedMinimarket].code, 'Kode Pembayaran')"
-                          class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
-                    <i class="fa-regular fa-copy"></i> Salin
-                  </button>
-                </div>
-                <div class="border-t border-amber-100 pt-2 text-xs text-amber-800">
-                  <i class="fa-solid fa-circle-info mr-1"></i>
-                  <span x-text="minimarkets[selectedMinimarket].instruction"></span>
+                  <div class="sm:col-span-7 space-y-3">
+                    <div class="flex items-center justify-between border-b border-gray-200 pb-3">
+                      <div>
+                        <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">Nama Merchant</p>
+                        <p class="text-sm font-black text-black" x-text="qris.merchant"></p>
+                        <p class="text-[10px] text-gray-500 font-mono mt-0.5" x-text="'NMID: ' + qris.nmid"></p>
+                      </div>
+                      <button type="button"
+                              @click="copyText(qris.nmid, 'NMID QRIS')"
+                              class="border border-brand text-brand hover:bg-brand hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                        <i class="fa-regular fa-copy"></i> Salin NMID
+                      </button>
+                    </div>
+
+                    <div class="space-y-1.5 text-xs text-gray-600">
+                      <p class="font-bold text-gray-900 text-[11px]">Petunjuk Pembayaran QRIS:</p>
+                      <ol class="list-decimal list-inside space-y-1 text-[11px] text-gray-600 leading-relaxed">
+                        <li>Buka aplikasi Mobile Banking atau E-Wallet apa saja di smartphone Anda.</li>
+                        <li>Pilih menu <strong class="text-gray-900">Bayar / Scan QRIS</strong>.</li>
+                        <li>Scan kode QR di samping.</li>
+                        <li>Pastikan jumlah pembayaran <strong class="text-brand">Rp{{ $billData['total'] }}</strong> sudah tepat.</li>
+                        <li>Masukkan PIN dan simpan bukti transaksi.</li>
+                      </ol>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 flex items-center justify-between">
                 <div>
-                  <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">Total Tagihan di Kasir</p>
+                  <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">Total Tagihan QRIS</p>
                   <p class="text-lg sm:text-xl font-black text-brand">Rp{{ $billData['total'] }}</p>
                 </div>
                 <button type="button"

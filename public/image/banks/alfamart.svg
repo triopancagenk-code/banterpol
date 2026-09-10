@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 40" fill="none">
+  <rect width="130" height="40" rx="8" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+  <g transform="translate(12, 8)">
+    <rect x="0" y="2" width="22" height="20" rx="3" fill="#D92128"/>
+    <text x="11" y="17" font-family="'Arial Black', Arial, sans-serif" font-size="14" font-weight="900" fill="#FFFFFF" text-anchor="middle">A</text>
+    <text x="28" y="17" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="900" fill="#D92128">Alfamart</text>
+  </g>
+</svg>

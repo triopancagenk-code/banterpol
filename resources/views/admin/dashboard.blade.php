@@ -273,7 +273,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 font-medium">
-            @foreach(array_slice($bills, 0, 5) as $bill)
+            @forelse(array_slice($bills, 0, 5) as $bill)
               <tr class="hover:bg-slate-50/70 transition">
                 <td class="px-5 py-3.5">
                   <p class="font-bold text-slate-900 leading-tight">{{ $bill['customer_name'] }}</p>
@@ -298,7 +298,14 @@
                   </a>
                 </td>
               </tr>
-            @endforeach
+            @empty
+              <tr>
+                <td colspan="5" class="text-center py-8 text-slate-400">
+                  <i class="fa-solid fa-receipt text-3xl mb-1.5 text-slate-300 block"></i>
+                  <span>Belum ada data tagihan.</span>
+                </td>
+              </tr>
+            @endforelse
           </tbody>
         </table>
       </div>
@@ -317,7 +324,7 @@
       </div>
 
       <div class="divide-y divide-slate-100 text-xs">
-        @foreach(array_slice($tickets, 0, 4) as $ticket)
+        @forelse(array_slice($tickets, 0, 4) as $ticket)
           <div class="p-4 hover:bg-slate-50 transition">
             <div class="flex items-start justify-between gap-2">
               <div>
@@ -334,7 +341,12 @@
               <span class="font-semibold text-brand">{{ $ticket['status'] }}</span>
             </div>
           </div>
-        @endforeach
+        @empty
+          <div class="text-center py-8 text-slate-400">
+            <i class="fa-solid fa-headset text-3xl mb-2 text-slate-300 block"></i>
+            <span>Belum ada laporan gangguan masuk.</span>
+          </div>
+        @endforelse
       </div>
     </div>
 

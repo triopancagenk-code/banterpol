@@ -37,6 +37,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/pesanan', [AdminController::class, 'pesanan'])->name('pesanan');
     Route::get('/pesanan/export', [AdminController::class, 'exportPesanan'])->name('pesanan.export');
+    Route::get('/pesanan/{id}/formulir', [AdminController::class, 'formulirPesanan'])->name('pesanan.formulir');
     Route::post('/pesanan/{id}/status', [AdminController::class, 'updatePesananStatus'])->name('pesanan.status');
     Route::delete('/pesanan/{id}', [AdminController::class, 'deletePesanan'])->name('pesanan.delete');
     Route::get('/tagihan', [AdminController::class, 'tagihan'])->name('tagihan');

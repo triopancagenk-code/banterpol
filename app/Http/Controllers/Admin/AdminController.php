@@ -916,6 +916,24 @@ class AdminController extends Controller
             $order->admin_notes = $request->input('admin_notes');
         }
 
+        if ($request->filled('package_name')) {
+            $pkgName = $request->input('package_name');
+            $order->package_name = $pkgName;
+            if (str_contains($pkgName, '50')) {
+                $order->speed = '50 Mbps';
+                $order->price = 220000;
+                $order->total = 220000;
+            } elseif (str_contains($pkgName, '30')) {
+                $order->speed = '30 Mbps';
+                $order->price = 165000;
+                $order->total = 165000;
+            } else {
+                $order->speed = '20 Mbps';
+                $order->price = 110000;
+                $order->total = 110000;
+            }
+        }
+
         if ($order->status === 'Selesai' && !$order->installed_at) {
             $order->installed_at = now();
         }
@@ -924,6 +942,16 @@ class AdminController extends Controller
 
         if ($order->status === 'Selesai') {
             BillingService::generateBillForOrder($order);
+        }
+
+        // Sinkronkan juga data tagihan jika sudah pernah terbit sebelumnya
+        $linkedBill = Bill::where('order_id', $order->id)->first();
+        if ($linkedBill) {
+            $linkedBill->package_name = $order->package_name;
+            $linkedBill->speed = $order->speed;
+            $linkedBill->amount = $order->price;
+            $linkedBill->total = $order->total;
+            $linkedBill->save();
         }
 
         return redirect()->back()->with('success', "Pesanan {$order->order_number} berhasil diperbarui! Status: {$order->status}");
@@ -939,6 +967,16 @@ class AdminController extends Controller
         $order->delete();
 
         return redirect()->back()->with('success', "Pesanan {$orderNumber} berhasil dihapus dari sistem.");
+    }
+
+    /**
+     * Cetak Formulir Pendaftaran / Berlangganan SIMS Fiber Broadband Banterpool
+     */
+    public function formulirPesanan($id)
+    {
+        $order = Order::findOrFail($id);
+
+        return view('admin.formulir-berlangganan', compact('order'));
     }
 
     /**

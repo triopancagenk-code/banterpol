@@ -56,6 +56,15 @@ class BillingService
         }
 
         $amount = (float) $order->price;
+        if ($amount <= 0) {
+            if (str_contains($order->package_name, '50')) {
+                $amount = 220000;
+            } elseif (str_contains($order->package_name, '30')) {
+                $amount = 165000;
+            } else {
+                $amount = 110000;
+            }
+        }
         $tax = (float) ($order->tax ?? 0);
         $total = $amount + $tax;
 

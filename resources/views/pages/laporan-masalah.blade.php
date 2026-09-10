@@ -67,6 +67,11 @@
           <i class="fa-solid fa-clock-rotate-left text-[11px]"></i>
           <span>Lihat Riwayat Laporan ({{ count($myTickets) }})</span>
         </button>
+      @else
+        <span class="mt-2.5 inline-flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+          <i class="fa-solid fa-circle-check text-emerald-500 text-[11px]"></i>
+          <span>Belum ada laporan kendala aktif</span>
+        </span>
       @endif
     </div>
 

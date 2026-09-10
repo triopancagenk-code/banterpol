@@ -416,9 +416,9 @@
               <select name="package_name" id="collector_package_select" required
                       onchange="document.getElementById('collector_total_input').value = this.options[this.selectedIndex].getAttribute('data-price');"
                       class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:ring-emerald-500 focus:border-emerald-500">
-                <option value="Paket 20 Mbps" data-price="110000" selected>Paket 20 Mbps (Rp 110.000)</option>
-                <option value="Paket 30 Mbps" data-price="165000">Paket 30 Mbps (Rp 165.000)</option>
-                <option value="Paket 50 Mbps" data-price="220000">Paket 50 Mbps (Rp 220.000)</option>
+                <option value="Paket 20 Mbps" data-price="110000" selected>Paket 20 Mbps - Rp 110.000 / bln (20 Mbps)</option>
+                <option value="Paket 30 Mbps" data-price="165000">Paket 30 Mbps - Rp 165.000 / bln (30 Mbps)</option>
+                <option value="Paket 50 Mbps" data-price="220000">Paket 50 Mbps - Rp 220.000 / bln (50 Mbps)</option>
               </select>
             </div>
             <div>

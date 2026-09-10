@@ -5,23 +5,24 @@
 @section('content')
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-  <!-- Tombol Kembali -->
-  <a href="{{ route('payment.status', ['status' => 'success']) }}" class="inline-flex items-center gap-2 text-brand font-bold text-sm mb-6 hover:underline">
-    <i class="fa-solid fa-arrow-left"></i> Kembali
-  </a>
+  @if($hasOrder ?? false)
+    <!-- Tombol Kembali -->
+    <a href="{{ route('payment.status', ['status' => 'success']) }}" class="inline-flex items-center gap-2 text-brand font-bold text-sm mb-6 hover:underline">
+      <i class="fa-solid fa-arrow-left"></i> Kembali
+    </a>
 
-  <!-- Card Utama Detail Pemesanan -->
-  <div class="border border-black rounded-2xl p-6 sm:p-8 bg-white space-y-6 shadow-sm">
+    <!-- Card Utama Detail Pemesanan -->
+    <div class="border border-black rounded-2xl p-6 sm:p-8 bg-white space-y-6 shadow-sm">
 
-    <!-- Header Invoice -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-gray-200">
-      <div>
-        <span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 mb-2">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Pembayaran Berhasil
-        </span>
-        <h1 class="text-2xl font-black text-black">Detail Pemesanan</h1>
-        <p class="text-xs text-gray-500 mt-0.5">No. Order: <span class="font-bold text-brand">{{ $customerData['order_number'] ?? 'ORD-28052024-000123' }}</span></p>
-      </div>
+      <!-- Header Invoice -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-gray-200">
+        <div>
+          <span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 mb-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Pembayaran Berhasil
+          </span>
+          <h1 class="text-2xl font-black text-black">Detail Pemesanan</h1>
+          <p class="text-xs text-gray-500 mt-0.5">No. Order: <span class="font-bold text-brand">{{ $customerData['order_number'] ?? '-' }}</span></p>
+        </div>
 
       <div class="text-left sm:text-right">
         <button type="button" onclick="window.print()" class="border border-brand text-brand hover:bg-brand hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2">
@@ -68,6 +69,16 @@
           <div>
             <p class="text-gray-400 text-[10px]">Email</p>
             <p class="font-bold text-black">{{ $customerData['email'] }}</p>
+          </div>
+          <div>
+            <p class="text-gray-400 text-[10px]">No. KTP (NIK)</p>
+            <p class="font-bold text-black font-mono">{{ $customerData['id_card_number'] ?? '-' }}</p>
+          </div>
+          <div>
+            <p class="text-gray-400 text-[10px]">Tempat, Tanggal Lahir</p>
+            <p class="font-bold text-black">
+              {{ $customerData['birth_place'] ?? '' }}{{ (!empty($customerData['birth_place']) && !empty($customerData['birth_date'])) ? ', ' : '' }}{{ !empty($customerData['birth_date']) ? \Carbon\Carbon::parse($customerData['birth_date'])->translatedFormat('d F Y') : '-' }}
+            </p>
           </div>
           <div>
             <p class="text-gray-400 text-[10px]">Alamat Pemasangan</p>
@@ -141,6 +152,28 @@
     </div>
 
   </div>
+  @else
+    <!-- Empty State Pemesanan Pelanggan -->
+    <div class="border border-slate-200 rounded-3xl p-8 sm:p-12 bg-white text-center shadow-xs">
+      <div class="w-16 h-16 rounded-2xl bg-red-50 text-brand flex items-center justify-center mx-auto mb-4 text-2xl">
+        <i class="fa-solid fa-box-open"></i>
+      </div>
+      <h2 class="text-xl sm:text-2xl font-black text-slate-900 mb-2">Belum Ada Pemesanan Aktif</h2>
+      <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-6">
+        Anda belum memiliki data pemesanan paket WiFi Banterpool saat ini. Silakan pilih paket langganan internet super kencang sesuai kebutuhan Anda.
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <a href="{{ route('paket') }}" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-700 text-white font-bold text-xs px-6 py-3 rounded-xl transition shadow-xs">
+          <i class="fa-solid fa-wifi"></i>
+          <span>Pilih Paket Langganan</span>
+        </a>
+        <a href="{{ route('home') }}" class="inline-flex items-center gap-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs px-6 py-3 rounded-xl transition">
+          <i class="fa-solid fa-house"></i>
+          <span>Ke Beranda</span>
+        </a>
+      </div>
+    </div>
+  @endif
 
 </div>
 @endsection
