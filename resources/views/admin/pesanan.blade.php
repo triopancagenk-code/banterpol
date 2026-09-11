@@ -7,7 +7,34 @@
 <div class="space-y-6"
      x-data="{
         openModal: false,
+        openCreateModal: false,
         selectedOrder: null,
+
+        // Form Create Pesanan Manual
+        createForm: {
+            packageName: 'Paket 20 Mbps',
+            speed: '20 Mbps',
+            price: 110000,
+            installationFee: 0,
+            total() {
+                return Number(this.price || 0) + Number(this.installationFee || 0);
+            }
+        },
+
+        onPackageChange(event) {
+            const val = event.target.value;
+            this.createForm.packageName = val;
+            if (val.includes('50')) {
+                this.createForm.speed = '50 Mbps';
+                this.createForm.price = 220000;
+            } else if (val.includes('30')) {
+                this.createForm.speed = '30 Mbps';
+                this.createForm.price = 165000;
+            } else {
+                this.createForm.speed = '20 Mbps';
+                this.createForm.price = 110000;
+            }
+        },
         
         viewOrder(order) {
             this.selectedOrder = order;
@@ -26,7 +53,14 @@
       </p>
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- Tombol Input Manual Pesanan -->
+      <button type="button" @click="openCreateModal = true"
+              class="bg-brand hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+        <i class="fa-solid fa-cart-plus"></i>
+        <span>Tambah Pesanan Manual</span>
+      </button>
+
       <a href="{{ route('admin.pesanan.export', request()->query()) }}"
          class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs">
         <i class="fa-solid fa-file-excel"></i>
@@ -43,6 +77,33 @@
       </a>
     </div>
   </div>
+
+  <!-- Alert Notifications -->
+  @if(session('success'))
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-center justify-between shadow-xs">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+        <span class="text-xs font-bold">{{ session('success') }}</span>
+      </div>
+      <button type="button" @click="$el.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 text-sm">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  @endif
+
+  @if(isset($errors) && $errors->any())
+    <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-2xl shadow-xs">
+      <div class="flex items-center gap-2 mb-1">
+        <i class="fa-solid fa-triangle-exclamation text-red-600"></i>
+        <span class="text-xs font-bold">Terjadi kesalahan input data:</span>
+      </div>
+      <ul class="list-disc list-inside text-xs text-red-700 pl-4 space-y-0.5">
+        @foreach($errors->all() as $err)
+          <li>{{ $err }}</li>
+        @endforeach
+      </ul>
+    </div>
+  @endif
 
   <!-- ============================================== -->
   <!-- 2. STATISTIC METRIC CARDS                      -->
@@ -168,16 +229,16 @@
   <!-- ============================================== -->
   <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-xs">
+      <table class="w-full text-center text-xs">
         <thead class="bg-slate-50 text-slate-500 font-extrabold uppercase text-[10px] border-b border-slate-200 tracking-wider">
           <tr>
-            <th class="py-3.5 px-4">No. Order & Tanggal</th>
-            <th class="py-3.5 px-4">Pelanggan</th>
-            <th class="py-3.5 px-4">Paket & Biaya</th>
-            <th class="py-3.5 px-4">Jadwal Pasang</th>
-            <th class="py-3.5 px-4">Pembayaran</th>
-            <th class="py-3.5 px-4">Status Pesanan</th>
-            <th class="py-3.5 px-4">Teknisi / ODP</th>
+            <th class="py-3.5 px-4 text-center">No. Order & Tanggal</th>
+            <th class="py-3.5 px-4 text-center">Pelanggan</th>
+            <th class="py-3.5 px-4 text-center">Paket & Biaya</th>
+            <th class="py-3.5 px-4 text-center">Jadwal Pasang</th>
+            <th class="py-3.5 px-4 text-center">Pembayaran</th>
+            <th class="py-3.5 px-4 text-center">Status Pesanan</th>
+            <th class="py-3.5 px-4 text-center">Teknisi / ODP</th>
             <th class="py-3.5 px-4 text-center">Aksi</th>
           </tr>
         </thead>
@@ -186,15 +247,15 @@
             <tr class="hover:bg-slate-50/80 transition duration-150">
               
               <!-- 1. Order Number & Date -->
-              <td class="py-3.5 px-4 whitespace-nowrap">
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 <span class="font-mono font-bold text-slate-900 text-xs block">{{ $order->order_number }}</span>
                 <span class="text-[10px] text-slate-400">{{ $order->created_at ? $order->created_at->translatedFormat('d M Y, H:i') : '-' }} WIB</span>
               </td>
 
               <!-- 2. Customer Info -->
-              <td class="py-3.5 px-4">
+              <td class="py-3.5 px-4 text-center">
                 <div class="font-bold text-slate-900 text-xs">{{ $order->customer_name }}</div>
-                <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+                <div class="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
                   <a href="https://wa.me/{{ preg_replace('/^0/', '62', preg_replace('/\D/', '', $order->customer_phone)) }}?text=Halo%20{{ urlencode($order->customer_name) }},%20kami%20dari%20Banterpool%20terkait%20pesanan%20{{ $order->order_number }}"
                      target="_blank"
                      class="text-emerald-600 hover:text-emerald-700 font-semibold inline-flex items-center gap-1">
@@ -202,20 +263,20 @@
                     <span>{{ $order->customer_phone }}</span>
                   </a>
                 </div>
-                <p class="text-[10px] text-slate-400 truncate max-w-xs mt-0.5" title="{{ $order->address }}">
+                <p class="text-[10px] text-slate-400 truncate max-w-xs mx-auto mt-0.5" title="{{ $order->address }}">
                   <i class="fa-solid fa-location-dot text-red-500 mr-0.5"></i> {{ $order->address }}
                 </p>
               </td>
 
               <!-- 3. Package & Total -->
-              <td class="py-3.5 px-4 whitespace-nowrap">
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 <span class="font-bold text-slate-900 block">{{ $order->package_name }}</span>
                 <span class="text-brand font-black text-xs block">Rp{{ number_format($order->total, 0, ',', '.') }}</span>
                 <span class="text-[10px] text-slate-400">{{ $order->speed ?? '-' }}</span>
               </td>
 
               <!-- 4. Installation Schedule -->
-              <td class="py-3.5 px-4 whitespace-nowrap">
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($order->installation_date)
                   <span class="font-semibold text-slate-800 block">
                     <i class="fa-regular fa-calendar text-slate-400 mr-1"></i>
@@ -231,7 +292,7 @@
               </td>
 
               <!-- 5. Payment Status -->
-              <td class="py-3.5 px-4 whitespace-nowrap">
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($order->payment_status === 'Lunas')
                   <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
                     <i class="fa-solid fa-check text-xs"></i> Lunas
@@ -249,7 +310,7 @@
               </td>
 
               <!-- 6. Order Status -->
-              <td class="py-3.5 px-4 whitespace-nowrap">
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($order->status === 'Menunggu Konfirmasi')
                   <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-1 rounded-full inline-flex items-center gap-1 animate-pulse">
                     <i class="fa-solid fa-bell text-xs"></i> Menunggu Konfirmasi
@@ -274,7 +335,7 @@
               </td>
 
               <!-- 7. Technician & ODP -->
-              <td class="py-3.5 px-4 whitespace-nowrap">
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($order->technician)
                   <span class="font-bold text-slate-900 block text-[11px]">{{ $order->technician }}</span>
                 @else
@@ -526,6 +587,290 @@
 
           </div>
         </template>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 7. MODAL INPUT MANUAL PESANAN BARU             -->
+  <!-- ============================================== -->
+  <div x-show="openCreateModal"
+       style="display: none;"
+       class="relative z-50"
+       role="dialog"
+       aria-modal="true">
+    <div x-show="openCreateModal"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+         @click="openCreateModal = false"></div>
+
+    <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+         @click.self="openCreateModal = false">
+      <div x-show="openCreateModal"
+           x-transition:enter="ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 relative shadow-2xl max-h-[92vh] overflow-y-auto"
+           @click.stop>
+
+        <!-- Close Button -->
+        <button type="button" @click="openCreateModal = false"
+                class="absolute top-6 right-6 text-slate-400 hover:text-slate-700 text-xl font-bold">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <div class="space-y-6">
+          <!-- Header Modal -->
+          <div class="border-b border-slate-100 pb-4">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-xs font-bold bg-red-100 text-brand px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                <i class="fa-solid fa-cart-plus"></i> Input Manual
+              </span>
+              <span class="text-xs font-bold text-slate-400">POV Admin NOC</span>
+            </div>
+            <h3 class="text-xl font-black text-slate-900">Tambah Pesanan Pelanggan Baru</h3>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Daftarkan pesanan pemasangan baru pelanggan secara manual langsung ke dalam sistem monitoring Banterpool.
+            </p>
+          </div>
+
+          <!-- Form Store Pesanan -->
+          <form action="{{ route('admin.pesanan.store') }}" method="POST" class="space-y-5 text-xs">
+            @csrf
+
+            <!-- Section 1: Data Identitas Pelanggan -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+              <div class="flex items-center gap-1.5 font-bold text-slate-800 text-xs border-b border-slate-200/60 pb-2">
+                <i class="fa-solid fa-user text-brand"></i>
+                <span>1. Data Identitas & Kontak Pelanggan</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Nama Pelanggan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Nama Lengkap Pelanggan <span class="text-red-500">*</span></label>
+                  <input type="text" name="customer_name" required placeholder="Contoh: Budi Santoso"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                </div>
+
+                <!-- No KTP / NIK -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">No. KTP / NIK (16 Digit)</label>
+                  <input type="text" name="id_card_number" maxlength="20" placeholder="Contoh: 3302172311940001"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-mono">
+                </div>
+
+                <!-- No WhatsApp / HP -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">No. WhatsApp / HP <span class="text-red-500">*</span></label>
+                  <input type="tel" name="customer_phone" required placeholder="Contoh: 081234567890"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-mono">
+                </div>
+
+                <!-- Email -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Alamat Email</label>
+                  <input type="email" name="customer_email" placeholder="Contoh: budi@gmail.com (opsional)"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                </div>
+
+                <!-- Tempat Lahir -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Tempat Lahir</label>
+                  <input type="text" name="birth_place" placeholder="Contoh: Banyumas"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                </div>
+
+                <!-- Tanggal Lahir -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Tanggal Lahir</label>
+                  <input type="date" name="birth_date"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                </div>
+              </div>
+
+              <!-- Alamat Lengkap -->
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Alamat Lengkap Pemasangan <span class="text-red-500">*</span></label>
+                <textarea name="address" required rows="2" placeholder="Nama Jalan, RT/RW, Dusun, Desa (cth: Batuanten / Jatisaba / Panusupan), Kec. Cilongok"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white resize-none"></textarea>
+              </div>
+
+
+            </div>
+
+            <!-- Section 2: Paket Layanan & Biaya -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+              <div class="flex items-center gap-1.5 font-bold text-slate-800 text-xs border-b border-slate-200/60 pb-2">
+                <i class="fa-solid fa-wifi text-brand"></i>
+                <span>2. Pilihan Paket Layanan & Tarif</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Paket Layanan -->
+                <div class="sm:col-span-1">
+                  <label class="block font-bold text-slate-700 mb-1">Pilih Paket Layanan <span class="text-red-500">*</span></label>
+                  <select name="package_name" required @change="onPackageChange($event)"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold text-slate-800">
+                    <option value="Paket 20 Mbps">Paket 20 Mbps (Rp 110.000)</option>
+                    <option value="Paket 30 Mbps">Paket 30 Mbps (Rp 165.000)</option>
+                    <option value="Paket 50 Mbps">Paket 50 Mbps (Rp 220.000)</option>
+                  </select>
+                </div>
+
+                <!-- Tarif Bulanan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Tarif Bulanan (Rp) <span class="text-red-500">*</span></label>
+                  <input type="number" name="price" x-model="createForm.price" required min="0" step="1000"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold font-mono">
+                </div>
+
+                <!-- Biaya Pasang Baru -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Biaya Pasang Baru (Rp)</label>
+                  <input type="number" name="installation_fee" x-model="createForm.installationFee" min="0" step="1000" placeholder="0"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-mono">
+                  <span class="text-[10px] text-slate-400">0 = Gratis Promo Pemasangan</span>
+                </div>
+              </div>
+
+              <!-- Total Rangkuman -->
+              <div class="p-3 bg-red-50/50 rounded-xl border border-red-100 flex items-center justify-between">
+                <span class="font-bold text-slate-700">Total Biaya Awal:</span>
+                <span class="text-brand font-black text-base">
+                  Rp<span x-text="createForm.total().toLocaleString('id-ID')"></span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Section 3: Penjadwalan & NOC Assignment -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+              <div class="flex items-center gap-1.5 font-bold text-slate-800 text-xs border-b border-slate-200/60 pb-2">
+                <i class="fa-solid fa-calendar-days text-brand"></i>
+                <span>3. Penjadwalan & Penugasan Teknisi</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Tanggal Pasang -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Rencana Tanggal Pasang</label>
+                  <input type="date" name="installation_date" value="{{ date('Y-m-d') }}"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                </div>
+
+                <!-- Waktu Pasang -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Sesi Waktu</label>
+                  <select name="installation_time"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                    <option value="pagi">Pagi (08:00 - 12:00 WIB)</option>
+                    <option value="siang">Siang (13:00 - 16:00 WIB)</option>
+                  </select>
+                </div>
+
+                <!-- Teknisi Ditugaskan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Teknisi Ditugaskan</label>
+                  <select name="technician"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-medium">
+                    @foreach($technicians as $techName)
+                      <option value="{{ $techName }}">{{ $techName }}</option>
+                    @endforeach
+                  </select>
+                </div>
+
+                <!-- Titik ODP -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Titik ODP Penyambungan</label>
+                  <select name="assigned_odp"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                    <option value="ODP-CLK-01">ODP-CLK-01 - ODP Cilongok 01</option>
+                    @foreach($odpList as $odpId => $odpName)
+                      @if($odpId !== 'ODP-CLK-01')
+                        <option value="{{ $odpId }}">{{ $odpId }} - {{ $odpName }}</option>
+                      @endif
+                    @endforeach
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 4: Status & Pembayaran -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+              <div class="flex items-center gap-1.5 font-bold text-slate-800 text-xs border-b border-slate-200/60 pb-2">
+                <i class="fa-solid fa-money-check-dollar text-brand"></i>
+                <span>4. Status Pengerjaan & Pembayaran</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Status Pesanan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Status Pesanan <span class="text-red-500">*</span></label>
+                  <select name="status" required
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold">
+                    <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
+                    <option value="Jadwal Teknisi">Jadwal Teknisi</option>
+                    <option value="Sedang Dipasang">Sedang Dipasang</option>
+                    <option value="Selesai">Selesai / Aktif (Auto-Terbit Tagihan)</option>
+                  </select>
+                </div>
+
+                <!-- Status Pembayaran -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Status Pembayaran <span class="text-red-500">*</span></label>
+                  <select name="payment_status" required
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold">
+                    <option value="Lunas">Lunas</option>
+                    <option value="Menunggu Pembayaran">Menunggu Pembayaran</option>
+                  </select>
+                </div>
+
+                <!-- Metode Pembayaran -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Metode Pembayaran</label>
+                  <select name="payment_method"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                    <option value="BCA Virtual Account">BCA Virtual Account</option>
+                    <option value="Transfer Bank (BCA)">Transfer Bank (BCA)</option>
+                    <option value="Tunai (Kolektor/Admin)">Tunai (Kolektor/Admin)</option>
+                    <option value="QRIS">QRIS</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Catatan Admin -->
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Catatan Admin / Keterangan Tambahan</label>
+                <textarea name="admin_notes" rows="2" placeholder="Catatan khusus pelanggan, lokasi rumah, atau instruksi..."
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white resize-none"></textarea>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+              <button type="button" @click="openCreateModal = false"
+                      class="px-5 py-2.5 border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition">
+                Batal
+              </button>
+              <button type="submit"
+                      class="bg-brand hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Simpan Pesanan</span>
+              </button>
+            </div>
+
+          </form>
+
+        </div>
 
       </div>
     </div>

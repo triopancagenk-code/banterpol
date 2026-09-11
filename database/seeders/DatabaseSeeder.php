@@ -106,9 +106,7 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        // 3. Bagian Pemesanan, Tagihan, dan Laporan dibiarkan bersih/kosong sesuai permintaan
-        // Jika dibutuhkan sample data di masa mendatang, aktifkan OrderSeeder:
-        // $this->call(OrderSeeder::class);
-        // BillingService::syncCompletedOrdersWithoutBills();
+        // 3. Impor seluruh data pelanggan dari berkas pendaftaran Google Drive Banterpool
+        $this->call(CustomerDriveSeeder::class);
     }
 }

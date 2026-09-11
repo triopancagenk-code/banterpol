@@ -7,10 +7,65 @@
 <div class="space-y-6"
      x-data="{
         openModal: false,
+        openCreateModal: false,
         selectedBill: null,
         openProofLightbox: false,
         proofUrl: '',
         
+        // Form Input Tagihan Manual
+        billForm: {
+            mode: 'registered', // 'registered' | 'manual'
+            orderId: '',
+            customerName: '',
+            customerPhone: '',
+            customerEmail: '',
+            address: '',
+            packageName: 'Paket 20 Mbps',
+            speed: '20 Mbps',
+            period: '01 ' + new Date().toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) + ' – 01 ' + new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
+            dueDate: '05 ' + new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
+            billDate: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+            amount: 110000,
+            tax: 0,
+            status: 'Belum Bayar',
+            paymentMethod: 'Transfer Bank (BCA)',
+            collectorNotes: '',
+            total() {
+                return Number(this.amount || 0) + Number(this.tax || 0);
+            }
+        },
+
+        onSelectCustomer(e) {
+            const opt = e.target.selectedOptions ? e.target.selectedOptions[0] : null;
+            if (!opt || !opt.value) {
+                this.billForm.orderId = '';
+                return;
+            }
+            this.billForm.orderId = opt.value;
+            this.billForm.customerName = opt.getAttribute('data-name') || '';
+            this.billForm.customerPhone = opt.getAttribute('data-phone') || '';
+            this.billForm.customerEmail = opt.getAttribute('data-email') || '';
+            this.billForm.address = opt.getAttribute('data-address') || '';
+            this.billForm.packageName = opt.getAttribute('data-package') || 'Paket 20 Mbps';
+            this.billForm.speed = opt.getAttribute('data-speed') || '20 Mbps';
+            this.billForm.amount = Number(opt.getAttribute('data-price') || 110000);
+        },
+
+        onPackageSelect(e) {
+            const val = e.target.value;
+            this.billForm.packageName = val;
+            if (val.includes('50')) {
+                this.billForm.speed = '50 Mbps';
+                this.billForm.amount = 220000;
+            } else if (val.includes('30')) {
+                this.billForm.speed = '30 Mbps';
+                this.billForm.amount = 165000;
+            } else {
+                this.billForm.speed = '20 Mbps';
+                this.billForm.amount = 110000;
+            }
+        },
+
         viewBill(bill) {
             this.selectedBill = bill;
             this.openModal = true;
@@ -31,8 +86,15 @@
       <p class="text-xs text-slate-500 mt-0.5">Pantau status pembayaran invoice dan verifikasi transfer dari pelanggan.</p>
     </div>
 
-    <!-- Export or Refresh Button -->
-    <div class="flex items-center gap-2">
+    <!-- Export or Action Buttons -->
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- Tombol Input Manual Tagihan -->
+      <button type="button" @click="openCreateModal = true"
+              class="bg-brand hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+        <i class="fa-solid fa-file-invoice-dollar"></i>
+        <span>Tambah Tagihan Manual</span>
+      </button>
+
       <a href="{{ route('admin.tagihan.export', request()->query()) }}"
          class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs">
         <i class="fa-solid fa-file-excel"></i>
@@ -46,6 +108,33 @@
       </a>
     </div>
   </div>
+
+  <!-- Alert Notifications -->
+  @if(session('success'))
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-center justify-between shadow-xs">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+        <span class="text-xs font-bold">{{ session('success') }}</span>
+      </div>
+      <button type="button" @click="$el.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 text-sm">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  @endif
+
+  @if(isset($errors) && $errors->any())
+    <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-2xl shadow-xs">
+      <div class="flex items-center gap-2 mb-1">
+        <i class="fa-solid fa-triangle-exclamation text-red-600"></i>
+        <span class="text-xs font-bold">Terjadi kesalahan input tagihan:</span>
+      </div>
+      <ul class="list-disc list-inside text-xs text-red-700 pl-4 space-y-0.5">
+        @foreach($errors->all() as $err)
+          <li>{{ $err }}</li>
+        @endforeach
+      </ul>
+    </div>
+  @endif
 
   <!-- Filter Tabs Bar -->
   <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -109,39 +198,39 @@
   <!-- ============================================== -->
   <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-xs">
+      <table class="w-full text-center text-xs">
         <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
           <tr>
-            <th class="px-5 py-3.5">Invoice & Tanggal</th>
-            <th class="px-4 py-3.5">Pelanggan</th>
-            <th class="px-4 py-3.5">Paket & ODP</th>
-            <th class="px-4 py-3.5">Jatuh Tempo</th>
-            <th class="px-4 py-3.5">Total Tagihan</th>
-            <th class="px-4 py-3.5">Metode Bayar</th>
-            <th class="px-4 py-3.5">Status</th>
-            <th class="px-5 py-3.5 text-right">Aksi</th>
+            <th class="px-5 py-3.5 text-center">Invoice & Tanggal</th>
+            <th class="px-4 py-3.5 text-center">Pelanggan</th>
+            <th class="px-4 py-3.5 text-center">Paket & ODP</th>
+            <th class="px-4 py-3.5 text-center">Jatuh Tempo</th>
+            <th class="px-4 py-3.5 text-center">Total Tagihan</th>
+            <th class="px-4 py-3.5 text-center">Metode Bayar</th>
+            <th class="px-4 py-3.5 text-center">Status</th>
+            <th class="px-5 py-3.5 text-center">Aksi</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 font-medium">
           @forelse($bills as $bill)
             <tr class="hover:bg-slate-50/70 transition">
               <!-- Invoice & Tanggal -->
-              <td class="px-5 py-4">
+              <td class="px-5 py-4 text-center">
                 <p class="font-bold text-slate-900 font-mono leading-tight">{{ $bill['id'] }}</p>
                 <p class="text-[10px] text-slate-400 mt-0.5">{{ $bill['created_at'] }}</p>
               </td>
 
               <!-- Pelanggan -->
-              <td class="px-4 py-4">
+              <td class="px-4 py-4 text-center">
                 <p class="font-bold text-slate-900">{{ $bill['customer_name'] }}</p>
-                <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+                <div class="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
                   <i class="fa-brands fa-whatsapp text-emerald-600"></i>
                   <span>{{ $bill['customer_phone'] }}</span>
                 </div>
               </td>
 
               <!-- Paket & ODP -->
-              <td class="px-4 py-4">
+              <td class="px-4 py-4 text-center">
                 <span class="font-semibold text-slate-800">{{ $bill['package_name'] }}</span>
                 <p class="text-[10px] text-slate-400 mt-0.5">
                   <i class="fa-solid fa-network-wired text-brand text-[9px]"></i> {{ $bill['odp'] }}
@@ -149,28 +238,28 @@
               </td>
 
               <!-- Jatuh Tempo -->
-              <td class="px-4 py-4 text-slate-600">
+              <td class="px-4 py-4 text-slate-600 text-center">
                 {{ $bill['due_date'] }}
               </td>
 
               <!-- Total Tagihan -->
-              <td class="px-4 py-4 font-black text-slate-900 text-sm">
+              <td class="px-4 py-4 font-black text-slate-900 text-sm text-center">
                 Rp{{ $bill['total'] }}
               </td>
 
               <!-- Metode Bayar & Bukti -->
-              <td class="px-4 py-4">
+              <td class="px-4 py-4 text-center">
                 <p class="text-slate-700 font-medium">{{ $bill['payment_method'] }}</p>
                 @if($bill['proof_image'])
                   <button type="button" @click="viewProof('{{ $bill['proof_image'] }}')"
-                          class="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:underline font-bold mt-1">
+                          class="inline-flex items-center justify-center gap-1 text-[10px] text-blue-600 hover:underline font-bold mt-1">
                     <i class="fa-regular fa-image"></i> Lihat Bukti
                   </button>
                 @endif
               </td>
 
               <!-- Status -->
-              <td class="px-4 py-4">
+              <td class="px-4 py-4 text-center">
                 @if($bill['status'] === 'Lunas')
                   <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-1 rounded-md">
                     <i class="fa-solid fa-check text-[9px]"></i> Lunas
@@ -191,8 +280,8 @@
               </td>
 
               <!-- Aksi -->
-              <td class="px-5 py-4 text-right">
-                <div class="flex items-center justify-end gap-2">
+              <td class="px-5 py-4 text-center">
+                <div class="flex items-center justify-center gap-2">
                   <button type="button" @click="viewBill(@js($bill))"
                           class="bg-brand/10 hover:bg-brand text-brand hover:text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1">
                     <i class="fa-regular fa-eye"></i> Detail
@@ -334,6 +423,289 @@
         <i class="fa-solid fa-xmark"></i>
       </button>
       <img :src="proofUrl" alt="Bukti Transfer" class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl">
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 4. MODAL INPUT MANUAL TAGIHAN BARU             -->
+  <!-- ============================================== -->
+  <div x-show="openCreateModal"
+       style="display: none;"
+       class="relative z-50"
+       role="dialog"
+       aria-modal="true">
+    <div x-show="openCreateModal"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+         @click="openCreateModal = false"></div>
+
+    <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+         @click.self="openCreateModal = false">
+      <div x-show="openCreateModal"
+           x-transition:enter="ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 relative shadow-2xl max-h-[92vh] overflow-y-auto"
+           @click.stop>
+
+        <!-- Close Button -->
+        <button type="button" @click="openCreateModal = false"
+                class="absolute top-6 right-6 text-slate-400 hover:text-slate-700 text-xl font-bold">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <div class="space-y-6">
+          <!-- Header Modal -->
+          <div class="border-b border-slate-100 pb-4">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-xs font-bold bg-red-100 text-brand px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Input Tagihan Manual
+              </span>
+              <span class="text-xs font-bold text-slate-400">Keuangan & Billing NOC</span>
+            </div>
+            <h3 class="text-xl font-black text-slate-900">Terbitkan Tagihan Baru</h3>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Pilih dari data pelanggan terdaftar atau input manual tagihan untuk pelanggan fisik luar sistem.
+            </p>
+          </div>
+
+          <!-- Mode Toggle: Terdaftar vs Manual -->
+          <div class="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl">
+            <button type="button" @click="billForm.mode = 'registered'"
+                    :class="billForm.mode === 'registered' ? 'bg-white text-slate-900 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800 font-semibold'"
+                    class="flex-1 py-2 px-3 text-xs rounded-xl transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-users text-brand"></i>
+              <span>Pilih Pelanggan Terdaftar (Otomatis)</span>
+            </button>
+            <button type="button" @click="billForm.mode = 'manual'; billForm.orderId = ''"
+                    :class="billForm.mode === 'manual' ? 'bg-white text-slate-900 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800 font-semibold'"
+                    class="flex-1 py-2 px-3 text-xs rounded-lg transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-pen-to-square text-brand"></i>
+              <span>Input Bebas Manual</span>
+            </button>
+          </div>
+
+          <!-- Form Store Tagihan -->
+          <form action="{{ route('admin.tagihan.store') }}" method="POST" class="space-y-5 text-xs">
+            @csrf
+            <input type="hidden" name="order_id" x-model="billForm.orderId">
+
+            <!-- Dropdown Pilihan Pelanggan Terdaftar (Jika Mode Registered) -->
+            <div x-show="billForm.mode === 'registered'" class="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-200/80 space-y-1.5">
+              <label class="block font-bold text-blue-950 text-xs">
+                <i class="fa-solid fa-magnifying-glass mr-1"></i> Cari & Pilih Pelanggan Terdaftar
+              </label>
+              <select @change="onSelectCustomer($event)"
+                      x-model="billForm.orderId"
+                      class="w-full text-xs p-2.5 border border-blue-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold text-slate-800 shadow-2xs">
+                <option value="">-- Klik untuk memilih pelanggan ({{ count($registeredCustomers ?? []) }} Pelanggan) --</option>
+                @foreach($registeredCustomers ?? [] as $c)
+                  <option value="{{ $c->id }}"
+                          data-name="{{ $c->customer_name }}"
+                          data-phone="{{ $c->customer_phone }}"
+                          data-email="{{ $c->customer_email }}"
+                          data-address="{{ $c->address }}"
+                          data-package="{{ $c->package_name }}"
+                          data-speed="{{ $c->speed }}"
+                          data-price="{{ $c->price }}">
+                    {{ $c->customer_name }} ({{ $c->order_number }}) - {{ $c->package_name }} - {{ Str::limit($c->address, 35) }}
+                  </option>
+                @endforeach
+              </select>
+              <p class="text-[10px] text-blue-700">Nama, No. WhatsApp, Alamat, Paket, dan Biaya akan terisi otomatis begitu dipilih.</p>
+            </div>
+
+            <!-- Section 1: Data Identitas Pelanggan -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+              <div class="flex items-center gap-1.5 font-bold text-slate-800 text-xs border-b border-slate-200/60 pb-2">
+                <i class="fa-solid fa-user text-brand"></i>
+                <span>1. Data Pelanggan Penerima Tagihan</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Nama Pelanggan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Nama Pelanggan <span class="text-red-500">*</span></label>
+                  <input type="text" name="customer_name" x-model="billForm.customerName" required placeholder="Nama lengkap pelanggan"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-semibold">
+                </div>
+
+                <!-- No WhatsApp / HP -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">No. WhatsApp / HP <span class="text-red-500">*</span></label>
+                  <input type="tel" name="customer_phone" x-model="billForm.customerPhone" required placeholder="08xxxxxxxxxx"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-mono font-semibold">
+                </div>
+
+                <!-- Email Pelanggan -->
+                <div class="sm:col-span-2">
+                  <label class="block font-bold text-slate-700 mb-1">Email Pelanggan (Opsional)</label>
+                  <input type="email" name="customer_email" x-model="billForm.customerEmail" placeholder="pelanggan@gmail.com"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                </div>
+
+                <!-- Alamat Pemasangan -->
+                <div class="sm:col-span-2">
+                  <label class="block font-bold text-slate-700 mb-1">Alamat Pemasangan <span class="text-red-500">*</span></label>
+                  <textarea name="address" x-model="billForm.address" required rows="2" placeholder="Nama Jalan, RT/RW, Dusun, Desa, Kec. Cilongok"
+                            class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white resize-none"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Informasi Paket & Periode Invoice -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+              <div class="flex items-center gap-1.5 font-bold text-slate-800 text-xs border-b border-slate-200/60 pb-2">
+                <i class="fa-solid fa-wifi text-brand"></i>
+                <span>2. Paket Layanan & Periode Tagihan</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Paket Layanan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Paket Layanan <span class="text-red-500">*</span></label>
+                  <select name="package_name" x-model="billForm.packageName" required @change="onPackageSelect($event)"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold text-slate-800">
+                    <option value="Paket 20 Mbps">Paket 20 Mbps</option>
+                    <option value="Paket 30 Mbps">Paket 30 Mbps</option>
+                    <option value="Paket 50 Mbps">Paket 50 Mbps</option>
+                  </select>
+                </div>
+
+                <!-- Kecepatan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Kecepatan</label>
+                  <input type="text" name="speed" x-model="billForm.speed" placeholder="20 Mbps"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                </div>
+
+                <!-- Tanggal Terbit Tagihan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Tanggal Terbit</label>
+                  <input type="text" name="bill_date" x-model="billForm.billDate" placeholder="Contoh: 11 Sep 2026"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                </div>
+
+                <!-- Periode Tagihan -->
+                <div class="sm:col-span-2">
+                  <label class="block font-bold text-slate-700 mb-1">Periode Pemakaian <span class="text-red-500">*</span></label>
+                  <input type="text" name="period" x-model="billForm.period" required placeholder="Contoh: 01 Sep 2026 – 01 Okt 2026"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-semibold">
+                </div>
+
+                <!-- Batas Jatuh Tempo -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Jatuh Tempo <span class="text-red-500">*</span></label>
+                  <input type="text" name="due_date" x-model="billForm.dueDate" required placeholder="Contoh: 05 Okt 2026"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold text-red-600">
+                  <span class="text-[10px] text-slate-400">Standar: Tanggal 05 bulan depan</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3: Rincian Nominal & Total -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+              <div class="flex items-center gap-1.5 font-bold text-slate-800 text-xs border-b border-slate-200/60 pb-2">
+                <i class="fa-solid fa-calculator text-brand"></i>
+                <span>3. Nominal & Total Tagihan</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Tarif Paket -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Tarif Langganan (Rp) <span class="text-red-500">*</span></label>
+                  <input type="number" name="amount" x-model="billForm.amount" required min="0" step="1000"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold font-mono">
+                </div>
+
+                <!-- Biaya Lain / Pajak -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Biaya Tambahan / Pajak (Rp)</label>
+                  <input type="number" name="tax" x-model="billForm.tax" min="0" step="1000" placeholder="0"
+                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-mono">
+                </div>
+              </div>
+
+              <!-- Input Hidden Total & Preview Box -->
+              <input type="hidden" name="total" :value="billForm.total()">
+              <div class="p-3 bg-red-50/60 rounded-xl border border-red-100 flex items-center justify-between">
+                <div>
+                  <span class="font-bold text-slate-700">Total Nominal Tagihan:</span>
+                  <p class="text-[10px] text-slate-400">Nominal yang wajib dibayar pelanggan sebelum jatuh tempo</p>
+                </div>
+                <span class="text-brand font-black text-xl">
+                  Rp<span x-text="billForm.total().toLocaleString('id-ID')"></span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Section 4: Status Tagihan & Pembayaran -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+              <div class="flex items-center gap-1.5 font-bold text-slate-800 text-xs border-b border-slate-200/60 pb-2">
+                <i class="fa-solid fa-receipt text-brand"></i>
+                <span>4. Status & Metode Pembayaran</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Status Tagihan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Status Tagihan <span class="text-red-500">*</span></label>
+                  <select name="status" x-model="billForm.status" required
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold">
+                    <option value="Belum Bayar">Belum Bayar</option>
+                    <option value="Lunas">Lunas (Terbit Kuitansi Langsung)</option>
+                    <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
+                    <option value="Jatuh Tempo">Jatuh Tempo</option>
+                  </select>
+                </div>
+
+                <!-- Metode Pembayaran -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Metode Pembayaran</label>
+                  <select name="payment_method" x-model="billForm.paymentMethod"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-semibold">
+                    <option value="Transfer Bank (BCA)">Transfer Bank (BCA)</option>
+                    <option value="Tunai (Kolektor/Admin)">Tunai (Kolektor/Admin)</option>
+                    <option value="QRIS">QRIS</option>
+                    <option value="Verifikasi Admin">Verifikasi Admin</option>
+                  </select>
+                </div>
+
+                <!-- Catatan Kolektor / Admin -->
+                <div class="sm:col-span-2">
+                  <label class="block font-bold text-slate-700 mb-1">Catatan Tagihan / Keterangan</label>
+                  <textarea name="collector_notes" x-model="billForm.collectorNotes" rows="2" placeholder="Catatan bukti setor, nomor referensi, atau perjanjian bayar..."
+                            class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white resize-none"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+              <button type="button" @click="openCreateModal = false"
+                      class="px-5 py-2.5 border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition">
+                Batal
+              </button>
+              <button type="submit"
+                      class="bg-brand hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5">
+                <i class="fa-solid fa-file-invoice"></i>
+                <span>Terbitkan Tagihan</span>
+              </button>
+            </div>
+
+          </form>
+
+        </div>
+
+      </div>
     </div>
   </div>
 

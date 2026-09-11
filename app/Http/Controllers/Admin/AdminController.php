@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Bill;
 use App\Models\Order;
+use App\Models\Package;
+use App\Models\User;
 use App\Services\BillingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -823,14 +825,14 @@ class AdminController extends Controller
         $pendingOrdersCount = 0;
 
         try {
-            $recentOrders = Order::latest()->take(5)->get();
-            $totalOrdersCount = Order::count();
-            $pendingOrdersCount = Order::where('status', 'Menunggu Konfirmasi')->count();
+            $recentOrders = Order::where('order_number', 'not like', 'PLG-%')->latest()->take(5)->get();
+            $totalOrdersCount = Order::where('order_number', 'not like', 'PLG-%')->count();
+            $pendingOrdersCount = Order::where('order_number', 'not like', 'PLG-%')->where('status', 'Menunggu Konfirmasi')->count();
         } catch (\Exception $e) {}
 
         $stats = [
-            'total_customers' => 482,
-            'active_customers' => 468,
+            'total_customers' => Order::count() ?: 265,
+            'active_customers' => Order::where('status', 'Selesai')->count() ?: 260,
             'total_orders' => $totalOrdersCount,
             'pending_orders_count' => $pendingOrdersCount,
             'pending_bills_count' => collect($bills)->where('status', 'Menunggu Verifikasi')->count(),
@@ -856,7 +858,7 @@ class AdminController extends Controller
         $search = $request->input('q', '');
 
         try {
-            $query = Order::query()->latest();
+            $query = Order::where('order_number', 'not like', 'PLG-%')->latest();
 
             if ($statusFilter !== 'all') {
                 $query->where('status', $statusFilter);
@@ -874,7 +876,7 @@ class AdminController extends Controller
             }
 
             $orders = $query->get();
-            $allOrders = Order::all();
+            $allOrders = Order::where('order_number', 'not like', 'PLG-%')->get();
 
             $counts = [
                 'all' => $allOrders->count(),
@@ -892,7 +894,105 @@ class AdminController extends Controller
         $odcMapData = $this->getOdcMapData();
         $odpList = collect($odcMapData['odps'])->pluck('name', 'id')->toArray();
 
-        return view('admin.pesanan', compact('orders', 'statusFilter', 'search', 'counts', 'odpList'));
+        $packages = Package::where('is_active', true)->get();
+        $technicians = User::whereIn('role', ['technician', 'teknisi'])->pluck('name')->toArray();
+        if (empty($technicians)) {
+            $technicians = ['Randi Pratama (Tim Fiber)', 'Budi Santoso (Teknisi 1)', 'Ahmad Fauzi (Teknisi 2)'];
+        }
+
+        return view('admin.pesanan', compact('orders', 'statusFilter', 'search', 'counts', 'odpList', 'packages', 'technicians'));
+    }
+
+    /**
+     * Simpan Pesanan Pelanggan Baru Secara Manual
+     */
+    public function storePesanan(Request $request)
+    {
+        $validated = $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'id_card_number' => 'nullable|string|max:30',
+            'birth_date' => 'nullable|date',
+            'birth_place' => 'nullable|string|max:100',
+            'customer_phone' => 'required|string|max:50',
+            'customer_email' => 'nullable|email|max:100',
+            'address' => 'required|string|max:500',
+            'latitude' => 'nullable|string|max:50',
+            'longitude' => 'nullable|string|max:50',
+            'package_name' => 'required|string|max:100',
+            'price' => 'required|numeric|min:0',
+            'installation_fee' => 'nullable|numeric|min:0',
+            'installation_date' => 'nullable|date',
+            'installation_time' => 'nullable|string|in:pagi,siang',
+            'technician' => 'nullable|string|max:100',
+            'assigned_odp' => 'nullable|string|max:100',
+            'status' => 'required|string',
+            'payment_status' => 'required|string',
+            'payment_method' => 'nullable|string|max:100',
+            'admin_notes' => 'nullable|string|max:1000',
+        ]);
+
+        // Auto-generate order number unik (format: BTR-YYYYMM-XXXX)
+        $prefix = 'BTR-' . date('Ym') . '-';
+        $orderCount = Order::count() + 1;
+        $orderNumber = $prefix . str_pad($orderCount, 4, '0', STR_PAD_LEFT);
+        while (Order::where('order_number', $orderNumber)->exists()) {
+            $orderCount++;
+            $orderNumber = $prefix . str_pad($orderCount, 4, '0', STR_PAD_LEFT);
+        }
+
+        // Tentukan kecepatan sesuai nama paket
+        $speed = '20 Mbps';
+        if (str_contains($validated['package_name'], '50')) {
+            $speed = '50 Mbps';
+        } elseif (str_contains($validated['package_name'], '30')) {
+            $speed = '30 Mbps';
+        }
+
+        $price = (float) $validated['price'];
+        $installationFee = (float) ($validated['installation_fee'] ?? 0);
+        $total = $price + $installationFee;
+
+        $email = $validated['customer_email'];
+        if (empty($email)) {
+            $slug = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $validated['customer_name']));
+            $email = $slug . rand(10, 99) . '@gmail.com';
+        }
+
+        $order = Order::create([
+            'order_number' => $orderNumber,
+            'customer_name' => $validated['customer_name'],
+            'id_card_number' => $validated['id_card_number'] ?? null,
+            'birth_place' => $validated['birth_place'] ?? 'Banyumas',
+            'birth_date' => $validated['birth_date'] ?? null,
+            'customer_phone' => $validated['customer_phone'],
+            'customer_email' => $email,
+            'address' => $validated['address'],
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'package_name' => $validated['package_name'],
+            'speed' => $speed,
+            'price' => $price,
+            'installation_fee' => $installationFee,
+            'tax' => 0,
+            'total' => $total,
+            'installation_date' => $validated['installation_date'] ?? date('Y-m-d'),
+            'installation_time' => $validated['installation_time'] ?? 'pagi',
+            'technician' => $validated['technician'] ?? 'Randi Pratama (Tim Fiber)',
+            'assigned_odp' => $validated['assigned_odp'] ?? 'ODP-CLK-01',
+            'status' => $validated['status'],
+            'payment_status' => $validated['payment_status'],
+            'payment_method' => $validated['payment_method'] ?? 'BCA Virtual Account',
+            'admin_notes' => $validated['admin_notes'] ?? 'Pesanan manual diinput oleh Administrator.',
+            'installed_at' => ($validated['status'] === 'Selesai') ? now() : null,
+        ]);
+
+        // Jika langsung berstatus 'Selesai', otomatis terbitkan tagihan
+        if ($order->status === 'Selesai') {
+            BillingService::generateBillForOrder($order);
+        }
+
+        return redirect()->route('admin.pesanan')
+            ->with('success', "Pesanan baru {$order->order_number} untuk {$order->customer_name} berhasil ditambahkan!");
     }
 
     /**
@@ -988,7 +1088,7 @@ class AdminController extends Controller
         $search = $request->input('q', '');
 
         try {
-            $query = Order::query()->latest();
+            $query = Order::where('order_number', 'not like', 'PLG-%')->latest();
 
             if ($statusFilter !== 'all') {
                 $query->where('status', $statusFilter);
@@ -1023,10 +1123,316 @@ class AdminController extends Controller
     }
 
     /**
+     * Halaman Data Pelanggan Terdaftar (Sesuai Arsip Pendaftaran Google Drive SIMS)
+     */
+    public function pelanggan(Request $request)
+    {
+        $search = $request->input('q', '');
+        $wilayahFilter = $request->input('wilayah', 'all');
+        $layananFilter = $request->input('layanan', 'all');
+        $statusFilter = $request->input('status', 'all');
+
+        $query = Order::query()->latest();
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('customer_name', 'like', "%{$search}%")
+                  ->orWhere('id_card_number', 'like', "%{$search}%")
+                  ->orWhere('customer_phone', 'like', "%{$search}%")
+                  ->orWhere('customer_email', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhere('order_number', 'like', "%{$search}%");
+            });
+        }
+
+        if ($wilayahFilter !== 'all') {
+            if ($wilayahFilter === 'Batuanten' || $wilayahFilter === 'Bantuanten') {
+                $query->where(function ($q) {
+                    $q->where('address', 'like', '%Batuanten%')
+                      ->orWhere('address', 'like', '%Bantuanten%');
+                });
+            } elseif ($wilayahFilter === 'Penusupan' || $wilayahFilter === 'Panusupan') {
+                $query->where(function ($q) {
+                    $q->where('address', 'like', '%Penusupan%')
+                      ->orWhere('address', 'like', '%Panusupan%');
+                });
+            } else {
+                $query->where('address', 'like', "%{$wilayahFilter}%");
+            }
+        }
+
+        if ($layananFilter !== 'all') {
+            $query->where(function ($q) use ($layananFilter) {
+                $q->where('package_name', 'like', "%{$layananFilter}%")
+                  ->orWhere('speed', 'like', "%{$layananFilter}%");
+            });
+        }
+
+        if ($statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
+
+        $customers = $query->paginate(20)->withQueryString();
+
+        // Data KPI
+        $allCustomers = Order::all();
+        $totalCustomers = $allCustomers->count();
+        $activeCustomers = $allCustomers->where('status', 'Selesai')->count();
+        $verifiedKtp = $allCustomers->whereNotNull('id_card_number')->where('id_card_number', '!=', '')->count();
+        $totalMrr = $allCustomers->where('status', 'Selesai')->sum('price');
+
+        // Daftar Wilayah Cakupan (Sesuai 9 Wilayah Resmi)
+        $wilayahList = [
+            'Batuanten' => 'Batuanten / Bantuanten',
+            'Jatisaba' => 'Jatisaba',
+            'Notog' => 'Notog',
+            'V. 02' => 'V. 02',
+            'V. 03' => 'V. 03',
+            'Karanggendep' => 'Karanggendep',
+            'Penusupan' => 'Penusupan',
+            'Sawangan' => 'Sawangan',
+            'Sudimara' => 'Sudimara',
+        ];
+
+        // Daftar Layanan
+        $layananList = [
+            '20 Mbps' => 'Paket 20 Mbps (Rp 110.000)',
+            '30 Mbps' => 'Paket 30 Mbps (Rp 165.000)',
+            '50 Mbps' => 'Paket 50 Mbps (Rp 220.000)',
+        ];
+
+        $stats = [
+            'total' => $totalCustomers,
+            'active' => $activeCustomers,
+            'verified_ktp' => $verifiedKtp,
+            'total_mrr' => $totalMrr,
+            'wilayah_count' => count($wilayahList),
+        ];
+
+        // Hitung pelanggan per wilayah
+        $wilayahCounts = [];
+        foreach ($wilayahList as $wKey => $wName) {
+            if ($wKey === 'Batuanten') {
+                $wilayahCounts[$wKey] = $allCustomers->filter(function ($c) {
+                    return stripos($c->address, 'Batuanten') !== false || stripos($c->address, 'Bantuanten') !== false;
+                })->count();
+            } elseif ($wKey === 'Penusupan') {
+                $wilayahCounts[$wKey] = $allCustomers->filter(function ($c) {
+                    return stripos($c->address, 'Penusupan') !== false || stripos($c->address, 'Panusupan') !== false;
+                })->count();
+            } else {
+                $wilayahCounts[$wKey] = $allCustomers->filter(function ($c) use ($wKey) {
+                    return stripos($c->address, $wKey) !== false;
+                })->count();
+            }
+        }
+
+        return view('admin.pelanggan', compact(
+            'customers',
+            'stats',
+            'search',
+            'wilayahFilter',
+            'layananFilter',
+            'statusFilter',
+            'wilayahList',
+            'wilayahCounts',
+            'layananList'
+        ));
+    }
+
+    /**
+     * Simpan Pelanggan Baru Secara Manual
+     */
+    public function storePelanggan(Request $request)
+    {
+        $validated = $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'id_card_number' => 'required|string|max:30',
+            'birth_date' => 'nullable|date',
+            'birth_place' => 'nullable|string|max:100',
+            'customer_phone' => 'required|string|max:50',
+            'customer_email' => 'nullable|email|max:100',
+            'package_name' => 'required|string',
+            'price' => 'required|numeric',
+            'address' => 'required|string',
+            'status' => 'nullable|string',
+        ]);
+
+        $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
+        
+        $speed = '20 Mbps';
+        if (str_contains($validated['package_name'], '50')) {
+            $speed = '50 Mbps';
+        } elseif (str_contains($validated['package_name'], '30')) {
+            $speed = '30 Mbps';
+        }
+
+        $order = Order::create([
+            'order_number' => $orderNumber,
+            'customer_name' => $validated['customer_name'],
+            'id_card_number' => $validated['id_card_number'],
+            'birth_date' => $validated['birth_date'] ?? null,
+            'birth_place' => $validated['birth_place'] ?? 'Banyumas',
+            'customer_phone' => $validated['customer_phone'],
+            'customer_email' => $validated['customer_email'] ?? (strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $validated['customer_name'])) . '@gmail.com'),
+            'package_name' => $validated['package_name'],
+            'speed' => $speed,
+            'price' => $validated['price'],
+            'total' => $validated['price'],
+            'address' => $validated['address'],
+            'status' => $validated['status'] ?? 'Selesai',
+            'payment_status' => 'Lunas',
+            'payment_method' => 'Tunai / Transfer',
+            'installation_date' => now()->toDateString(),
+            'installation_time' => 'pagi',
+            'installed_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', "Pelanggan baru {$order->customer_name} berhasil ditambahkan dengan NIK: {$order->id_card_number}.");
+    }
+
+    /**
+     * Update Data Pelanggan (KTP, TTL, HP, Email, Layanan, Harga, Alamat)
+     */
+    public function updatePelanggan(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+
+        $validated = $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'id_card_number' => 'required|string|max:30',
+            'birth_date' => 'nullable|date',
+            'birth_place' => 'nullable|string|max:100',
+            'customer_phone' => 'required|string|max:50',
+            'customer_email' => 'nullable|email|max:100',
+            'package_name' => 'required|string',
+            'price' => 'required|numeric',
+            'address' => 'required|string',
+            'status' => 'required|string',
+        ]);
+
+        $speed = '20 Mbps';
+        if (str_contains($validated['package_name'], '50')) {
+            $speed = '50 Mbps';
+        } elseif (str_contains($validated['package_name'], '30')) {
+            $speed = '30 Mbps';
+        }
+
+        $order->customer_name = $validated['customer_name'];
+        $order->id_card_number = $validated['id_card_number'];
+        $order->birth_date = $validated['birth_date'];
+        $order->birth_place = $validated['birth_place'];
+        $order->customer_phone = $validated['customer_phone'];
+        $order->customer_email = $validated['customer_email'];
+        $order->package_name = $validated['package_name'];
+        $order->speed = $speed;
+        $order->price = $validated['price'];
+        $order->total = $validated['price'];
+        $order->address = $validated['address'];
+        $order->status = $validated['status'];
+        $order->save();
+
+        // Sinkronisasi data tagihan terkait jika ada
+        $bill = Bill::where('order_id', $order->id)->first();
+        if ($bill) {
+            $bill->customer_name = $order->customer_name;
+            $bill->customer_phone = $order->customer_phone;
+            $bill->customer_email = $order->customer_email;
+            $bill->package_name = $order->package_name;
+            $bill->speed = $order->speed;
+            $bill->amount = $order->price;
+            $bill->total = $order->total;
+            $bill->address = $order->address;
+            $bill->save();
+        }
+
+        return redirect()->back()->with('success', "Data pelanggan {$order->customer_name} berhasil diperbarui.");
+    }
+
+    /**
+     * Hapus Data Pelanggan
+     */
+    public function deletePelanggan($id)
+    {
+        $order = Order::findOrFail($id);
+        $name = $order->customer_name;
+        
+        // Hapus tagihan terkait jika ada
+        Bill::where('order_id', $order->id)->delete();
+        $order->delete();
+
+        return redirect()->back()->with('success', "Data pelanggan {$name} berhasil dihapus dari sistem.");
+    }
+
+    /**
+     * Export Data Pelanggan ke Excel (.xls dengan UTF-8 BOM)
+     */
+    public function exportPelanggan(Request $request)
+    {
+        $search = $request->input('q', '');
+        $wilayahFilter = $request->input('wilayah', 'all');
+        $layananFilter = $request->input('layanan', 'all');
+        $statusFilter = $request->input('status', 'all');
+
+        $query = Order::query()->latest();
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('customer_name', 'like', "%{$search}%")
+                  ->orWhere('id_card_number', 'like', "%{$search}%")
+                  ->orWhere('customer_phone', 'like', "%{$search}%")
+                  ->orWhere('customer_email', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhere('order_number', 'like', "%{$search}%");
+            });
+        }
+
+        if ($wilayahFilter !== 'all') {
+            if ($wilayahFilter === 'Batuanten' || $wilayahFilter === 'Bantuanten') {
+                $query->where(function ($q) {
+                    $q->where('address', 'like', '%Batuanten%')
+                      ->orWhere('address', 'like', '%Bantuanten%');
+                });
+            } elseif ($wilayahFilter === 'Penusupan' || $wilayahFilter === 'Panusupan') {
+                $query->where(function ($q) {
+                    $q->where('address', 'like', '%Penusupan%')
+                      ->orWhere('address', 'like', '%Panusupan%');
+                });
+            } else {
+                $query->where('address', 'like', "%{$wilayahFilter}%");
+            }
+        }
+
+        if ($layananFilter !== 'all') {
+            $query->where(function ($q) use ($layananFilter) {
+                $q->where('package_name', 'like', "%{$layananFilter}%")
+                  ->orWhere('speed', 'like', "%{$layananFilter}%");
+            });
+        }
+
+        if ($statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
+
+        $customers = $query->get();
+        $filename = 'Data_Pelanggan_Banterpool_' . date('Ymd_His') . '.xls';
+
+        return response()->streamDownload(function () use ($customers, $wilayahFilter, $layananFilter, $statusFilter, $search) {
+            echo "\xEF\xBB\xBF"; // UTF-8 BOM
+            echo view('admin.exports.pelanggan_excel', compact('customers', 'wilayahFilter', 'layananFilter', 'statusFilter', 'search'))->render();
+        }, $filename, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Cache-Control' => 'max-age=0, no-cache, must-revalidate, proxy-revalidate',
+        ]);
+    }
+
+    /**
      * Halaman Pengintaian & Manajemen Tagihan
      */
     public function tagihan(Request $request)
     {
+
         $allBills = $this->getBillsData();
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('q', '');
@@ -1050,7 +1456,102 @@ class AdminController extends Controller
             'jatuh_tempo' => collect($allBills)->where('status', 'Jatuh Tempo')->count(),
         ];
 
-        return view('admin.tagihan', compact('bills', 'statusFilter', 'search', 'counts'));
+        // Daftar pelanggan untuk form pilihan cepat saat input tagihan manual
+        $registeredCustomers = Order::select(
+            'id', 'order_number', 'customer_name', 'customer_phone', 'customer_email',
+            'address', 'package_name', 'speed', 'price'
+        )->orderBy('customer_name')->get();
+
+        $packages = Package::where('is_active', true)->get();
+
+        return view('admin.tagihan', compact('bills', 'statusFilter', 'search', 'counts', 'registeredCustomers', 'packages'));
+    }
+
+    /**
+     * Terbitkan Tagihan Baru Secara Manual
+     */
+    public function storeTagihan(Request $request)
+    {
+        $validated = $request->validate([
+            'order_id' => 'nullable|exists:orders,id',
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'required|string|max:50',
+            'customer_email' => 'nullable|email|max:100',
+            'address' => 'required|string|max:500',
+            'package_name' => 'required|string|max:100',
+            'speed' => 'nullable|string|max:50',
+            'period' => 'required|string|max:100',
+            'due_date' => 'required|string|max:100',
+            'bill_date' => 'nullable|string|max:100',
+            'amount' => 'required|numeric|min:0',
+            'tax' => 'nullable|numeric|min:0',
+            'total' => 'nullable|numeric|min:0',
+            'status' => 'required|string|in:Belum Bayar,Lunas,Menunggu Verifikasi,Jatuh Tempo',
+            'payment_method' => 'nullable|string|max:100',
+            'collector_notes' => 'nullable|string|max:500',
+        ]);
+
+        // Auto-generate invoice number unik: INV-YYYYMM-XXX
+        $now = now('Asia/Jakarta');
+        $prefix = 'INV-' . $now->format('Ym') . '-';
+        $seq = Bill::where('bill_number', 'like', "{$prefix}%")->count() + 1;
+        $billNumber = $prefix . str_pad($seq, 3, '0', STR_PAD_LEFT);
+        while (Bill::where('bill_number', $billNumber)->exists()) {
+            $seq++;
+            $billNumber = $prefix . str_pad($seq, 3, '0', STR_PAD_LEFT);
+        }
+
+        $speed = $validated['speed'] ?? null;
+        if (empty($speed)) {
+            if (str_contains($validated['package_name'], '50')) {
+                $speed = '50 Mbps';
+            } elseif (str_contains($validated['package_name'], '30')) {
+                $speed = '30 Mbps';
+            } else {
+                $speed = '20 Mbps';
+            }
+        }
+
+        $dueDate = trim($validated['due_date']);
+        if (!preg_match('/^0?5\s+/i', $dueDate)) {
+            $dueDate = preg_replace('/^\d{1,2}\s+/', '05 ', $dueDate);
+        }
+
+        $amount = (float) $validated['amount'];
+        $tax = (float) ($validated['tax'] ?? 0);
+        $total = !empty($validated['total']) ? (float) $validated['total'] : ($amount + $tax);
+
+        $bill = new Bill();
+        $bill->bill_number = $billNumber;
+        $bill->order_id = $validated['order_id'] ?? null;
+        $bill->customer_name = $validated['customer_name'];
+        $bill->customer_phone = $validated['customer_phone'];
+        $bill->customer_email = $validated['customer_email'] ?? null;
+        $bill->address = $validated['address'];
+        $bill->package_name = $validated['package_name'];
+        $bill->speed = $speed;
+        $bill->period = $validated['period'];
+        $bill->due_date = $dueDate;
+        $bill->bill_date = $validated['bill_date'] ?? $now->translatedFormat('d M Y');
+        $bill->amount = $amount;
+        $bill->tax = $tax;
+        $bill->total = $total;
+        $bill->status = $validated['status'];
+        $bill->payment_method = $validated['payment_method'] ?? 'Transfer Bank (BCA)';
+
+        if ($validated['status'] === 'Lunas') {
+            $bill->paid_at = now();
+            $bill->collected_by = auth()->user()->name ?? 'Administrator';
+            $bill->receipt_number = 'KWT-' . date('Ym') . '-' . rand(100, 999);
+            $bill->collector_notes = $validated['collector_notes'] ?: ('Diterima dan diverifikasi lunas oleh ' . (auth()->user()->name ?? 'Admin'));
+        } else {
+            $bill->collector_notes = $validated['collector_notes'] ?: 'Tagihan diterbitkan secara manual oleh Administrator.';
+        }
+
+        $bill->save();
+
+        return redirect()->route('admin.tagihan')
+            ->with('success', "Tagihan baru {$bill->bill_number} untuk {$bill->customer_name} berhasil diterbitkan!");
     }
 
     /**

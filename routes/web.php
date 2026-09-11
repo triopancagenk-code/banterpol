@@ -36,11 +36,22 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     });
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/pesanan', [AdminController::class, 'pesanan'])->name('pesanan');
+    Route::post('/pesanan', [AdminController::class, 'storePesanan'])->name('pesanan.store');
     Route::get('/pesanan/export', [AdminController::class, 'exportPesanan'])->name('pesanan.export');
     Route::get('/pesanan/{id}/formulir', [AdminController::class, 'formulirPesanan'])->name('pesanan.formulir');
     Route::post('/pesanan/{id}/status', [AdminController::class, 'updatePesananStatus'])->name('pesanan.status');
     Route::delete('/pesanan/{id}', [AdminController::class, 'deletePesanan'])->name('pesanan.delete');
+
+    // Data Pelanggan Terdaftar (KTP, Lahir, HP, Email, Layanan & Harga, Alamat)
+    Route::get('/pelanggan', [AdminController::class, 'pelanggan'])->name('pelanggan');
+    Route::get('/pelanggan/export', [AdminController::class, 'exportPelanggan'])->name('pelanggan.export');
+    Route::get('/pelanggan/{id}/formulir', [AdminController::class, 'formulirPesanan'])->name('pelanggan.formulir');
+    Route::post('/pelanggan', [AdminController::class, 'storePelanggan'])->name('pelanggan.store');
+    Route::put('/pelanggan/{id}', [AdminController::class, 'updatePelanggan'])->name('pelanggan.update');
+    Route::delete('/pelanggan/{id}', [AdminController::class, 'deletePelanggan'])->name('pelanggan.delete');
+
     Route::get('/tagihan', [AdminController::class, 'tagihan'])->name('tagihan');
+    Route::post('/tagihan', [AdminController::class, 'storeTagihan'])->name('tagihan.store');
     Route::get('/tagihan/export', [AdminController::class, 'exportTagihan'])->name('tagihan.export');
     Route::post('/tagihan/{id}/status', [AdminController::class, 'updateTagihanStatus'])->name('tagihan.status');
     Route::get('/laporan-masalah', [AdminController::class, 'laporanMasalah'])->name('laporan');

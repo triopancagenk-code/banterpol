@@ -16,9 +16,9 @@
       <div>
         <p class="text-xs font-semibold text-slate-500">Pelanggan Aktif</p>
         <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">{{ $stats['active_customers'] }} <span class="text-xs font-medium text-slate-400">/ {{ $stats['total_customers'] }}</span></h3>
-        <p class="text-[10px] sm:text-[11px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
-          <i class="fa-solid fa-arrow-trend-up"></i> +14 bulan ini
-        </p>
+        <a href="{{ route('admin.pelanggan') }}" class="text-[10px] sm:text-[11px] text-brand hover:underline font-bold mt-1 inline-block">
+          Kelola Data Pelanggan &rarr;
+        </a>
       </div>
       <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg sm:text-xl shrink-0">
         <i class="fa-solid fa-users"></i>

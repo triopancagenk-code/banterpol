@@ -97,7 +97,7 @@
         @php
           $pendingOrdersCount = 0;
           try {
-              $pendingOrdersCount = \App\Models\Order::where('status', 'Menunggu Konfirmasi')->count();
+              $pendingOrdersCount = \App\Models\Order::where('order_number', 'not like', 'PLG-%')->where('status', 'Menunggu Konfirmasi')->count();
           } catch (\Exception $e) {}
         @endphp
         <a href="{{ route('admin.pesanan') }}"
@@ -108,6 +108,24 @@
           </div>
           @if($pendingOrdersCount > 0)
             <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">{{ $pendingOrdersCount }} Baru</span>
+          @endif
+        </a>
+
+        <!-- 3. Data Pelanggan Terdaftar -->
+        @php
+          $totalCustomersCount = 0;
+          try {
+              $totalCustomersCount = \App\Models\Order::whereNotNull('id_card_number')->count() ?: \App\Models\Order::count();
+          } catch (\Exception $e) {}
+        @endphp
+        <a href="{{ route('admin.pelanggan') }}"
+           class="flex items-center justify-between px-3.5 py-3 rounded-xl transition duration-150 {{ request()->routeIs('admin.pelanggan*') ? 'bg-brand text-white shadow-md shadow-red-950/40 font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-users text-base w-5 text-center {{ request()->routeIs('admin.pelanggan*') ? 'text-white' : 'text-slate-400' }}"></i>
+            <span>Data Pelanggan</span>
+          </div>
+          @if($totalCustomersCount > 0)
+            <span class="bg-slate-700/80 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-600">{{ $totalCustomersCount }}</span>
           @endif
         </a>
 

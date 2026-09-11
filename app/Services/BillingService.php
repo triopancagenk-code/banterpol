@@ -112,6 +112,7 @@ class BillingService
         $existingOrderIds = Bill::whereNotNull('order_id')->pluck('order_id')->toArray();
 
         $completedOrders = Order::where('status', 'Selesai')
+            ->where('order_number', 'not like', 'PLG-%')
             ->whereNotIn('id', $existingOrderIds)
             ->get();
 

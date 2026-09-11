@@ -84,10 +84,10 @@
   <!-- ============================================== -->
   <div class="max-w-4xl mx-auto mb-4 no-print flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
     <div class="flex items-center gap-3">
-      <a href="{{ route('admin.pesanan') }}"
+      <a href="{{ url()->previous() != url()->current() ? url()->previous() : route('admin.pelanggan') }}"
          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition">
         <i class="fa-solid fa-arrow-left"></i>
-        <span>Kembali ke Monitoring Pesanan</span>
+        <span>Kembali</span>
       </a>
       <span class="text-xs text-slate-500 font-medium">
         Order: <strong class="text-slate-800 font-mono">{{ $order->order_number }}</strong> ({{ $order->customer_name }})
