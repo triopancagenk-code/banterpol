@@ -52,6 +52,10 @@ class LoginRequest extends FormRequest
             $authenticated = Auth::attempt(['email' => 'admin@banterpool.net', 'password' => $password], $this->boolean('remember'));
         }
 
+        if (!$authenticated && ($loginInput === 'direktur' || $loginInput === 'direktur@banterpol.net' || $loginInput === 'direktur@banterpool.net')) {
+            $authenticated = Auth::attempt(['email' => 'direktur@banterpool.net', 'password' => $password], $this->boolean('remember'));
+        }
+
         if (!$authenticated && $loginInput === 'root') {
             $authenticated = Auth::attempt(['email' => 'root@gmail.com', 'password' => $password], $this->boolean('remember'));
         }

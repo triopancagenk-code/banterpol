@@ -51,4 +51,27 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect('/');
     }
+
+    public function test_direktur_can_authenticate_with_username_and_access_admin(): void
+    {
+        $direktur = User::create([
+            'email' => 'direktur@banterpool.net',
+            'name' => 'Direktur Utama Banterpool',
+            'role' => 'admin',
+            'is_active' => true,
+            'password' => bcrypt('direktur'),
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => 'direktur',
+            'password' => 'direktur',
+        ]);
+
+        $this->assertAuthenticatedAs($direktur);
+        $response->assertRedirect(route('admin.dashboard', absolute: false));
+
+        // Ensure direktur can access admin dashboard without 403
+        $adminResponse = $this->actingAs($direktur)->get(route('admin.dashboard'));
+        $adminResponse->assertStatus(200);
+    }
 }

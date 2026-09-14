@@ -45,6 +45,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Data Pelanggan Terdaftar (KTP, Lahir, HP, Email, Layanan & Harga, Alamat)
     Route::get('/pelanggan', [AdminController::class, 'pelanggan'])->name('pelanggan');
     Route::get('/pelanggan/export', [AdminController::class, 'exportPelanggan'])->name('pelanggan.export');
+    Route::post('/pelanggan/import', [AdminController::class, 'importPelanggan'])->name('pelanggan.import');
+    Route::get('/pelanggan/template', [AdminController::class, 'downloadTemplatePelanggan'])->name('pelanggan.template');
     Route::get('/pelanggan/{id}/formulir', [AdminController::class, 'formulirPesanan'])->name('pelanggan.formulir');
     Route::post('/pelanggan', [AdminController::class, 'storePelanggan'])->name('pelanggan.store');
     Route::put('/pelanggan/{id}', [AdminController::class, 'updatePelanggan'])->name('pelanggan.update');

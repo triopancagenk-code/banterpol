@@ -10,8 +10,19 @@
         openCreateModal: false,
         openEditModal: false,
         openDeleteModal: false,
+        openImportModal: false,
+        importLoading: false,
+        importFileName: '',
         selectedCustomer: null,
         copiedText: '',
+        
+        onFileSelect(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                this.importFileName = e.target.files[0].name;
+            } else {
+                this.importFileName = '';
+            }
+        },
         
         viewCustomer(c) {
             this.selectedCustomer = c;
@@ -75,6 +86,37 @@
     </div>
   @endif
 
+  @if(session('error'))
+    <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-2xl flex items-center justify-between shadow-xs">
+      <div class="flex items-center gap-2.5">
+        <i class="fa-solid fa-circle-xmark text-red-600 text-base"></i>
+        <span class="text-xs font-bold">{{ session('error') }}</span>
+      </div>
+      <button type="button" @click="$el.parentElement.remove()" class="text-red-500 hover:text-red-700 text-sm">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  @endif
+
+  @if(session('import_warnings') && count(session('import_warnings')) > 0)
+    <div class="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl shadow-xs" x-data="{ showDetails: false }">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+          <span class="text-xs font-bold">Catatan Import: Ada {{ count(session('import_warnings')) }} baris yang dilewati saat proses import.</span>
+        </div>
+        <button type="button" @click="showDetails = !showDetails" class="text-xs font-bold text-amber-700 hover:underline">
+          <span x-text="showDetails ? 'Sembunyikan Rincian' : 'Lihat Rincian'"></span>
+        </button>
+      </div>
+      <div x-show="showDetails" class="mt-2 pt-2 border-t border-amber-200 text-[11px] text-amber-800 max-h-40 overflow-y-auto space-y-1">
+        @foreach(session('import_warnings') as $warn)
+          <p class="flex items-center gap-1.5"><i class="fa-solid fa-circle-dot text-[8px] text-amber-500"></i> {{ $warn }}</p>
+        @endforeach
+      </div>
+    </div>
+  @endif
+
   @if(isset($errors) && $errors->any())
     <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-2xl shadow-xs">
       <div class="flex items-center gap-2 mb-1">
@@ -111,6 +153,13 @@
               class="bg-brand hover:bg-red-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
         <i class="fa-solid fa-user-plus"></i>
         <span>Tambah Pelanggan</span>
+      </button>
+
+      <!-- Tombol Import Excel -->
+      <button type="button" @click="openImportModal = true"
+              class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+        <i class="fa-solid fa-file-import"></i>
+        <span>Import Excel</span>
       </button>
 
       <!-- Tombol Export Excel -->
@@ -999,6 +1048,201 @@
             </form>
           </div>
         </template>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 10. MODAL IMPORT EXCEL PELANGGAN               -->
+  <!-- ============================================== -->
+  <div x-show="openImportModal" style="display: none;" class="relative z-50" role="dialog" aria-modal="true">
+    <!-- Backdrop -->
+    <div x-show="openImportModal"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+         @click="if(!importLoading) openImportModal = false"></div>
+
+    <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6">
+      <div x-show="openImportModal"
+           x-transition:enter="ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 relative shadow-2xl space-y-5"
+           @click.stop>
+
+        <!-- Header Modal -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+              <i class="fa-solid fa-file-import"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-black text-slate-900">Import Data Pelanggan</h3>
+              <p class="text-xs text-slate-500 mt-0.5">Unggah berkas Excel (.xlsx, .xls) atau CSV untuk input massal</p>
+            </div>
+          </div>
+          <button type="button" @click="openImportModal = false" :disabled="importLoading"
+                  class="text-slate-400 hover:text-slate-700 text-lg p-1 transition disabled:opacity-50">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Download Template Banner -->
+        <div class="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-start gap-2.5">
+            <i class="fa-solid fa-circle-info text-blue-600 text-sm mt-0.5 shrink-0"></i>
+            <div>
+              <p class="text-xs font-bold text-blue-950">Gunakan Template Standar</p>
+              <p class="text-[11px] text-blue-700 mt-0.5 leading-relaxed">
+                Unduh format template resmi dengan kolom yang sudah siap diisi.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <a href="{{ route('admin.pelanggan.template', ['format' => 'xls']) }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 hover:bg-blue-100 text-blue-700 text-xs font-bold shadow-2xs transition">
+              <i class="fa-solid fa-file-excel text-emerald-600"></i>
+              <span>Format .xls</span>
+            </a>
+            <a href="{{ route('admin.pelanggan.template', ['format' => 'csv']) }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 hover:bg-blue-100 text-blue-700 text-xs font-bold shadow-2xs transition">
+              <i class="fa-solid fa-file-csv text-blue-600"></i>
+              <span>Format .csv</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Form Import -->
+        <form action="{{ route('admin.pelanggan.import') }}" method="POST" enctype="multipart/form-data"
+              @submit="importLoading = true" class="space-y-4">
+          @csrf
+
+          <!-- Upload Drop Zone -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">
+              Pilih Berkas File Excel / CSV <span class="text-red-500">*</span>
+            </label>
+            
+            <div class="relative border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-6 transition text-center cursor-pointer bg-slate-50 hover:bg-blue-50/40"
+                 @click="$refs.fileInput.click()">
+              <input type="file" name="file" x-ref="fileInput"
+                     accept=".xlsx,.xls,.csv,.txt" required
+                     @change="onFileSelect($event)"
+                     class="hidden">
+
+              <div class="space-y-2">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-blue-100/80 text-blue-600 flex items-center justify-center text-2xl">
+                  <i class="fa-solid fa-cloud-arrow-up" x-show="!importFileName"></i>
+                  <i class="fa-solid fa-file-circle-check text-emerald-600" x-show="importFileName"></i>
+                </div>
+
+                <template x-if="!importFileName">
+                  <div>
+                    <p class="text-xs font-bold text-slate-800">
+                      Klik untuk memilih berkas atau seret file ke sini
+                    </p>
+                    <p class="text-[11px] text-slate-400 mt-1">
+                      Mendukung format <span class="font-semibold text-slate-600">.xlsx, .xls, .csv</span> (Maksimal 10 MB)
+                    </p>
+                  </div>
+                </template>
+
+                <template x-if="importFileName">
+                  <div class="space-y-1">
+                    <p class="text-xs font-bold text-emerald-700 flex items-center justify-center gap-1.5">
+                      <i class="fa-solid fa-circle-check"></i>
+                      <span x-text="importFileName"></span>
+                    </p>
+                    <p class="text-[10px] text-slate-400">Klik lagi jika ingin mengganti berkas yang dipilih</p>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Options -->
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
+            <label class="flex items-start gap-2.5 cursor-pointer">
+              <input type="checkbox" name="update_existing" value="1" checked
+                     class="mt-0.5 rounded text-brand focus:ring-brand border-slate-300">
+              <div>
+                <span class="text-xs font-bold text-slate-800">Perbarui data pelanggan jika No. KTP / NIK atau ID sudah ada</span>
+                <p class="text-[11px] text-slate-500 mt-0.5">
+                  Jika dicentang, data pelanggan yang cocok akan diperbarui (nama, kontak, paket, alamat). Jika tidak dicentang, baris duplikat akan dilewati.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <!-- Petunjuk Kolom Header (Collapsible) -->
+          <div x-data="{ openGuide: false }" class="border border-slate-200 rounded-2xl overflow-hidden">
+            <button type="button" @click="openGuide = !openGuide"
+                    class="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-700 transition">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-table-list text-slate-400"></i>
+                <span>Lihat Format Kolom yang Didukung</span>
+              </div>
+              <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform"
+                 :class="openGuide ? 'rotate-180' : ''"></i>
+            </button>
+
+            <div x-show="openGuide" class="p-3.5 text-[11px] text-slate-600 space-y-2 border-t border-slate-200 bg-white">
+              <p class="font-semibold text-slate-800">Kolom yang dikenali secara otomatis:</p>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">&bull; Nama Lengkap <span class="text-red-500 font-normal">*Wajib</span></p>
+                  <p class="text-[10px] text-slate-500">Header: nama_lengkap, nama, customer_name</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">&bull; Alamat Pemasangan <span class="text-red-500 font-normal">*Wajib</span></p>
+                  <p class="text-[10px] text-slate-500">Header: alamat_lengkap, alamat, address</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">&bull; No. KTP / NIK</p>
+                  <p class="text-[10px] text-slate-500">Header: no_ktp, nik, id_card_number</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">&bull; No. Handphone (WA)</p>
+                  <p class="text-[10px] text-slate-500">Header: no_handphone, no_hp, telepon, wa</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">&bull; Paket & Kecepatan</p>
+                  <p class="text-[10px] text-slate-500">Header: paket, speed (20, 30, atau 50 Mbps)</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">&bull; TTL & Status</p>
+                  <p class="text-[10px] text-slate-500">Header: tempat_lahir, tanggal_lahir, status</p>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400 italic">
+                Tips: Berkas hasil "Export Excel" dari halaman ini juga dapat langsung diimpor kembali tanpa perlu mengubah format kolom!
+              </p>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+            <button type="button" @click="openImportModal = false" :disabled="importLoading"
+                    class="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition disabled:opacity-50">
+              Batal
+            </button>
+            <button type="submit" :disabled="importLoading || !importFileName"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition flex items-center gap-2 shadow-sm disabled:opacity-50">
+              <i class="fa-solid fa-spinner fa-spin" x-show="importLoading"></i>
+              <i class="fa-solid fa-file-import" x-show="!importLoading"></i>
+              <span x-text="importLoading ? 'Memproses Import...' : 'Mulai Import Pelanggan'"></span>
+            </button>
+          </div>
+        </form>
 
       </div>
     </div>

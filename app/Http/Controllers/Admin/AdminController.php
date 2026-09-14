@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
 use App\Services\BillingService;
+use App\Services\CustomerImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -1425,6 +1426,51 @@ class AdminController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
             'Cache-Control' => 'max-age=0, no-cache, must-revalidate, proxy-revalidate',
         ]);
+    }
+
+    /**
+     * Import Data Pelanggan dari File Excel / CSV
+     */
+    public function importPelanggan(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:10240',
+            'update_existing' => 'nullable|boolean',
+        ], [
+            'file.required' => 'Silakan pilih berkas file Excel (.xlsx, .xls) atau .csv yang akan diimpor.',
+            'file.file' => 'Berkas yang diunggah tidak valid.',
+            'file.mimes' => 'Format berkas harus berupa Excel (.xlsx, .xls) atau .csv.',
+            'file.max' => 'Ukuran berkas maksimal adalah 10 MB.',
+        ]);
+
+        $updateExisting = $request->boolean('update_existing', true);
+        $result = CustomerImportService::import($request->file('file'), $updateExisting);
+
+        if (!$result['success']) {
+            return redirect()->back()
+                ->with('error', $result['message'])
+                ->with('import_errors', $result['errors'] ?? []);
+        }
+
+        if (!empty($result['errors'])) {
+            return redirect()->back()
+                ->with('success', $result['message'])
+                ->with('import_warnings', $result['errors']);
+        }
+
+        return redirect()->back()->with('success', $result['message']);
+    }
+
+    /**
+     * Unduh Template Excel / CSV untuk Import Pelanggan
+     */
+    public function downloadTemplatePelanggan(Request $request)
+    {
+        $format = strtolower($request->input('format', 'xls'));
+        if ($format === 'csv') {
+            return CustomerImportService::downloadCsvTemplate();
+        }
+        return CustomerImportService::downloadTemplate();
     }
 
     /**

@@ -27,6 +27,19 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // Akun Direktur (Akses Administrator Eksekutif)
+        User::updateOrCreate(
+            ['email' => 'direktur@banterpool.net'],
+            [
+                'name' => 'Direktur Utama Banterpool',
+                'phone' => '081234567899',
+                'role' => 'admin',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('direktur'),
+            ]
+        );
+
         User::updateOrCreate(
             ['email' => 'root@gmail.com'],
             [

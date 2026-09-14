@@ -37,7 +37,7 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin' || $this->email === 'admin';
+        return $this->role === 'admin' || $this->role === 'direktur' || $this->email === 'admin' || $this->email === 'direktur' || $this->email === 'direktur@banterpool.net';
     }
 
     public function isTechnician(): bool
