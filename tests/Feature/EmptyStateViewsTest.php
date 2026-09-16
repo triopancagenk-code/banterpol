@@ -69,6 +69,11 @@ class EmptyStateViewsTest extends TestCase
         $tagihanRes = $this->actingAs($admin)->get('/admin/tagihan');
         $tagihanRes->assertStatus(200);
         $tagihanRes->assertSee('Tidak ada tagihan yang cocok dengan filter atau pencarian.');
+
+        // 4. Data Pelanggan Admin Kosong
+        $pelangganRes = $this->actingAs($admin)->get('/admin/pelanggan');
+        $pelangganRes->assertStatus(200);
+        $pelangganRes->assertSee('Tidak ada data pelanggan yang sesuai');
     }
 
     public function test_collector_views_empty_laporan_tagihan_pemesanan(): void

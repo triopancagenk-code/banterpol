@@ -103,9 +103,9 @@
 
                     // Deteksi wilayah dari alamat
                     $wilayah = 'Cilongok';
-                    foreach (['Batuanten', 'Bantuanten', 'Panusupan', 'Sawangan', 'Jatisaba', 'Bantarwuni', 'Karanggendep', 'Sudimara', 'Notog', 'Linggasari', 'Kasegeran'] as $w) {
+                    foreach (['Batuanten', 'Bantuanten', 'Panusupan', 'Sawangan', 'Jatisaba', 'Karanggendep', 'Sudimara', 'Notog', 'Bantarwuni', 'Linggasari', 'Kasegeran', 'Cipete', 'Pageraji'] as $w) {
                         if (stripos($c->address, $w) !== false) {
-                            $wilayah = ($w === 'Bantuanten') ? 'Batuanten' : $w;
+                            $wilayah = ($w === 'Bantuanten') ? 'Batuanten' : (($w === 'Panusupan') ? 'Penusupan' : $w);
                             break;
                         }
                     }

@@ -125,7 +125,7 @@
               ];
             }
 
-            $cOrders = \App\Models\Order::whereIn('status', ['Menunggu Konfirmasi', 'Jadwal Pemasangan'])->latest()->take(3)->get();
+            $cOrders = \App\Models\Order::where('order_number', 'not like', 'PLG-%')->whereIn('status', ['Menunggu Konfirmasi', 'Jadwal Pemasangan'])->latest()->take(3)->get();
             foreach ($cOrders as $co) {
               $collectorNotifications[] = [
                 'title' => 'Order Pasang: ' . $co->order_number,

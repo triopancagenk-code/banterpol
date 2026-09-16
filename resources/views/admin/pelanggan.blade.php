@@ -11,10 +11,46 @@
         openEditModal: false,
         openDeleteModal: false,
         openImportModal: false,
+        openBulkDeleteModal: false,
+        bulkDeleteAll: false,
+        selectedIds: [],
+        pageCustomerIds: {{ Js::from($customers->pluck('id')->values()->all()) }},
+        totalCustomersCount: {{ (int) $stats['total'] }},
         importLoading: false,
         importFileName: '',
         selectedCustomer: null,
         copiedText: '',
+
+        toggleSelectAll(ids) {
+            if (this.isPageAllSelected(ids)) {
+                this.selectedIds = this.selectedIds.filter(id => !ids.includes(id));
+            } else {
+                this.selectedIds = [...new Set([...this.selectedIds, ...ids])];
+            }
+        },
+
+        toggleSingle(id) {
+            const index = this.selectedIds.indexOf(id);
+            if (index > -1) {
+                this.selectedIds.splice(index, 1);
+            } else {
+                this.selectedIds.push(id);
+            }
+        },
+
+        isPageAllSelected(ids) {
+            return ids.length > 0 && ids.every(id => this.selectedIds.includes(id));
+        },
+
+        confirmBulkDelete(all = false) {
+            this.bulkDeleteAll = all;
+            this.openBulkDeleteModal = true;
+        },
+
+        clearSelection() {
+            this.selectedIds = [];
+            this.bulkDeleteAll = false;
+        },
         
         onFileSelect(e) {
             if (e.target.files && e.target.files.length > 0) {
@@ -168,6 +204,26 @@
         <i class="fa-solid fa-file-excel"></i>
         <span>Export Excel (.xls)</span>
       </a>
+
+      <!-- Tombol Hapus Terpilih / Massal -->
+      <button type="button"
+              x-show="selectedIds.length > 0"
+              style="display: none;"
+              @click="confirmBulkDelete(false)"
+              class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+        <i class="fa-solid fa-trash-can"></i>
+        <span>Hapus Terpilih (<span x-text="selectedIds.length"></span>)</span>
+      </button>
+
+      @if($stats['total'] > 0)
+        <button type="button"
+                @click="confirmBulkDelete(true)"
+                class="bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                title="Hapus Semua Data Pelanggan Sekaligus">
+          <i class="fa-solid fa-trash-arrow-up text-red-500"></i>
+          <span>Hapus Semua</span>
+        </button>
+      @endif
 
       <!-- Refresh -->
       <a href="{{ route('admin.pelanggan') }}"
@@ -325,13 +381,49 @@
         @php 
           $cW = $wilayahCounts[$key] ?? 0;
           $isActive = ($wilayahFilter === $key);
-          $displayName = ($key === 'Batuanten') ? 'Batuanten' : $name;
+          $displayName = ($key === 'Batuanten') ? 'Batuanten' : (($key === 'Penusupan') ? 'Penusupan' : $name);
         @endphp
         <a href="{{ route('admin.pelanggan', array_merge(request()->except(['wilayah', 'page']), ['wilayah' => $key])) }}"
            class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap {{ $isActive ? 'bg-brand text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
           {{ $displayName }} ({{ $cW }})
         </a>
       @endforeach
+    </div>
+  </div>
+
+  <!-- Selection Status Bar (Aktif ketika ada data yang dipilih) -->
+  <div x-show="selectedIds.length > 0"
+       style="display: none;"
+       class="bg-slate-900 text-white p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg border border-slate-700">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-xl bg-brand/30 border border-brand/50 text-brand flex items-center justify-center font-black text-xs shrink-0">
+        <span x-text="selectedIds.length"></span>
+      </div>
+      <div class="text-xs">
+        <p class="font-extrabold text-white">
+          <span x-text="selectedIds.length"></span> data pelanggan dipilih
+        </p>
+        <template x-if="totalCustomersCount > pageCustomerIds.length">
+          <p class="text-[11px] text-slate-400 mt-0.5">
+            Ingin menghapus seluruh database?
+            <button type="button" @click="confirmBulkDelete(true)" class="text-amber-400 hover:underline font-bold ml-1">
+              Pilih & Hapus Seluruh <span x-text="totalCustomersCount"></span> Pelanggan
+            </button>
+          </p>
+        </template>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 shrink-0">
+      <button type="button" @click="clearSelection()"
+              class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition">
+        Batal Pilihan
+      </button>
+      <button type="button" @click="confirmBulkDelete(false)"
+              class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+        <i class="fa-solid fa-trash-can"></i>
+        <span>Hapus Terpilih (<span x-text="selectedIds.length"></span>)</span>
+      </button>
     </div>
   </div>
 
@@ -343,6 +435,16 @@
       <table class="w-full text-center text-xs">
         <thead class="bg-slate-50 text-slate-500 font-extrabold uppercase text-[10px] border-b border-slate-200 tracking-wider">
           <tr>
+            <!-- Checkbox Select All Column -->
+            <th class="py-3.5 px-3 text-center w-12">
+              <div class="flex items-center justify-center">
+                <input type="checkbox"
+                       :checked="isPageAllSelected(pageCustomerIds)"
+                       @change="toggleSelectAll(pageCustomerIds)"
+                       class="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer"
+                       title="Pilih Semua di Halaman Ini">
+              </div>
+            </th>
             <th class="py-3.5 px-4 text-center">No & ID Pelanggan</th>
             <th class="py-3.5 px-4 text-center">Nama & No. KTP (NIK)</th>
             <th class="py-3.5 px-4 text-center">Tanggal Lahir</th>
@@ -371,8 +473,20 @@
                   $cleanPhone = '62' . substr($cleanPhone, 1);
               }
             @endphp
-            <tr class="hover:bg-slate-50/80 transition duration-150">
+            <tr class="hover:bg-slate-50/80 transition duration-150"
+                :class="selectedIds.includes({{ $customer->id }}) ? 'bg-red-50/40' : ''">
               
+              <!-- Checkbox Select Row -->
+              <td class="py-3.5 px-3 text-center w-12">
+                <div class="flex items-center justify-center">
+                  <input type="checkbox"
+                         :value="{{ $customer->id }}"
+                         :checked="selectedIds.includes({{ $customer->id }})"
+                         @change="toggleSingle({{ $customer->id }})"
+                         class="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer">
+                </div>
+              </td>
+
               <!-- 1. No & ID Pelanggan -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 <span class="text-[11px] font-bold text-slate-400 block">#{{ $customers->firstItem() + $index }}</span>
@@ -517,7 +631,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="text-center py-16 text-slate-400">
+              <td colspan="10" class="text-center py-16 text-slate-400">
                 <i class="fa-solid fa-users-slash text-4xl mb-3 text-slate-300"></i>
                 <p class="font-bold text-sm text-slate-600">Tidak ada data pelanggan yang sesuai</p>
                 <p class="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter wilayah Anda.</p>
@@ -808,10 +922,34 @@
                      class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-bold text-brand">
             </div>
 
+            <!-- Pilihan Wilayah / Desa Cakupan -->
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-700 mb-1">Wilayah / Desa Cakupan <span class="text-red-500">*</span></label>
+              <select name="wilayah" id="create_wilayah" required
+                      @change="
+                        let selectedW = $el.value;
+                        let addrEl = document.getElementById('create_address');
+                        if (selectedW) {
+                          if (!addrEl.value || addrEl.value.trim().startsWith('Desa ')) {
+                            addrEl.value = 'Desa ' + selectedW + ' RT 01/RW 01, Kec. Cilongok, Kab. Banyumas';
+                          } else if (!addrEl.value.toLowerCase().includes(selectedW.toLowerCase())) {
+                            addrEl.value = 'Desa ' + selectedW + ', ' + addrEl.value;
+                          }
+                        }
+                      "
+                      class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-semibold">
+                <option value="">-- Pilih Wilayah / Desa Cakupan --</option>
+                @foreach($wilayahList as $wKey => $wName)
+                  <option value="{{ $wKey }}">{{ $wName }}</option>
+                @endforeach
+              </select>
+              <p class="text-[10px] text-slate-400 mt-1">Pilih wilayah cakupan resmi (Bantarwuni, Linggasari, Kasegeran, Cipete, Pageraji, Batuanten, dll).</p>
+            </div>
+
             <!-- Alamat Lengkap -->
             <div class="sm:col-span-2">
               <label class="block font-bold text-slate-700 mb-1">Alamat Lengkap Pemasangan <span class="text-red-500">*</span></label>
-              <textarea name="address" rows="3" required placeholder="Nama jalan, RT/RW, Dusun, Desa (cth: Batuanten / Jatisaba / Notog), Kec. Cilongok"
+              <textarea name="address" id="create_address" rows="3" required placeholder="Nama jalan, RT/RW, Dusun, Desa (cth: Bantarwuni / Linggasari / Kasegeran / Cipete / Pageraji), Kec. Cilongok"
                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand"></textarea>
             </div>
 
@@ -954,6 +1092,28 @@
                 <label class="block font-bold text-slate-700 mb-1">Harga Bulanan (Rp) <span class="text-red-500">*</span></label>
                 <input type="number" name="price" x-model="selectedCustomer.price" required
                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-bold text-brand">
+              </div>
+
+              <!-- Pilihan Wilayah / Desa Cakupan -->
+              <div class="sm:col-span-2">
+                <label class="block font-bold text-slate-700 mb-1">Wilayah / Desa Cakupan</label>
+                <select name="wilayah"
+                        @change="
+                          let selectedW = $el.value;
+                          if (selectedW && selectedCustomer) {
+                            if (!selectedCustomer.address || selectedCustomer.address.trim().startsWith('Desa ')) {
+                              selectedCustomer.address = 'Desa ' + selectedW + ' RT 01/RW 01, Kec. Cilongok, Kab. Banyumas';
+                            } else if (!selectedCustomer.address.toLowerCase().includes(selectedW.toLowerCase())) {
+                              selectedCustomer.address = 'Desa ' + selectedW + ', ' + selectedCustomer.address;
+                            }
+                          }
+                        "
+                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-semibold">
+                  <option value="">-- Sesuaikan / Pilih Wilayah --</option>
+                  @foreach($wilayahList as $wKey => $wName)
+                    <option value="{{ $wKey }}">{{ $wName }}</option>
+                  @endforeach
+                </select>
               </div>
 
               <!-- Alamat Lengkap -->
@@ -1243,6 +1403,72 @@
             </button>
           </div>
         </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 10. MODAL HAPUS MASSAL PELANGGAN               -->
+  <!-- ============================================== -->
+  <div x-show="openBulkDeleteModal" style="display: none;" class="relative z-50" role="dialog" aria-modal="true">
+    <div x-show="openBulkDeleteModal"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+         @click="openBulkDeleteModal = false"></div>
+
+    <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+      <div x-show="openBulkDeleteModal"
+           x-transition:enter="ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="bg-white rounded-3xl max-w-md w-full p-6 relative shadow-2xl"
+           @click.stop>
+
+        <div class="text-center space-y-4">
+          <div class="w-14 h-14 mx-auto rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl">
+            <i class="fa-solid fa-trash-can"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-black text-slate-900">
+              <span x-text="bulkDeleteAll ? 'Hapus Semua Data Pelanggan?' : 'Hapus ' + selectedIds.length + ' Pelanggan Terpilih?'"></span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              <span x-show="!bulkDeleteAll">
+                Apakah Anda yakin ingin menghapus <strong class="text-slate-900"><span x-text="selectedIds.length"></span> data pelanggan</strong> yang dipilih?
+              </span>
+              <span x-show="bulkDeleteAll">
+                Apakah Anda yakin ingin menghapus <strong class="text-red-600">SELURUH data pelanggan</strong> (<span x-text="totalCustomersCount"></span> pelanggan)?
+              </span>
+              Seluruh riwayat tagihan terkait juga akan dibersihkan. Tindakan ini <strong class="text-red-600">tidak dapat dibatalkan</strong>.
+            </p>
+          </div>
+
+          <form action="{{ route('admin.pelanggan.bulk-delete') }}" method="POST" class="pt-2 flex items-center justify-center gap-2">
+            @csrf
+            <input type="hidden" name="delete_all" :value="bulkDeleteAll ? '1' : '0'">
+            <template x-for="id in selectedIds" :key="id">
+              <input type="hidden" name="ids[]" :value="id">
+            </template>
+
+            <button type="button" @click="openBulkDeleteModal = false"
+                    class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl transition">
+              Batal
+            </button>
+            <button type="submit"
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs">
+              Ya, Hapus Sekarang
+            </button>
+          </form>
+        </div>
 
       </div>
     </div>

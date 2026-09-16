@@ -312,7 +312,7 @@
           @php
             $recentNotifications = [];
             try {
-              $pOrders = \App\Models\Order::where('status', 'Menunggu Konfirmasi')->latest()->take(3)->get();
+              $pOrders = \App\Models\Order::where('order_number', 'not like', 'PLG-%')->where('status', 'Menunggu Konfirmasi')->latest()->take(3)->get();
               foreach ($pOrders as $po) {
                 $recentNotifications[] = [
                   'title' => 'Pesanan Baru: ' . $po->order_number,

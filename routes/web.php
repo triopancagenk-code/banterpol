@@ -49,6 +49,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/pelanggan/template', [AdminController::class, 'downloadTemplatePelanggan'])->name('pelanggan.template');
     Route::get('/pelanggan/{id}/formulir', [AdminController::class, 'formulirPesanan'])->name('pelanggan.formulir');
     Route::post('/pelanggan', [AdminController::class, 'storePelanggan'])->name('pelanggan.store');
+    Route::post('/pelanggan/bulk-delete', [AdminController::class, 'bulkDeletePelanggan'])->name('pelanggan.bulk-delete');
     Route::put('/pelanggan/{id}', [AdminController::class, 'updatePelanggan'])->name('pelanggan.update');
     Route::delete('/pelanggan/{id}', [AdminController::class, 'deletePelanggan'])->name('pelanggan.delete');
 

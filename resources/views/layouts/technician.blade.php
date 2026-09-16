@@ -97,7 +97,7 @@
         @php
           $techNotifications = [];
           try {
-            $tOrders = \App\Models\Order::whereIn('status', ['Menunggu Konfirmasi', 'Jadwal Pemasangan', 'Sedang Dipasang'])->latest()->take(3)->get();
+            $tOrders = \App\Models\Order::where('order_number', 'not like', 'PLG-%')->whereIn('status', ['Menunggu Konfirmasi', 'Jadwal Pemasangan', 'Sedang Dipasang'])->latest()->take(3)->get();
             foreach ($tOrders as $to) {
               $techNotifications[] = [
                 'title' => 'Tugas Pemasangan: ' . $to->order_number,

@@ -31,7 +31,7 @@ class CollectorController extends Controller
         BillingService::syncCompletedOrdersWithoutBills();
 
         $allBills = Bill::all();
-        $orders = Order::all();
+        $orders = Order::where('order_number', 'not like', 'PLG-%')->get();
         $tickets = $this->getTroubleTickets();
 
         // Metrik Keuangan Tunai Kolektor
@@ -70,7 +70,7 @@ class CollectorController extends Controller
             ->get();
 
         // Tiket instalasi baru yang perlu dipantau kolektor (terkait pembayaran pasang baru)
-        $recentOrders = Order::latest()->take(3)->get();
+        $recentOrders = Order::where('order_number', 'not like', 'PLG-%')->latest()->take(3)->get();
 
         // Tiket kendala lapangan
         $urgentTickets = collect($tickets)->where('status', '!=', 'Selesai')->take(3);
@@ -248,7 +248,7 @@ class CollectorController extends Controller
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('q', '');
 
-        $query = Order::query()->latest();
+        $query = Order::where('order_number', 'not like', 'PLG-%')->latest();
 
         if ($statusFilter !== 'all') {
             $query->where('status', $statusFilter);
@@ -265,7 +265,7 @@ class CollectorController extends Controller
         }
 
         $orders = $query->paginate(15)->withQueryString();
-        $allOrders = Order::all();
+        $allOrders = Order::where('order_number', 'not like', 'PLG-%')->get();
 
         $counts = [
             'all' => $allOrders->count(),

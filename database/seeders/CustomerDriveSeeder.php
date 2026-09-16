@@ -17,9 +17,9 @@ class CustomerDriveSeeder extends Seeder
      * - Sawangan: 80
      * - Jatisaba: 60
      * - Karanggendep: 17
-     * - Sudimara: 6
-     * - V. 03: 3
-     * - V. 02: 2
+     * - Bantarwuni: 2
+     * - Linggasari: 2
+     * - Kasegeran: 1
      * - Notog: 2
      */
     public function run(): void
@@ -10559,7 +10559,7 @@ class CustomerDriveSeeder extends Seeder
     'id_card_number' => '3302250805900026',
     'birth_place' => 'Banyumas',
     'birth_date' => '1990-05-08',
-    'address' => 'Desa V. 03 RT 0484/RW 01, Kec. Cilongok, Kab. Banyumas',
+    'address' => 'Desa Bantarwuni RT 04/RW 01, Kec. Cilongok, Kab. Banyumas',
     'package_name' => 'Paket 20 Mbps',
     'speed' => '20 Mbps',
     'price' => 110000.0,
@@ -10573,7 +10573,7 @@ class CustomerDriveSeeder extends Seeder
     'status' => 'Selesai',
     'technician' => 'Randi Pratama (Tim Fiber)',
     'assigned_odp' => 'ODP-BAN-01',
-    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (V. 03).',
+    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (Bantarwuni).',
   ),
   422 => 
   array (
@@ -10584,7 +10584,7 @@ class CustomerDriveSeeder extends Seeder
     'id_card_number' => '3302232601770037',
     'birth_place' => 'Banyumas',
     'birth_date' => '1977-01-26',
-    'address' => 'Desa V. 03 RT 0485/RW 01, Kec. Cilongok, Kab. Banyumas',
+    'address' => 'Desa Bantarwuni RT 05/RW 01, Kec. Cilongok, Kab. Banyumas',
     'package_name' => 'Paket 20 Mbps',
     'speed' => '20 Mbps',
     'price' => 110000.0,
@@ -10598,7 +10598,7 @@ class CustomerDriveSeeder extends Seeder
     'status' => 'Selesai',
     'technician' => 'Randi Pratama (Tim Fiber)',
     'assigned_odp' => 'ODP-BAN-01',
-    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (V. 03).',
+    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (Bantarwuni).',
   ),
   423 => 
   array (
@@ -10609,7 +10609,7 @@ class CustomerDriveSeeder extends Seeder
     'id_card_number' => '3302160710920010',
     'birth_place' => 'Banyumas',
     'birth_date' => '1992-10-07',
-    'address' => 'Desa V. 02 (Linggasari) RT 0481/RW 02, Kec. Cilongok, Kab. Banyumas',
+    'address' => 'Desa Linggasari RT 01/RW 02, Kec. Cilongok, Kab. Banyumas',
     'package_name' => 'Paket 20 Mbps',
     'speed' => '20 Mbps',
     'price' => 110000.0,
@@ -10623,7 +10623,7 @@ class CustomerDriveSeeder extends Seeder
     'status' => 'Selesai',
     'technician' => 'Randi Pratama (Tim Fiber)',
     'assigned_odp' => 'ODP-LIN-01',
-    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (V. 02).',
+    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (Linggasari).',
   ),
   424 => 
   array (
@@ -10634,7 +10634,7 @@ class CustomerDriveSeeder extends Seeder
     'id_card_number' => '3302181504980068',
     'birth_place' => 'Banyumas',
     'birth_date' => '1998-04-15',
-    'address' => 'Desa V. 02 (Linggasari) RT 0482/RW 02, Kec. Cilongok, Kab. Banyumas',
+    'address' => 'Desa Linggasari RT 02/RW 02, Kec. Cilongok, Kab. Banyumas',
     'package_name' => 'Paket 20 Mbps',
     'speed' => '20 Mbps',
     'price' => 110000.0,
@@ -10648,7 +10648,7 @@ class CustomerDriveSeeder extends Seeder
     'status' => 'Selesai',
     'technician' => 'Randi Pratama (Tim Fiber)',
     'assigned_odp' => 'ODP-LIN-01',
-    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (V. 02).',
+    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (Linggasari).',
   ),
   425 => 
   array (
@@ -10659,7 +10659,7 @@ class CustomerDriveSeeder extends Seeder
     'id_card_number' => '3302222306770020',
     'birth_place' => 'Banyumas',
     'birth_date' => '1977-06-23',
-    'address' => 'Desa V. 03 RT 0483/RW 01, Kec. Cilongok, Kab. Banyumas',
+    'address' => 'Desa Kasegeran RT 03/RW 01, Kec. Cilongok, Kab. Banyumas',
     'package_name' => 'Paket 20 Mbps',
     'speed' => '20 Mbps',
     'price' => 110000.0,
@@ -10673,7 +10673,7 @@ class CustomerDriveSeeder extends Seeder
     'status' => 'Selesai',
     'technician' => 'Randi Pratama (Tim Fiber)',
     'assigned_odp' => 'ODP-KAS-01',
-    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (V. 03).',
+    'admin_notes' => 'Pelanggan terdaftar dari formulir SIMS Fiber Broadband (Kasegeran).',
   ),
 );
 

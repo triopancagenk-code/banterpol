@@ -130,7 +130,13 @@ class AdminController extends Controller
             ];
         }
 
-        $tickets = Cache::get('trouble_tickets') ?: session('admin_tickets') ?: $defaultTickets;
+        if (Cache::has('trouble_tickets')) {
+            $tickets = Cache::get('trouble_tickets') ?? [];
+        } elseif (session()->has('admin_tickets')) {
+            $tickets = session('admin_tickets') ?? [];
+        } else {
+            $tickets = $defaultTickets;
+        }
 
         foreach ($tickets as &$t) {
             // Normalisasi tiket dengan format tanggal lama agar selalu menggunakan format Hari, Tanggal Bulan Tahun real-time
@@ -832,8 +838,8 @@ class AdminController extends Controller
         } catch (\Exception $e) {}
 
         $stats = [
-            'total_customers' => Order::count() ?: 265,
-            'active_customers' => Order::where('status', 'Selesai')->count() ?: 260,
+            'total_customers' => Order::count(),
+            'active_customers' => Order::where('status', 'Selesai')->count(),
             'total_orders' => $totalOrdersCount,
             'pending_orders_count' => $pendingOrdersCount,
             'pending_bills_count' => collect($bills)->where('status', 'Menunggu Verifikasi')->count(),
@@ -1182,17 +1188,20 @@ class AdminController extends Controller
         $verifiedKtp = $allCustomers->whereNotNull('id_card_number')->where('id_card_number', '!=', '')->count();
         $totalMrr = $allCustomers->where('status', 'Selesai')->sum('price');
 
-        // Daftar Wilayah Cakupan (Sesuai 9 Wilayah Resmi)
+        // Daftar Wilayah Cakupan (Wilayah Resmi Banterpool SIMS)
         $wilayahList = [
             'Batuanten' => 'Batuanten / Bantuanten',
-            'Jatisaba' => 'Jatisaba',
-            'Notog' => 'Notog',
-            'V. 02' => 'V. 02',
-            'V. 03' => 'V. 03',
-            'Karanggendep' => 'Karanggendep',
-            'Penusupan' => 'Penusupan',
+            'Penusupan' => 'Penusupan / Panusupan',
             'Sawangan' => 'Sawangan',
+            'Jatisaba' => 'Jatisaba',
+            'Karanggendep' => 'Karanggendep',
             'Sudimara' => 'Sudimara',
+            'Notog' => 'Notog',
+            'Bantarwuni' => 'Bantarwuni',
+            'Linggasari' => 'Linggasari',
+            'Kasegeran' => 'Kasegeran',
+            'Cipete' => 'Cipete',
+            'Pageraji' => 'Pageraji',
         ];
 
         // Daftar Layanan
@@ -1256,6 +1265,7 @@ class AdminController extends Controller
             'package_name' => 'required|string',
             'price' => 'required|numeric',
             'address' => 'required|string',
+            'wilayah' => 'nullable|string',
             'status' => 'nullable|string',
         ]);
 
@@ -1267,6 +1277,28 @@ class AdminController extends Controller
         } elseif (str_contains($validated['package_name'], '30')) {
             $speed = '30 Mbps';
         }
+
+        $address = $validated['address'];
+        $wilayah = $request->input('wilayah');
+        if (!empty($wilayah) && !str_contains(strtolower($address), strtolower($wilayah))) {
+            $address = "Desa {$wilayah}, {$address}";
+        }
+
+        $odpMap = [
+            'Batuanten' => 'ODP-BAT-01',
+            'Penusupan' => 'ODP-PAN-01',
+            'Sawangan' => 'ODP-SWG-01',
+            'Jatisaba' => 'ODP-JAT-01',
+            'Karanggendep' => 'ODP-KGD-01',
+            'Sudimara' => 'ODP-SUD-01',
+            'Notog' => 'ODP-NOT-01',
+            'Bantarwuni' => 'ODP-BAN-01',
+            'Linggasari' => 'ODP-LIN-01',
+            'Kasegeran' => 'ODP-KAS-01',
+            'Cipete' => 'ODP-CPT-01',
+            'Pageraji' => 'ODP-PGR-01',
+        ];
+        $assignedOdp = $odpMap[$wilayah] ?? 'ODP-CLK-01';
 
         $order = Order::create([
             'order_number' => $orderNumber,
@@ -1280,13 +1312,15 @@ class AdminController extends Controller
             'speed' => $speed,
             'price' => $validated['price'],
             'total' => $validated['price'],
-            'address' => $validated['address'],
+            'address' => $address,
             'status' => $validated['status'] ?? 'Selesai',
             'payment_status' => 'Lunas',
             'payment_method' => 'Tunai / Transfer',
             'installation_date' => now()->toDateString(),
             'installation_time' => 'pagi',
             'installed_at' => now(),
+            'assigned_odp' => $assignedOdp,
+            'admin_notes' => 'Pelanggan terdaftar dari input manual Admin' . ($wilayah ? " ({$wilayah})" : '') . '.',
         ]);
 
         return redirect()->back()->with('success', "Pelanggan baru {$order->customer_name} berhasil ditambahkan dengan NIK: {$order->id_card_number}.");
@@ -1309,6 +1343,7 @@ class AdminController extends Controller
             'package_name' => 'required|string',
             'price' => 'required|numeric',
             'address' => 'required|string',
+            'wilayah' => 'nullable|string',
             'status' => 'required|string',
         ]);
 
@@ -1317,6 +1352,12 @@ class AdminController extends Controller
             $speed = '50 Mbps';
         } elseif (str_contains($validated['package_name'], '30')) {
             $speed = '30 Mbps';
+        }
+
+        $address = $validated['address'];
+        $wilayah = $request->input('wilayah');
+        if (!empty($wilayah) && !str_contains(strtolower($address), strtolower($wilayah))) {
+            $address = "Desa {$wilayah}, {$address}";
         }
 
         $order->customer_name = $validated['customer_name'];
@@ -1329,7 +1370,7 @@ class AdminController extends Controller
         $order->speed = $speed;
         $order->price = $validated['price'];
         $order->total = $validated['price'];
-        $order->address = $validated['address'];
+        $order->address = $address;
         $order->status = $validated['status'];
         $order->save();
 
@@ -1363,6 +1404,32 @@ class AdminController extends Controller
         $order->delete();
 
         return redirect()->back()->with('success', "Data pelanggan {$name} berhasil dihapus dari sistem.");
+    }
+
+    /**
+     * Hapus Massal Data Pelanggan Terpilih
+     */
+    public function bulkDeletePelanggan(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        $deleteAll = $request->boolean('delete_all', false);
+
+        if ($deleteAll) {
+            $count = Order::count();
+            Bill::whereNotNull('order_id')->delete();
+            Order::query()->delete();
+            return redirect()->back()->with('success', "Seluruh data pelanggan ({$count} data) berhasil dihapus dari sistem.");
+        }
+
+        if (empty($ids) || !is_array($ids)) {
+            return redirect()->back()->with('error', 'Silakan pilih minimal satu data pelanggan untuk dihapus.');
+        }
+
+        $count = count($ids);
+        Bill::whereIn('order_id', $ids)->delete();
+        Order::whereIn('id', $ids)->delete();
+
+        return redirect()->back()->with('success', "Sebanyak {$count} data pelanggan terpilih berhasil dihapus dari sistem.");
     }
 
     /**

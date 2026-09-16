@@ -25,7 +25,7 @@ class TechnicianController extends Controller
      */
     public function dashboard()
     {
-        $allOrders = Order::all();
+        $allOrders = Order::where('order_number', 'not like', 'PLG-%')->get();
         $tickets = $this->getTroubleTickets();
 
         // Metrik Pemasangan (Semua pesanan aktif yang butuh instalasi/penanganan)
@@ -38,7 +38,8 @@ class TechnicianController extends Controller
         $criticalTroubles = collect($tickets)->where('priority', 'Kritis')->where('status', '!=', 'Selesai')->count();
 
         // Tugas Instalasi Aktif Terbaru
-        $activeOrders = Order::whereIn('status', $activeStatuses)
+        $activeOrders = Order::where('order_number', 'not like', 'PLG-%')
+            ->whereIn('status', $activeStatuses)
             ->latest()
             ->take(4)
             ->get();
@@ -67,7 +68,7 @@ class TechnicianController extends Controller
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('q', '');
 
-        $query = Order::query()->latest();
+        $query = Order::where('order_number', 'not like', 'PLG-%')->latest();
 
         if ($statusFilter !== 'all') {
             if ($statusFilter === 'Jadwal Teknisi') {
@@ -89,7 +90,7 @@ class TechnicianController extends Controller
         }
 
         $orders = $query->paginate(15)->withQueryString();
-        $allOrders = Order::all();
+        $allOrders = Order::where('order_number', 'not like', 'PLG-%')->get();
 
         $counts = [
             'all' => $allOrders->count(),

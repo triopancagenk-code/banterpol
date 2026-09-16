@@ -315,14 +315,17 @@ class HomeController extends Controller
         $order = null;
         if ($orderNumber) {
             try {
-                $order = Order::where('order_number', $orderNumber)->first();
+                $order = Order::where('order_number', $orderNumber)->where('order_number', 'not like', 'PLG-%')->first();
             } catch (\Exception $e) {}
         } elseif (auth()->check()) {
             try {
-                $order = Order::where('user_id', auth()->id())
-                    ->orWhere('customer_email', auth()->user()->email)
-                    ->latest()
-                    ->first();
+                $order = Order::where(function ($q) {
+                    $q->where('user_id', auth()->id())
+                      ->orWhere('customer_email', auth()->user()->email);
+                })
+                ->where('order_number', 'not like', 'PLG-%')
+                ->latest()
+                ->first();
             } catch (\Exception $e) {}
         }
 
