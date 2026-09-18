@@ -18,6 +18,7 @@ class Order extends Model
         'birth_place',
         'birth_date',
         'address',
+        'village',
         'latitude',
         'longitude',
         'package_name',

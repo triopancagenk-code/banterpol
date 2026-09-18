@@ -40,6 +40,11 @@ class User extends Authenticatable
         return $this->role === 'admin' || $this->role === 'direktur' || $this->email === 'admin' || $this->email === 'direktur' || $this->email === 'direktur@banterpool.net';
     }
 
+    public function isDirektur(): bool
+    {
+        return $this->role === 'direktur' || $this->email === 'direktur' || $this->email === 'direktur@banterpool.net';
+    }
+
     public function isTechnician(): bool
     {
         return $this->role === 'technician' || $this->role === 'teknisi' || $this->isAdmin();

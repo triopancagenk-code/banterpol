@@ -239,11 +239,13 @@
         <div class="flex items-center justify-between pt-1">
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 rounded-full bg-brand/20 border border-brand/40 text-brand flex items-center justify-center font-bold text-xs">
-              AD
+              {{ strtoupper(substr(Auth::user()->name ?? 'AD', 0, 2)) }}
             </div>
-            <div>
-              <p class="text-xs font-bold text-white leading-tight">Admin NOC</p>
-              <p class="text-[10px] text-slate-400 leading-tight">noc@banterpool.net</p>
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-white leading-tight truncate">
+                {{ Auth::user() && Auth::user()->isDirektur() ? 'Direktur Utama' : (Auth::user()->name ?? 'Admin NOC') }}
+              </p>
+              <p class="text-[10px] text-slate-400 leading-tight truncate">{{ Auth::user()->email ?? 'noc@banterpool.net' }}</p>
             </div>
           </div>
           
@@ -410,16 +412,6 @@
 
       </header>
 
-      <!-- FLASH MESSAGES -->
-      @if(session('success'))
-        <div class="mx-4 sm:mx-8 mt-6 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-4 py-3 rounded-xl flex items-center justify-between shadow-sm">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
-            <span>{{ session('success') }}</span>
-          </div>
-          <button type="button" onclick="this.parentElement.remove()" class="text-emerald-700 hover:text-emerald-900 font-bold">×</button>
-        </div>
-      @endif
 
       <!-- MAIN PAGE CONTENT -->
       <main class="flex-1 p-4 sm:p-8">

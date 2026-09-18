@@ -179,7 +179,7 @@
         </span>
       </div>
       <p class="text-xs text-slate-500 mt-1">
-        Data pendaftaran pelanggan terintegrasi (No KTP / NIK, Tanggal Lahir, Kontak WhatsApp, Email, Paket & Tarif, serta Alamat Pemasangan).
+        Data pendaftaran pelanggan terintegrasi (No, Nama Pemohon, No KTP, No Handphone, Jenis Layanan, Harga, dan Alamat).
       </p>
     </div>
 
@@ -381,7 +381,7 @@
         @php 
           $cW = $wilayahCounts[$key] ?? 0;
           $isActive = ($wilayahFilter === $key);
-          $displayName = ($key === 'Batuanten') ? 'Batuanten' : (($key === 'Penusupan') ? 'Penusupan' : $name);
+          $displayName = $name;
         @endphp
         <a href="{{ route('admin.pelanggan', array_merge(request()->except(['wilayah', 'page']), ['wilayah' => $key])) }}"
            class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap {{ $isActive ? 'bg-brand text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
@@ -445,13 +445,12 @@
                        title="Pilih Semua di Halaman Ini">
               </div>
             </th>
-            <th class="py-3.5 px-4 text-center">No & ID Pelanggan</th>
-            <th class="py-3.5 px-4 text-center">Nama & No. KTP (NIK)</th>
-            <th class="py-3.5 px-4 text-center">Tanggal Lahir</th>
-            <th class="py-3.5 px-4 text-center">No. Handphone</th>
-            <th class="py-3.5 px-4 text-center">Email</th>
-            <th class="py-3.5 px-4 text-center">Jenis Layanan & Harga</th>
-            <th class="py-3.5 px-4 text-center">Alamat Pemasangan</th>
+            <th class="py-3.5 px-4 text-center">Nama Pemohon</th>
+            <th class="py-3.5 px-4 text-center">No KTP</th>
+            <th class="py-3.5 px-4 text-center">No Handphone</th>
+            <th class="py-3.5 px-4 text-center">Jenis Layanan</th>
+            <th class="py-3.5 px-4 text-center">Harga</th>
+            <th class="py-3.5 px-4 text-center">Alamat</th>
             <th class="py-3.5 px-4 text-center">Status</th>
             <th class="py-3.5 px-4 text-center">Aksi</th>
           </tr>
@@ -487,19 +486,19 @@
                 </div>
               </td>
 
-              <!-- 1. No & ID Pelanggan -->
-              <td class="py-3.5 px-4 whitespace-nowrap text-center">
-                <span class="text-[11px] font-bold text-slate-400 block">#{{ $customers->firstItem() + $index }}</span>
-                <span class="font-mono font-bold text-slate-900 text-xs block">{{ $customer->order_number }}</span>
-                <span class="text-[10px] text-slate-400 block">{{ $customer->created_at ? $customer->created_at->format('d/m/Y') : '-' }}</span>
+              <!-- Nama Pemohon -->
+              <td class="py-3.5 px-4 text-center">
+                <div class="font-bold text-slate-900 text-xs">{{ $customer->customer_name }}</div>
+                @if($customer->order_number)
+                  <span class="font-mono text-[10px] text-slate-400 block mt-0.5">{{ $customer->order_number }}</span>
+                @endif
               </td>
 
-              <!-- 2. Nama & No KTP (NIK) -->
-              <td class="py-3.5 px-4 text-center">
-                <div class="font-black text-slate-900 text-xs">{{ $customer->customer_name }}</div>
-                <div class="mt-1 flex items-center justify-center gap-1.5">
-                  @if($customer->id_card_number)
-                    <span class="font-mono text-[11px] font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200">
+              <!-- 3. No KTP -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                @if($customer->id_card_number)
+                  <div class="inline-flex items-center justify-center gap-1">
+                    <span class="font-mono text-xs font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200">
                       {{ $customer->id_card_number }}
                     </span>
                     <button type="button"
@@ -509,63 +508,55 @@
                       <i class="fa-regular fa-copy" x-show="copiedText !== 'ktp-{{ $customer->id }}'"></i>
                       <i class="fa-solid fa-check text-emerald-600" x-show="copiedText === 'ktp-{{ $customer->id }}'"></i>
                     </button>
-                  @else
-                    <span class="text-[10px] text-slate-400 italic">Belum terisi</span>
-                  @endif
-                </div>
-              </td>
-
-              <!-- 3. Tanggal Lahir & Usia -->
-              <td class="py-3.5 px-4 whitespace-nowrap text-center">
-                @if($customer->birth_date)
-                  <div class="font-semibold text-slate-800 text-xs">
-                    {{ \Carbon\Carbon::parse($customer->birth_date)->translatedFormat('d F Y') }}
-                  </div>
-                  <div class="text-[10px] text-slate-500 mt-0.5">
-                    @if($customer->birth_place)
-                      <span>{{ $customer->birth_place }}, </span>
-                    @endif
-                    <span class="font-bold text-brand">{{ $age }} tahun</span>
                   </div>
                 @else
-                  <span class="text-[10px] text-slate-400 italic">-</span>
+                  <span class="text-[11px] text-slate-400 italic">-</span>
                 @endif
               </td>
 
-              <!-- 4. No Handphone (WhatsApp) -->
+              <!-- 4. No Handphone -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
-                <a href="https://wa.me/{{ $cleanPhone }}?text=Halo%20{{ urlencode($customer->customer_name) }},%20kami%20dari%20Banterpool%20Fiber%20Broadband."
-                   target="_blank"
-                   class="inline-flex items-center justify-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold text-xs bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80">
-                  <i class="fa-brands fa-whatsapp text-sm"></i>
-                  <span>{{ $customer->customer_phone }}</span>
-                </a>
-              </td>
-
-              <!-- 5. Email -->
-              <td class="py-3.5 px-4 text-center">
-                @if($customer->customer_email)
-                  <a href="mailto:{{ $customer->customer_email }}"
-                     class="text-blue-600 hover:underline text-[11px] truncate max-w-[160px] mx-auto block"
-                     title="{{ $customer->customer_email }}">
-                    {{ $customer->customer_email }}
+                @if($customer->customer_phone && $customer->customer_phone !== '-')
+                  <a href="https://wa.me/{{ $cleanPhone }}?text=Halo%20{{ urlencode($customer->customer_name) }},%20kami%20dari%20Banterpool%20Fiber%20Broadband."
+                     target="_blank"
+                     class="inline-flex items-center justify-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold text-xs bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80">
+                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                    <span>{{ $customer->customer_phone }}</span>
                   </a>
                 @else
+                  <span class="text-[11px] text-slate-400 italic">-</span>
+                @endif
+              </td>
+
+              <!-- 6. Jenis Layanan -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                @if($customer->package_name && $customer->package_name !== '-')
+                  <div class="font-bold text-slate-900 text-xs">
+                    {{ $customer->package_name }}
+                  </div>
+                  @if($customer->speed)
+                    <div class="text-[10px] text-slate-500 font-medium mt-0.5">
+                      <i class="fa-solid fa-gauge-high text-[9px] text-slate-400 mr-0.5"></i>{{ $customer->speed }}
+                    </div>
+                  @endif
+                @else
                   <span class="text-[10px] text-slate-400 italic">-</span>
                 @endif
               </td>
 
-              <!-- 6. Jenis Layanan & Harga -->
+              <!-- 7. Harga -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
-                <div class="font-bold text-slate-900 text-xs">
-                  {{ str_starts_with($customer->package_name ?? '', 'Paket') ? $customer->package_name : ('Paket ' . ($customer->speed ?: '20 Mbps')) }}
-                </div>
-                <div class="text-brand font-black text-xs mt-0.5">
-                  Rp{{ number_format($customer->price ?: 110000, 0, ',', '.') }} <span class="text-[9px] text-slate-400 font-normal">/ bln</span>
-                </div>
+                @if((float) ($customer->price ?? 0) > 0)
+                  <div class="text-brand font-black text-xs">
+                    Rp{{ number_format((float) $customer->price, 0, ',', '.') }}
+                  </div>
+                  <div class="text-[9px] text-slate-400 font-normal">/ bln</div>
+                @else
+                  <span class="text-xs text-slate-400 font-medium">Rp0</span>
+                @endif
               </td>
 
-              <!-- 7. Alamat Pemasangan -->
+              <!-- 8. Alamat -->
               <td class="py-3.5 px-4 text-center">
                 <p class="text-xs text-slate-700 leading-relaxed max-w-[280px] mx-auto">
                   <i class="fa-solid fa-location-dot text-red-500 mr-1"></i>{{ $customer->address }}
@@ -631,7 +622,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="10" class="text-center py-16 text-slate-400">
+              <td colspan="9" class="text-center py-16 text-slate-400">
                 <i class="fa-solid fa-users-slash text-4xl mb-3 text-slate-300"></i>
                 <p class="font-bold text-sm text-slate-600">Tidak ada data pelanggan yang sesuai</p>
                 <p class="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter wilayah Anda.</p>
@@ -943,13 +934,13 @@
                   <option value="{{ $wKey }}">{{ $wName }}</option>
                 @endforeach
               </select>
-              <p class="text-[10px] text-slate-400 mt-1">Pilih wilayah cakupan resmi (Bantarwuni, Linggasari, Kasegeran, Cipete, Pageraji, Batuanten, dll).</p>
+              <p class="text-[10px] text-slate-400 mt-1">Pilih dari daftar desa aktif, atau sesuaikan langsung pada alamat pemasangan.</p>
             </div>
 
             <!-- Alamat Lengkap -->
             <div class="sm:col-span-2">
               <label class="block font-bold text-slate-700 mb-1">Alamat Lengkap Pemasangan <span class="text-red-500">*</span></label>
-              <textarea name="address" id="create_address" rows="3" required placeholder="Nama jalan, RT/RW, Dusun, Desa (cth: Bantarwuni / Linggasari / Kasegeran / Cipete / Pageraji), Kec. Cilongok"
+              <textarea name="address" id="create_address" rows="3" required placeholder="Nama jalan, RT/RW, Dusun, Desa, Kec. Cilongok"
                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand"></textarea>
             </div>
 
@@ -1311,7 +1302,7 @@
                       Klik untuk memilih berkas atau seret file ke sini
                     </p>
                     <p class="text-[11px] text-slate-400 mt-1">
-                      Mendukung format <span class="font-semibold text-slate-600">.xlsx, .xls, .csv</span> (Maksimal 10 MB)
+                      Mendukung format <span class="font-semibold text-slate-600">.xlsx, .xls, .csv</span> (Membaca seluruh sheet sekaligus & tanpa batas ukuran)
                     </p>
                   </div>
                 </template>
@@ -1326,6 +1317,11 @@
                   </div>
                 </template>
               </div>
+            </div>
+
+            <div class="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl text-[11px] text-blue-800">
+              <i class="fa-solid fa-layer-group text-blue-600"></i>
+              <span><strong>Mendukung Seluruh Sheet:</strong> Jika berkas Excel memiliki beberapa sheet/lembar kerja, sistem akan membaca dan mengimpor seluruh sheet secara otomatis.</span>
             </div>
           </div>
 

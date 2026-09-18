@@ -14,11 +14,24 @@ use Laravel\Socialite\Facades\Socialite;
 class GoogleAuthController extends Controller
 {
     /**
+     * Pastikan redirect URI memiliki scheme http:// atau https://
+     */
+    private function normalizeRedirectUri(): void
+    {
+        $redirect = config('services.google.redirect');
+        if (!empty($redirect) && !str_starts_with($redirect, 'http://') && !str_starts_with($redirect, 'https://')) {
+            config(['services.google.redirect' => 'http://' . $redirect]);
+        }
+    }
+
+    /**
      * Redirect the user to the Google authentication page.
      * Mengarahkan pengguna langsung ke halaman otentikasi resmi Google (accounts.google.com).
      */
     public function redirectToGoogle(): RedirectResponse
     {
+        $this->normalizeRedirectUri();
+
         try {
             return Socialite::driver('google')->redirect();
         } catch (\Exception $e) {
@@ -34,8 +47,20 @@ class GoogleAuthController extends Controller
      */
     public function handleGoogleCallback(): RedirectResponse
     {
+        $this->normalizeRedirectUri();
+
         try {
             $googleUser = Socialite::driver('google')->user();
+        } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
+            // Fallback stateless jika terjadi perbedaan session/state
+            try {
+                $googleUser = Socialite::driver('google')->stateless()->user();
+            } catch (\Exception $subE) {
+                Log::error('Google OAuth callback fallback error: ' . $subE->getMessage());
+                return redirect()->route('login')->withErrors([
+                    'email' => 'Autentikasi Google dibatalkan atau sesi kadaluarsa. Silakan coba login kembali.'
+                ]);
+            }
         } catch (\Exception $e) {
             Log::error('Google OAuth callback error: ' . $e->getMessage());
             return redirect()->route('login')->withErrors([

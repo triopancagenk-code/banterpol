@@ -10679,6 +10679,7 @@ class CustomerDriveSeeder extends Seeder
 
         foreach (array_chunk($customers, 50) as $chunk) {
             foreach ($chunk as $c) {
+                $c['village'] = SyncOrderVillagesSeeder::detectVillage($c['address'], $c['admin_notes'] ?? null);
                 Order::updateOrCreate(
                     ['order_number' => $c['order_number']],
                     $c

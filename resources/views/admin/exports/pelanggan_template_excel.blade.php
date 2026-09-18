@@ -74,8 +74,8 @@
                 <th style="width: 220px;">Alamat Email</th>
                 <th style="width: 150px;">Jenis Layanan (Paket)<br><small style="font-weight: normal; color: #94A3B8;">(20/30/50 Mbps)</small></th>
                 <th style="width: 90px;">Kecepatan</th>
-                <th style="width: 120px;">Harga / Bulan (Rp)</th>
-                <th style="width: 320px;">Alamat Lengkap Pemasangan *</th>
+                <th style="width: 120px;">Harga (Rp)</th>
+                <th style="width: 320px;">Alamat *</th>
                 <th style="width: 120px;">Status Berlangganan<br><small style="font-weight: normal; color: #94A3B8;">(Selesai)</small></th>
             </tr>
         </thead>

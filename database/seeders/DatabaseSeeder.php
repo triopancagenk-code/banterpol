@@ -53,6 +53,18 @@ class DatabaseSeeder extends Seeder
         );
 
         User::updateOrCreate(
+            ['email' => 'teknisi@banterpol.net'],
+            [
+                'name' => 'Randi Pratama (Teknisi Lapangan)',
+                'phone' => '081234567888',
+                'role' => 'technician',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('teknisi'),
+            ]
+        );
+
+        User::updateOrCreate(
             ['email' => 'teknisi@banterpool.net'],
             [
                 'name' => 'Randi Pratama (Teknisi Lapangan)',
@@ -60,7 +72,19 @@ class DatabaseSeeder extends Seeder
                 'role' => 'technician',
                 'is_active' => true,
                 'email_verified_at' => now(),
-                'password' => Hash::make('password'),
+                'password' => Hash::make('teknisi'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'kolektor@banterpol.net'],
+            [
+                'name' => 'Bayu Saputra (Kolektor Lapangan)',
+                'phone' => '081234567777',
+                'role' => 'collector',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('kolektor'),
             ]
         );
 
@@ -72,7 +96,43 @@ class DatabaseSeeder extends Seeder
                 'role' => 'collector',
                 'is_active' => true,
                 'email_verified_at' => now(),
-                'password' => Hash::make('password'),
+                'password' => Hash::make('kolektor'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'mamat@teknisi.net'],
+            [
+                'name' => 'Mamat (Teknisi Lapangan)',
+                'phone' => '081234567001',
+                'role' => 'technician',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('mamatteknisi'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'aji@teknisi.net'],
+            [
+                'name' => 'Aji (Teknisi Lapangan)',
+                'phone' => '081234567002',
+                'role' => 'technician',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('ajiteknisi'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'danu@teknisi.net'],
+            [
+                'name' => 'Danu (Teknisi Lapangan)',
+                'phone' => '081234567003',
+                'role' => 'technician',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('danuteknisi'),
             ]
         );
 

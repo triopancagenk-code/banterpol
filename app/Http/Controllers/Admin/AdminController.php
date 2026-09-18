@@ -11,6 +11,7 @@ use App\Services\BillingService;
 use App\Services\CustomerImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
@@ -1153,19 +1154,41 @@ class AdminController extends Controller
         }
 
         if ($wilayahFilter !== 'all') {
-            if ($wilayahFilter === 'Batuanten' || $wilayahFilter === 'Bantuanten') {
-                $query->where(function ($q) {
-                    $q->where('address', 'like', '%Batuanten%')
+            $query->where(function ($q) use ($wilayahFilter) {
+                $q->where('village', $wilayahFilter);
+
+                if ($wilayahFilter === 'Batuanten') {
+                    $q->orWhere('village', 'Bantuanten')
+                      ->orWhere('address', 'like', '%Batuanten%')
                       ->orWhere('address', 'like', '%Bantuanten%');
-                });
-            } elseif ($wilayahFilter === 'Penusupan' || $wilayahFilter === 'Panusupan') {
-                $query->where(function ($q) {
-                    $q->where('address', 'like', '%Penusupan%')
-                      ->orWhere('address', 'like', '%Panusupan%');
-                });
-            } else {
-                $query->where('address', 'like', "%{$wilayahFilter}%");
-            }
+                } elseif ($wilayahFilter === 'Penusupan') {
+                    $q->orWhere('village', 'Panusupan')
+                      ->orWhere('address', 'like', '%Penusupan%')
+                      ->orWhere('address', 'like', '%Panusupan%')
+                      ->orWhere('address', 'like', '%Pecikalan%')
+                      ->orWhere('address', 'like', '%Tinggar Jaya%')
+                      ->orWhere('address', 'like', '%Bojongsari%')
+                      ->orWhere('address', 'like', '%Legok%');
+                } elseif ($wilayahFilter === 'Karangendep' || $wilayahFilter === 'Karanggendep') {
+                    $q->orWhere('village', 'Karanggendep')
+                      ->orWhere('village', 'Karangendep')
+                      ->orWhere('address', 'like', '%Karang%endep%')
+                      ->orWhere('address', 'like', '%Ronten%');
+                } elseif ($wilayahFilter === 'Bantarwuni') {
+                    $q->orWhere('address', 'like', '%Bantarwuni%')
+                      ->orWhere('address', 'like', '%Glempang%');
+                } elseif ($wilayahFilter === 'Linggasari') {
+                    $q->orWhere(function ($sub) {
+                        $sub->where('address', 'like', '%Linggasari%')
+                            ->orWhere(function ($sub2) {
+                                $sub2->where('address', 'like', '%Kembaran%')
+                                     ->where('address', 'not like', '%Bantarwuni%');
+                            });
+                    });
+                } else {
+                    $q->orWhere('address', 'like', "%{$wilayahFilter}%");
+                }
+            });
         }
 
         if ($layananFilter !== 'all') {
@@ -1184,25 +1207,31 @@ class AdminController extends Controller
         // Data KPI
         $allCustomers = Order::all();
         $totalCustomers = $allCustomers->count();
-        $activeCustomers = $allCustomers->where('status', 'Selesai')->count();
+        $activeCustomers = $allCustomers->where('status', '!=', 'Dibatalkan')->count();
         $verifiedKtp = $allCustomers->whereNotNull('id_card_number')->where('id_card_number', '!=', '')->count();
-        $totalMrr = $allCustomers->where('status', 'Selesai')->sum('price');
+        $totalMrr = $allCustomers->where('status', '!=', 'Dibatalkan')->sum('price');
 
-        // Daftar Wilayah Cakupan (Wilayah Resmi Banterpool SIMS)
-        $wilayahList = [
-            'Batuanten' => 'Batuanten / Bantuanten',
-            'Penusupan' => 'Penusupan / Panusupan',
-            'Sawangan' => 'Sawangan',
-            'Jatisaba' => 'Jatisaba',
-            'Karanggendep' => 'Karanggendep',
-            'Sudimara' => 'Sudimara',
-            'Notog' => 'Notog',
-            'Bantarwuni' => 'Bantarwuni',
-            'Linggasari' => 'Linggasari',
-            'Kasegeran' => 'Kasegeran',
-            'Cipete' => 'Cipete',
-            'Pageraji' => 'Pageraji',
-        ];
+        // Daftar Wilayah Dinamis (Hanya desa yang benar-benar ada di database / berkas Excel)
+        $rawVillages = Order::whereNotNull('village')
+            ->where('village', '!=', '')
+            ->where('village', '!=', '-')
+            ->where('village', 'not like', '%template%')
+            ->where('village', 'not like', '%pelanggan%')
+            ->select('village', DB::raw('count(*) as count'))
+            ->groupBy('village')
+            ->orderBy('village')
+            ->pluck('count', 'village')
+            ->all();
+
+        // Susun wilayahList dan wilayahCounts yang 100% dinamis
+        $wilayahList = [];
+        $wilayahCounts = [];
+        foreach ($rawVillages as $vName => $vCount) {
+            if (!\App\Services\CustomerImportService::isGenericSheetName($vName)) {
+                $wilayahList[$vName] = $vName;
+                $wilayahCounts[$vName] = (int) $vCount;
+            }
+        }
 
         // Daftar Layanan
         $layananList = [
@@ -1218,24 +1247,6 @@ class AdminController extends Controller
             'total_mrr' => $totalMrr,
             'wilayah_count' => count($wilayahList),
         ];
-
-        // Hitung pelanggan per wilayah
-        $wilayahCounts = [];
-        foreach ($wilayahList as $wKey => $wName) {
-            if ($wKey === 'Batuanten') {
-                $wilayahCounts[$wKey] = $allCustomers->filter(function ($c) {
-                    return stripos($c->address, 'Batuanten') !== false || stripos($c->address, 'Bantuanten') !== false;
-                })->count();
-            } elseif ($wKey === 'Penusupan') {
-                $wilayahCounts[$wKey] = $allCustomers->filter(function ($c) {
-                    return stripos($c->address, 'Penusupan') !== false || stripos($c->address, 'Panusupan') !== false;
-                })->count();
-            } else {
-                $wilayahCounts[$wKey] = $allCustomers->filter(function ($c) use ($wKey) {
-                    return stripos($c->address, $wKey) !== false;
-                })->count();
-            }
-        }
 
         return view('admin.pelanggan', compact(
             'customers',
@@ -1280,25 +1291,14 @@ class AdminController extends Controller
 
         $address = $validated['address'];
         $wilayah = $request->input('wilayah');
+        if (empty($wilayah)) {
+            $wilayah = \App\Services\CustomerImportService::resolveVillage(null, null, $address);
+        }
         if (!empty($wilayah) && !str_contains(strtolower($address), strtolower($wilayah))) {
             $address = "Desa {$wilayah}, {$address}";
         }
 
-        $odpMap = [
-            'Batuanten' => 'ODP-BAT-01',
-            'Penusupan' => 'ODP-PAN-01',
-            'Sawangan' => 'ODP-SWG-01',
-            'Jatisaba' => 'ODP-JAT-01',
-            'Karanggendep' => 'ODP-KGD-01',
-            'Sudimara' => 'ODP-SUD-01',
-            'Notog' => 'ODP-NOT-01',
-            'Bantarwuni' => 'ODP-BAN-01',
-            'Linggasari' => 'ODP-LIN-01',
-            'Kasegeran' => 'ODP-KAS-01',
-            'Cipete' => 'ODP-CPT-01',
-            'Pageraji' => 'ODP-PGR-01',
-        ];
-        $assignedOdp = $odpMap[$wilayah] ?? 'ODP-CLK-01';
+        $assignedOdp = !empty($wilayah) ? ('ODP-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $wilayah), 0, 3)) . '-01') : 'ODP-CLK-01';
 
         $order = Order::create([
             'order_number' => $orderNumber,
@@ -1313,6 +1313,7 @@ class AdminController extends Controller
             'price' => $validated['price'],
             'total' => $validated['price'],
             'address' => $address,
+            'village' => $wilayah,
             'status' => $validated['status'] ?? 'Selesai',
             'payment_status' => 'Lunas',
             'payment_method' => 'Tunai / Transfer',
@@ -1356,6 +1357,9 @@ class AdminController extends Controller
 
         $address = $validated['address'];
         $wilayah = $request->input('wilayah');
+        if (empty($wilayah)) {
+            $wilayah = \App\Services\CustomerImportService::resolveVillage(null, null, $address);
+        }
         if (!empty($wilayah) && !str_contains(strtolower($address), strtolower($wilayah))) {
             $address = "Desa {$wilayah}, {$address}";
         }
@@ -1371,6 +1375,9 @@ class AdminController extends Controller
         $order->price = $validated['price'];
         $order->total = $validated['price'];
         $order->address = $address;
+        if (!empty($wilayah)) {
+            $order->village = $wilayah;
+        }
         $order->status = $validated['status'];
         $order->save();
 
@@ -1456,19 +1463,10 @@ class AdminController extends Controller
         }
 
         if ($wilayahFilter !== 'all') {
-            if ($wilayahFilter === 'Batuanten' || $wilayahFilter === 'Bantuanten') {
-                $query->where(function ($q) {
-                    $q->where('address', 'like', '%Batuanten%')
-                      ->orWhere('address', 'like', '%Bantuanten%');
-                });
-            } elseif ($wilayahFilter === 'Penusupan' || $wilayahFilter === 'Panusupan') {
-                $query->where(function ($q) {
-                    $q->where('address', 'like', '%Penusupan%')
-                      ->orWhere('address', 'like', '%Panusupan%');
-                });
-            } else {
-                $query->where('address', 'like', "%{$wilayahFilter}%");
-            }
+            $query->where(function ($q) use ($wilayahFilter) {
+                $q->where('village', $wilayahFilter)
+                  ->orWhere('address', 'like', "%{$wilayahFilter}%");
+            });
         }
 
         if ($layananFilter !== 'all') {
@@ -1500,14 +1498,33 @@ class AdminController extends Controller
      */
     public function importPelanggan(Request $request)
     {
+        // Alokasi memori dan batas waktu tak terbatas agar mampu menangani impor data dalam jumlah sangat besar
+        @ini_set('memory_limit', '2048M');
+        @ini_set('max_execution_time', '0');
+        @set_time_limit(0);
+
+        // Periksa jika berkas melebihi batasan konfigurasi upload server
+        if ($request->hasFile('file') && !$request->file('file')->isValid()) {
+            return redirect()->back()->withErrors([
+                'file' => 'Berkas gagal diunggah: ' . $request->file('file')->getErrorMessage()
+            ]);
+        }
+
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:10240',
+            'file' => [
+                'required',
+                'file',
+                function ($attribute, $value, $fail) {
+                    $ext = strtolower($value->getClientOriginalExtension());
+                    if (!in_array($ext, ['xlsx', 'xls', 'csv', 'txt'])) {
+                        $fail('Format berkas harus berupa Excel (.xlsx, .xls) atau .csv.');
+                    }
+                },
+            ],
             'update_existing' => 'nullable|boolean',
         ], [
             'file.required' => 'Silakan pilih berkas file Excel (.xlsx, .xls) atau .csv yang akan diimpor.',
             'file.file' => 'Berkas yang diunggah tidak valid.',
-            'file.mimes' => 'Format berkas harus berupa Excel (.xlsx, .xls) atau .csv.',
-            'file.max' => 'Ukuran berkas maksimal adalah 10 MB.',
         ]);
 
         $updateExisting = $request->boolean('update_existing', true);
