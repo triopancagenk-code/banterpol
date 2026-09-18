@@ -280,9 +280,6 @@
               <i class="fa-solid fa-chevron-right text-[9px] text-slate-400"></i>
               <span class="text-slate-900 font-bold">@yield('page-title', 'Dashboard')</span>
             </div>
-            <h1 class="text-lg font-black text-slate-900 tracking-tight hidden sm:block">
-              @yield('page-title', 'Dashboard')
-            </h1>
           </div>
         </div>
 
@@ -290,10 +287,12 @@
         <div class="flex items-center gap-3 sm:gap-5 text-xs">
 
           <!-- NOC Status Live Pill -->
+          @if(!request()->routeIs('admin.pelanggan*'))
           <div class="hidden md:flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-full font-bold">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>NOC Online: 99.98%</span>
           </div>
+          @endif
 
           <!-- Digital Clock & Real-Time Date Widget -->
           <div class="hidden sm:flex flex-col text-right font-mono"

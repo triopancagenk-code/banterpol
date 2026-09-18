@@ -1140,17 +1140,62 @@ class AdminController extends Controller
         $layananFilter = $request->input('layanan', 'all');
         $statusFilter = $request->input('status', 'all');
 
-        $query = Order::query()->latest();
+        // Dukungan AJAX Live Autocomplete Suggestion (Pencarian Berdasarkan Awalan Abjad)
+        if ($request->ajax() || $request->wantsJson() || $request->has('ajax')) {
+            $search = trim($request->input('q', ''));
+            if (empty($search)) {
+                return response()->json([]);
+            }
+            $lowerSearch = strtolower($search);
+            $upperSearch = strtoupper($search);
+
+            $results = Order::where(function ($q) use ($search, $lowerSearch, $upperSearch) {
+                $q->where('customer_name', 'like', "{$search}%")
+                  ->orWhere('customer_name', 'like', "{$lowerSearch}%")
+                  ->orWhere('customer_name', 'like', "{$upperSearch}%")
+                  ->orWhere('customer_name', 'like', " {$search}%")
+                  ->orWhere('id_card_number', 'like', "{$search}%")
+                  ->orWhere('customer_phone', 'like', "{$search}%")
+                  ->orWhere('order_number', 'like', "{$search}%");
+            })
+            ->orderBy('customer_name', 'asc')
+            ->limit(10)
+            ->get(['id', 'customer_name', 'id_card_number', 'customer_phone', 'village', 'address', 'package_name']);
+
+            return response()->json($results);
+        }
+
+        $query = Order::query();
 
         if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('customer_name', 'like', "%{$search}%")
-                  ->orWhere('id_card_number', 'like', "%{$search}%")
-                  ->orWhere('customer_phone', 'like', "%{$search}%")
-                  ->orWhere('customer_email', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%")
-                  ->orWhere('order_number', 'like', "%{$search}%");
+            $trimmedSearch = trim($search);
+            $lowerSearch = strtolower($trimmedSearch);
+            $upperSearch = strtoupper($trimmedSearch);
+
+            $query->where(function ($q) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                // Awalan nama pelanggan harus sama dengan kata pencarian
+                $q->where('customer_name', 'like', "{$trimmedSearch}%")
+                  ->orWhere('customer_name', 'like', "{$lowerSearch}%")
+                  ->orWhere('customer_name', 'like', "{$upperSearch}%")
+                  ->orWhere('customer_name', 'like', " {$trimmedSearch}%")
+                  ->orWhere('customer_name', 'like', " {$lowerSearch}%")
+                  ->orWhere('customer_name', 'like', " {$upperSearch}%")
+                  ->orWhere('id_card_number', 'like', "{$trimmedSearch}%")
+                  ->orWhere('customer_phone', 'like', "{$trimmedSearch}%")
+                  ->orWhere('order_number', 'like', "{$trimmedSearch}%");
+
+                // Jika pencarian lebih dari 2 karakter, dukung pencarian kata berikutnya atau desa/alamat
+                if (strlen($trimmedSearch) > 2) {
+                    $q->orWhere('customer_name', 'like', "% {$trimmedSearch}%")
+                      ->orWhere('village', 'like', "{$trimmedSearch}%")
+                      ->orWhere('address', 'like', "%{$trimmedSearch}%");
+                }
             });
+
+            // Urutkan hasil pencarian secara alfabetis (A-Z)
+            $query->orderBy('customer_name', 'asc');
+        } else {
+            $query->latest();
         }
 
         if ($wilayahFilter !== 'all') {
@@ -1268,50 +1313,53 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
-            'id_card_number' => 'required|string|max:30',
+            'id_card_number' => 'nullable|string|max:30',
             'birth_date' => 'nullable|date',
             'birth_place' => 'nullable|string|max:100',
-            'customer_phone' => 'required|string|max:50',
-            'customer_email' => 'nullable|email|max:100',
-            'package_name' => 'required|string',
-            'price' => 'required|numeric',
-            'address' => 'required|string',
+            'customer_phone' => 'nullable|string|max:50',
+            'customer_email' => 'nullable|string|max:100',
+            'package_name' => 'nullable|string|max:100',
+            'price' => 'nullable|numeric',
+            'address' => 'nullable|string',
             'wilayah' => 'nullable|string',
             'status' => 'nullable|string',
         ]);
 
         $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
         
+        $packageName = !empty($validated['package_name']) ? $validated['package_name'] : 'Paket 20 Mbps';
         $speed = '20 Mbps';
-        if (str_contains($validated['package_name'], '50')) {
+        if (str_contains($packageName, '50')) {
             $speed = '50 Mbps';
-        } elseif (str_contains($validated['package_name'], '30')) {
+        } elseif (str_contains($packageName, '30')) {
             $speed = '30 Mbps';
         }
 
-        $address = $validated['address'];
+        $address = !empty($validated['address']) ? $validated['address'] : '-';
         $wilayah = $request->input('wilayah');
         if (empty($wilayah)) {
             $wilayah = \App\Services\CustomerImportService::resolveVillage(null, null, $address);
         }
-        if (!empty($wilayah) && !str_contains(strtolower($address), strtolower($wilayah))) {
+        if (!empty($wilayah) && !empty($address) && $address !== '-' && !str_contains(strtolower($address), strtolower($wilayah))) {
             $address = "Desa {$wilayah}, {$address}";
         }
 
         $assignedOdp = !empty($wilayah) ? ('ODP-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $wilayah), 0, 3)) . '-01') : 'ODP-CLK-01';
 
+        $price = isset($validated['price']) && is_numeric($validated['price']) ? (float) $validated['price'] : 110000;
+
         $order = Order::create([
             'order_number' => $orderNumber,
             'customer_name' => $validated['customer_name'],
-            'id_card_number' => $validated['id_card_number'],
+            'id_card_number' => !empty($validated['id_card_number']) ? $validated['id_card_number'] : '-',
             'birth_date' => $validated['birth_date'] ?? null,
             'birth_place' => $validated['birth_place'] ?? 'Banyumas',
-            'customer_phone' => $validated['customer_phone'],
-            'customer_email' => $validated['customer_email'] ?? (strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $validated['customer_name'])) . '@gmail.com'),
-            'package_name' => $validated['package_name'],
+            'customer_phone' => !empty($validated['customer_phone']) ? $validated['customer_phone'] : '-',
+            'customer_email' => !empty($validated['customer_email']) ? $validated['customer_email'] : '-',
+            'package_name' => $packageName,
             'speed' => $speed,
-            'price' => $validated['price'],
-            'total' => $validated['price'],
+            'price' => $price,
+            'total' => $price,
             'address' => $address,
             'village' => $wilayah,
             'status' => $validated['status'] ?? 'Selesai',
@@ -1336,49 +1384,52 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
-            'id_card_number' => 'required|string|max:30',
+            'id_card_number' => 'nullable|string|max:30',
             'birth_date' => 'nullable|date',
             'birth_place' => 'nullable|string|max:100',
-            'customer_phone' => 'required|string|max:50',
-            'customer_email' => 'nullable|email|max:100',
-            'package_name' => 'required|string',
-            'price' => 'required|numeric',
-            'address' => 'required|string',
+            'customer_phone' => 'nullable|string|max:50',
+            'customer_email' => 'nullable|string|max:100',
+            'package_name' => 'nullable|string|max:100',
+            'price' => 'nullable|numeric',
+            'address' => 'nullable|string',
             'wilayah' => 'nullable|string',
-            'status' => 'required|string',
+            'status' => 'nullable|string',
         ]);
 
+        $packageName = !empty($validated['package_name']) ? $validated['package_name'] : ($order->package_name ?: 'Paket 20 Mbps');
         $speed = '20 Mbps';
-        if (str_contains($validated['package_name'], '50')) {
+        if (str_contains($packageName, '50')) {
             $speed = '50 Mbps';
-        } elseif (str_contains($validated['package_name'], '30')) {
+        } elseif (str_contains($packageName, '30')) {
             $speed = '30 Mbps';
         }
 
-        $address = $validated['address'];
+        $address = !empty($validated['address']) ? $validated['address'] : ($order->address ?: '-');
         $wilayah = $request->input('wilayah');
         if (empty($wilayah)) {
             $wilayah = \App\Services\CustomerImportService::resolveVillage(null, null, $address);
         }
-        if (!empty($wilayah) && !str_contains(strtolower($address), strtolower($wilayah))) {
+        if (!empty($wilayah) && !empty($address) && $address !== '-' && !str_contains(strtolower($address), strtolower($wilayah))) {
             $address = "Desa {$wilayah}, {$address}";
         }
 
+        $price = isset($validated['price']) && is_numeric($validated['price']) ? (float) $validated['price'] : ($order->price ?: 110000);
+
         $order->customer_name = $validated['customer_name'];
-        $order->id_card_number = $validated['id_card_number'];
-        $order->birth_date = $validated['birth_date'];
-        $order->birth_place = $validated['birth_place'];
-        $order->customer_phone = $validated['customer_phone'];
-        $order->customer_email = $validated['customer_email'];
-        $order->package_name = $validated['package_name'];
+        $order->id_card_number = !empty($validated['id_card_number']) ? $validated['id_card_number'] : ($order->id_card_number ?: '-');
+        $order->birth_date = !empty($validated['birth_date']) ? $validated['birth_date'] : $order->birth_date;
+        $order->birth_place = !empty($validated['birth_place']) ? $validated['birth_place'] : ($order->birth_place ?: '-');
+        $order->customer_phone = !empty($validated['customer_phone']) ? $validated['customer_phone'] : ($order->customer_phone ?: '-');
+        $order->customer_email = !empty($validated['customer_email']) ? $validated['customer_email'] : ($order->customer_email ?: '-');
+        $order->package_name = $packageName;
         $order->speed = $speed;
-        $order->price = $validated['price'];
-        $order->total = $validated['price'];
+        $order->price = $price;
+        $order->total = $price;
         $order->address = $address;
         if (!empty($wilayah)) {
             $order->village = $wilayah;
         }
-        $order->status = $validated['status'];
+        $order->status = !empty($validated['status']) ? $validated['status'] : ($order->status ?: 'Selesai');
         $order->save();
 
         // Sinkronisasi data tagihan terkait jika ada
@@ -1449,17 +1500,34 @@ class AdminController extends Controller
         $layananFilter = $request->input('layanan', 'all');
         $statusFilter = $request->input('status', 'all');
 
-        $query = Order::query()->latest();
+        $query = Order::query();
 
         if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('customer_name', 'like', "%{$search}%")
-                  ->orWhere('id_card_number', 'like', "%{$search}%")
-                  ->orWhere('customer_phone', 'like', "%{$search}%")
-                  ->orWhere('customer_email', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%")
-                  ->orWhere('order_number', 'like', "%{$search}%");
+            $trimmedSearch = trim($search);
+            $lowerSearch = strtolower($trimmedSearch);
+            $upperSearch = strtoupper($trimmedSearch);
+
+            $query->where(function ($q) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                $q->where('customer_name', 'like', "{$trimmedSearch}%")
+                  ->orWhere('customer_name', 'like', "{$lowerSearch}%")
+                  ->orWhere('customer_name', 'like', "{$upperSearch}%")
+                  ->orWhere('customer_name', 'like', " {$trimmedSearch}%")
+                  ->orWhere('customer_name', 'like', " {$lowerSearch}%")
+                  ->orWhere('customer_name', 'like', " {$upperSearch}%")
+                  ->orWhere('id_card_number', 'like', "{$trimmedSearch}%")
+                  ->orWhere('customer_phone', 'like', "{$trimmedSearch}%")
+                  ->orWhere('order_number', 'like', "{$trimmedSearch}%");
+
+                if (strlen($trimmedSearch) > 2) {
+                    $q->orWhere('customer_name', 'like', "% {$trimmedSearch}%")
+                      ->orWhere('village', 'like', "{$trimmedSearch}%")
+                      ->orWhere('address', 'like', "%{$trimmedSearch}%");
+                }
             });
+
+            $query->orderBy('customer_name', 'asc');
+        } else {
+            $query->latest();
         }
 
         if ($wilayahFilter !== 'all') {

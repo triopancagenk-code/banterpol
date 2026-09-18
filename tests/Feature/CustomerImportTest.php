@@ -584,6 +584,136 @@ XML;
         $responseDirektur->assertDontSee('<th class="py-3.5 px-4 text-center">Alamat Pemasangan</th>', false);
     }
 
+    public function test_admin_and_direktur_customer_page_does_not_display_count_badge_and_noc_online(): void
+    {
+        // 1. Verifikasi POV Admin pada Halaman Pelanggan
+        $responseAdmin = $this->actingAs($this->admin)->get(route('admin.pelanggan'));
+        $responseAdmin->assertStatus(200);
+        $responseAdmin->assertDontSee('NOC Online: 99.98%');
+        $responseAdmin->assertDontSee('bg-brand/10 text-brand text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-brand/20', false);
+
+        // 2. Verifikasi POV Direktur pada Halaman Pelanggan
+        $direktur = User::factory()->create([
+            'email' => 'direktur.nobadge@banterpool.net',
+            'name' => 'Direktur Utama',
+            'role' => 'direktur',
+            'is_active' => true,
+        ]);
+
+        $responseDirektur = $this->actingAs($direktur)->get(route('admin.pelanggan'));
+        $responseDirektur->assertStatus(200);
+        $responseDirektur->assertDontSee('NOC Online: 99.98%');
+        $responseDirektur->assertDontSee('bg-brand/10 text-brand text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-brand/20', false);
+
+        // 3. Pastikan pada halaman non-pelanggan (Dashboard), NOC Online tetap tampil
+        $responseDashboard = $this->actingAs($this->admin)->get(route('admin.dashboard'));
+        $responseDashboard->assertStatus(200);
+        $responseDashboard->assertSee('NOC Online: 99.98%');
+    }
+
+    public function test_search_matches_customer_by_prefix_and_supports_autocomplete_suggestions(): void
+    {
+        Order::query()->delete();
+
+        Order::create([
+            'order_number' => 'PLG-2026-001',
+            'customer_name' => 'Aditya Pratama',
+            'id_card_number' => '3302172311940001',
+            'customer_phone' => '082137006009',
+            'customer_email' => '-',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 150000,
+            'total' => 150000,
+            'address' => 'Desa Batuanten RT 05 RW 03',
+            'village' => 'Batuanten',
+            'status' => 'Selesai',
+        ]);
+
+        Order::create([
+            'order_number' => 'PLG-2026-002',
+            'customer_name' => 'Agus Priyono',
+            'id_card_number' => '3302170212880002',
+            'customer_phone' => '082221100306',
+            'customer_email' => '-',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 165000,
+            'total' => 165000,
+            'address' => 'Desa Batuanten RT 05 RW 01',
+            'village' => 'Batuanten',
+            'status' => 'Selesai',
+        ]);
+
+        Order::create([
+            'order_number' => 'PLG-2026-003',
+            'customer_name' => 'Ernawati',
+            'id_card_number' => '3302176102950001',
+            'customer_phone' => '085319000098',
+            'customer_email' => '-',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 150000,
+            'total' => 150000,
+            'address' => 'Desa Batuanten RT 07 RW 03',
+            'village' => 'Batuanten',
+            'status' => 'Selesai',
+        ]);
+
+        Order::create([
+            'order_number' => 'PLG-2026-004',
+            'customer_name' => 'Wahyuni',
+            'id_card_number' => '3315025002890002',
+            'customer_phone' => '085879577442',
+            'customer_email' => '-',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 165000,
+            'total' => 165000,
+            'address' => 'Desa Batuanten RT 07 RW 03',
+            'village' => 'Batuanten',
+            'status' => 'Selesai',
+        ]);
+
+        // 1. Verifikasi POV Admin: Halaman pencarian awalan 'A'
+        $resAdmin = $this->actingAs($this->admin)->get(route('admin.pelanggan', ['q' => 'A']));
+        $resAdmin->assertStatus(200);
+        $resAdmin->assertSee('Aditya Pratama');
+        $resAdmin->assertSee('Agus Priyono');
+        $resAdmin->assertDontSee('Ernawati');
+        $resAdmin->assertDontSee('Wahyuni');
+
+        // 2. Verifikasi POV Admin: AJAX Autocomplete Suggestions awalan 'A'
+        $resAdminAjax = $this->actingAs($this->admin)->getJson(route('admin.pelanggan', ['q' => 'A', 'ajax' => '1']));
+        $resAdminAjax->assertStatus(200);
+        $resAdminAjax->assertJsonFragment(['customer_name' => 'Aditya Pratama']);
+        $resAdminAjax->assertJsonFragment(['customer_name' => 'Agus Priyono']);
+        $resAdminAjax->assertJsonMissing(['customer_name' => 'Ernawati']);
+        $resAdminAjax->assertJsonMissing(['customer_name' => 'Wahyuni']);
+
+        // 3. Verifikasi POV Direktur: Halaman pencarian dan AJAX autocomplete awalan 'A'
+        $direktur = User::factory()->create([
+            'email' => 'direktur.prefix@banterpool.net',
+            'name' => 'Direktur Utama',
+            'role' => 'direktur',
+            'is_active' => true,
+        ]);
+
+        $resDir = $this->actingAs($direktur)->get(route('admin.pelanggan', ['q' => 'A']));
+        $resDir->assertStatus(200);
+        $resDir->assertSee('Aditya Pratama');
+        $resDir->assertSee('Agus Priyono');
+        $resDir->assertDontSee('Ernawati');
+        $resDir->assertDontSee('Wahyuni');
+
+        $resDirAjax = $this->actingAs($direktur)->getJson(route('admin.pelanggan', ['q' => 'A', 'ajax' => '1']));
+        $resDirAjax->assertStatus(200);
+        $resDirAjax->assertJsonFragment(['customer_name' => 'Aditya Pratama']);
+        $resDirAjax->assertJsonFragment(['customer_name' => 'Agus Priyono']);
+        $resDirAjax->assertJsonMissing(['customer_name' => 'Ernawati']);
+        $resDirAjax->assertJsonMissing(['customer_name' => 'Wahyuni']);
+    }
+
     public function test_import_correctly_parses_various_indonesian_price_formats(): void
     {
         $csvContent = "Nama Lengkap,Alamat,Jenis Layanan,Harga\n"
@@ -931,6 +1061,72 @@ XML;
         $this->assertEquals(2, Order::count());
         $this->assertEquals(1, Order::where('customer_name', 'Achmad Sefuloh')->count());
         $this->assertEquals(1, Order::where('customer_name', 'Ernawati')->count());
+    }
+
+    public function test_admin_can_update_customer_with_partial_data_and_dash_email(): void
+    {
+        $order = Order::create([
+            'order_number' => 'BTR-202609-0001',
+            'customer_name' => 'Aminah Nur Apriani Ningsih',
+            'id_card_number' => '3302204304050001',
+            'birth_place' => 'Banyumas',
+            'birth_date' => '2005-04-30',
+            'customer_phone' => '085700879160',
+            'customer_email' => 'old@example.com',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
+            'address' => 'Bantarwuni RT2/RW4',
+            'village' => 'Bantarwuni',
+            'status' => 'Selesai',
+        ]);
+
+        // Kirim update hanya dengan nama dan email berupa '-', sisanya kosong
+        $response = $this->actingAs($this->admin)->put(route('admin.pelanggan.update', $order->id), [
+            'customer_name' => 'Aminah Nur Apriani Ningsih (Updated)',
+            'id_card_number' => '',
+            'customer_phone' => '',
+            'birth_place' => '',
+            'birth_date' => '',
+            'customer_email' => '-',
+            'package_name' => '',
+            'price' => '',
+            'address' => '',
+            'wilayah' => '',
+            'status' => '',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $order->refresh();
+        $this->assertEquals('Aminah Nur Apriani Ningsih (Updated)', $order->customer_name);
+        $this->assertEquals('-', $order->customer_email);
+        $this->assertNotEmpty($order->address);
+    }
+
+    public function test_admin_can_create_customer_with_only_name(): void
+    {
+        $response = $this->actingAs($this->admin)->post(route('admin.pelanggan.store'), [
+            'customer_name' => 'Pelanggan Baru Tanpa Data Lengkap',
+            'customer_email' => '-',
+            'id_card_number' => '',
+            'customer_phone' => '',
+            'address' => '',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('orders', [
+            'customer_name' => 'Pelanggan Baru Tanpa Data Lengkap',
+            'customer_email' => '-',
+            'id_card_number' => '-',
+            'customer_phone' => '-',
+            'address' => '-',
+            'status' => 'Selesai',
+        ]);
     }
 }
 

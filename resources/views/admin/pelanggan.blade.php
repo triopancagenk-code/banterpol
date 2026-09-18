@@ -174,62 +174,55 @@
     <div>
       <div class="flex items-center gap-2">
         <h2 class="text-xl font-black text-slate-900 tracking-tight">Master Data Pelanggan</h2>
-        <span class="bg-brand/10 text-brand text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-brand/20">
-          {{ $stats['total'] }} Pelanggan
-        </span>
       </div>
       <p class="text-xs text-slate-500 mt-1">
         Data pendaftaran pelanggan terintegrasi (No, Nama Pemohon, No KTP, No Handphone, Jenis Layanan, Harga, dan Alamat).
       </p>
     </div>
 
-    <div class="flex items-center flex-wrap gap-2">
-      <!-- Tombol Tambah Pelanggan -->
+    <div class="grid grid-cols-2 gap-2 shrink-0">
+      <!-- 1. Tambah Pelanggan -->
       <button type="button" @click="openCreateModal = true"
-              class="bg-brand hover:bg-red-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+              class="w-full sm:w-48 h-10 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
         <i class="fa-solid fa-user-plus"></i>
         <span>Tambah Pelanggan</span>
       </button>
 
-      <!-- Tombol Import Excel -->
+      <!-- 2. Import Excel -->
       <button type="button" @click="openImportModal = true"
-              class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+              class="w-full sm:w-48 h-10 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
         <i class="fa-solid fa-file-import"></i>
         <span>Import Excel</span>
       </button>
 
-      <!-- Tombol Export Excel -->
+      <!-- 3. Export Excel -->
       <a href="{{ route('admin.pelanggan.export', request()->query()) }}"
-         class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+         class="w-full sm:w-48 h-10 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
         <i class="fa-solid fa-file-excel"></i>
         <span>Export Excel (.xls)</span>
       </a>
 
-      <!-- Tombol Hapus Terpilih / Massal -->
-      <button type="button"
-              x-show="selectedIds.length > 0"
-              style="display: none;"
-              @click="confirmBulkDelete(false)"
-              class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
-        <i class="fa-solid fa-trash-can"></i>
-        <span>Hapus Terpilih (<span x-text="selectedIds.length"></span>)</span>
-      </button>
-
-      @if($stats['total'] > 0)
+      <!-- 4. Hapus Semua / Hapus Terpilih -->
+      <div>
         <button type="button"
+                x-show="selectedIds.length > 0"
+                style="display: none;"
+                @click="confirmBulkDelete(false)"
+                class="w-full sm:w-48 h-10 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-trash-can"></i>
+          <span>Hapus (<span x-text="selectedIds.length"></span>)</span>
+        </button>
+
+        <button type="button"
+                x-show="selectedIds.length === 0"
                 @click="confirmBulkDelete(true)"
-                class="bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                @if($stats['total'] == 0) disabled @endif
+                class="w-full sm:w-48 h-10 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Hapus Semua Data Pelanggan Sekaligus">
-          <i class="fa-solid fa-trash-arrow-up text-red-500"></i>
+          <i class="fa-solid fa-trash-arrow-up text-white"></i>
           <span>Hapus Semua</span>
         </button>
-      @endif
-
-      <!-- Refresh -->
-      <a href="{{ route('admin.pelanggan') }}"
-         class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold p-2.5 rounded-xl transition shadow-xs" title="Refresh">
-        <i class="fa-solid fa-rotate-right"></i>
-      </a>
+      </div>
     </div>
   </div>
 
@@ -251,49 +244,49 @@
     </div>
 
     <!-- Pelanggan Aktif -->
-    <div class="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200/70 shadow-xs flex items-center justify-between">
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
-        <p class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Pelanggan Aktif</p>
-        <h3 class="text-2xl font-black text-emerald-900 mt-1">{{ number_format($stats['active'], 0, ',', '.') }}</h3>
-        <span class="text-[10px] text-emerald-700 font-medium">Koneksi Aktif / Online</span>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pelanggan Aktif</p>
+        <h3 class="text-2xl font-black text-slate-900 mt-1">{{ number_format($stats['active'], 0, ',', '.') }}</h3>
+        <span class="text-[10px] text-slate-500 font-medium">Koneksi Aktif / Online</span>
       </div>
-      <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
+      <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
         <i class="fa-solid fa-circle-check"></i>
       </div>
     </div>
 
     <!-- KTP Terverifikasi -->
-    <div class="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/70 shadow-xs flex items-center justify-between">
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
-        <p class="text-[10px] font-bold text-amber-700 uppercase tracking-wider">KTP / NIK Valid</p>
-        <h3 class="text-2xl font-black text-amber-900 mt-1">{{ number_format($stats['verified_ktp'], 0, ',', '.') }}</h3>
-        <span class="text-[10px] text-amber-700 font-medium">Tercatat di Formulir</span>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">KTP / NIK Valid</p>
+        <h3 class="text-2xl font-black text-slate-900 mt-1">{{ number_format($stats['verified_ktp'], 0, ',', '.') }}</h3>
+        <span class="text-[10px] text-slate-500 font-medium">Tercatat di Formulir</span>
       </div>
-      <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg">
+      <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
         <i class="fa-regular fa-id-card"></i>
       </div>
     </div>
 
     <!-- Estimasi MRR Bulanan -->
-    <div class="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-200/70 shadow-xs flex items-center justify-between">
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
-        <p class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Estimasi MRR</p>
-        <h3 class="text-xl sm:text-2xl font-black text-indigo-950 mt-1">Rp{{ number_format($stats['total_mrr'] / 1000000, 1, ',', '.') }} Jt</h3>
-        <span class="text-[10px] text-indigo-700 font-medium">Omset Rutin Bulanan</span>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estimasi MRR</p>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">Rp{{ number_format($stats['total_mrr'] / 1000000, 1, ',', '.') }} Jt</h3>
+        <span class="text-[10px] text-slate-500 font-medium">Omset Rutin Bulanan</span>
       </div>
-      <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg">
+      <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
         <i class="fa-solid fa-money-bill-trend-up"></i>
       </div>
     </div>
 
     <!-- Wilayah Cakupan -->
-    <div class="bg-red-50/60 p-4 rounded-2xl border border-red-200/70 shadow-xs flex items-center justify-between col-span-2 sm:col-span-2 lg:col-span-1">
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between col-span-2 sm:col-span-2 lg:col-span-1">
       <div>
-        <p class="text-[10px] font-bold text-red-700 uppercase tracking-wider">Wilayah Cakupan</p>
-        <h3 class="text-2xl font-black text-red-950 mt-1">{{ $stats['wilayah_count'] }} Desa</h3>
-        <span class="text-[10px] text-red-700 font-medium">Banyumas & Sekitarnya</span>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Wilayah Cakupan</p>
+        <h3 class="text-2xl font-black text-slate-900 mt-1">{{ $stats['wilayah_count'] }} Desa</h3>
+        <span class="text-[10px] text-slate-500 font-medium">Banyumas & Sekitarnya</span>
       </div>
-      <div class="w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center text-lg">
+      <div class="w-10 h-10 rounded-xl bg-red-50 text-brand flex items-center justify-center text-lg">
         <i class="fa-solid fa-map-location-dot"></i>
       </div>
     </div>
@@ -306,21 +299,136 @@
   <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
     <form method="GET" action="{{ route('admin.pelanggan') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
       
-      <!-- Search Input -->
-      <div class="lg:col-span-4">
+      <!-- Search Input with Live Autocomplete Suggestions (Sesuai Contoh Pencarian Awalan Abjad) -->
+      <div class="sm:col-span-2 lg:col-span-4"
+           x-data="{
+             searchVal: '{{ addslashes($search) }}',
+             suggestions: [],
+             showDropdown: false,
+             loading: false,
+             selectedIndex: -1,
+
+             async onInput() {
+               const val = this.searchVal.trim();
+               if (!val) {
+                 this.suggestions = [];
+                 this.showDropdown = false;
+                 this.selectedIndex = -1;
+                 return;
+               }
+               this.loading = true;
+               try {
+                 const res = await fetch(`{{ route('admin.pelanggan') }}?ajax=1&q=${encodeURIComponent(val)}`, {
+                   headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                 });
+                 if (res.ok) {
+                   this.suggestions = await res.json();
+                   this.showDropdown = this.suggestions.length > 0;
+                   this.selectedIndex = -1;
+                 }
+               } catch (err) {
+                 this.suggestions = [];
+               } finally {
+                 this.loading = false;
+               }
+             },
+
+             selectItem(item) {
+               this.searchVal = item.customer_name;
+               this.showDropdown = false;
+               $nextTick(() => {
+                 $el.closest('form').submit();
+               });
+             },
+
+             onKeyDown(e) {
+               if (!this.showDropdown || this.suggestions.length === 0) return;
+               if (e.key === 'ArrowDown') {
+                 e.preventDefault();
+                 this.selectedIndex = (this.selectedIndex + 1) % this.suggestions.length;
+               } else if (e.key === 'ArrowUp') {
+                 e.preventDefault();
+                 this.selectedIndex = (this.selectedIndex - 1 + this.suggestions.length) % this.suggestions.length;
+               } else if (e.key === 'Enter' && this.selectedIndex >= 0) {
+                 e.preventDefault();
+                 this.selectItem(this.suggestions[this.selectedIndex]);
+               } else if (e.key === 'Escape') {
+                 this.showDropdown = false;
+               }
+             },
+
+             highlightPrefix(name, prefix) {
+               if (!prefix) return name;
+               const lowerName = name.toLowerCase();
+               const lowerPrefix = prefix.toLowerCase();
+               if (lowerName.startsWith(lowerPrefix)) {
+                 const matched = name.substring(0, prefix.length);
+                 const rest = name.substring(prefix.length);
+                 return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+               }
+               return name;
+             }
+           }"
+           @click.outside="showDropdown = false">
         <label class="block text-[11px] font-bold text-slate-700 mb-1">Pencarian Data Pelanggan</label>
         <div class="relative">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-          <input type="text" name="q" value="{{ $search }}"
+          <input type="text" name="q"
+                 x-model="searchVal"
+                 @input.debounce.150ms="onInput()"
+                 @keydown="onKeyDown($event)"
+                 @focus="if (suggestions.length > 0) showDropdown = true"
+                 autocomplete="off"
                  placeholder="Cari NIK, Nama, No. HP, Email, Alamat..."
-                 class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
+                 class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand transition">
+
+          <!-- Spinner Loading -->
+          <div x-show="loading" style="display: none;" class="absolute right-3 top-2.5 text-slate-400 text-xs">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+          </div>
+
+          <!-- Dropdown Autocomplete Awalan (Seperti Omnibox Google) -->
+          <div x-show="showDropdown && suggestions.length > 0"
+               style="display: none;"
+               x-transition:enter="transition ease-out duration-100"
+               x-transition:enter-start="transform opacity-0 scale-98"
+               x-transition:enter-end="transform opacity-100 scale-100"
+               x-transition:leave="transition ease-in duration-75"
+               x-transition:leave-start="transform opacity-100 scale-100"
+               x-transition:leave-end="transform opacity-0 scale-98"
+               class="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto">
+            
+            <div class="px-3.5 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-400 flex items-center justify-between">
+              <span>Hasil Pencarian Awalan "<span class="text-slate-700 font-extrabold" x-text="searchVal"></span>"</span>
+              <span class="text-[9px] text-slate-400">Pilih nama atau tekan Enter</span>
+            </div>
+
+            <template x-for="(item, idx) in suggestions" :key="item.id">
+              <div @click="selectItem(item)"
+                   :class="selectedIndex === idx ? 'bg-red-50 text-brand' : 'hover:bg-slate-50 text-slate-700'"
+                   class="px-3.5 py-2.5 cursor-pointer flex items-center justify-between text-xs transition">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 text-[10px]">
+                    <i class="fa-solid fa-user"></i>
+                  </div>
+                  <div class="truncate">
+                    <span class="text-xs" x-html="highlightPrefix(item.customer_name, searchVal)"></span>
+                    <span class="text-[10px] text-slate-400 ml-1.5" x-text="item.village ? '• ' + item.village : ''"></span>
+                  </div>
+                </div>
+                <div class="text-right shrink-0 ml-2">
+                  <span class="text-[10px] text-slate-400 font-mono block" x-text="item.customer_phone || item.id_card_number || ''"></span>
+                </div>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
       <!-- Filter Wilayah / Desa -->
-      <div class="lg:col-span-3">
+      <div class="sm:col-span-1 lg:col-span-3">
         <label class="block text-[11px] font-bold text-slate-700 mb-1">Filter Wilayah / Desa</label>
-        <select name="wilayah" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
+        <select name="wilayah" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
           <option value="all">Semua Wilayah ({{ $stats['total'] }} Pelanggan)</option>
           @foreach($wilayahList as $key => $name)
             @php $cW = $wilayahCounts[$key] ?? 0; @endphp
@@ -332,9 +440,9 @@
       </div>
 
       <!-- Filter Layanan -->
-      <div class="lg:col-span-2">
+      <div class="sm:col-span-1 lg:col-span-2">
         <label class="block text-[11px] font-bold text-slate-700 mb-1">Jenis Layanan</label>
-        <select name="layanan" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
+        <select name="layanan" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
           <option value="all">Semua Layanan</option>
           @foreach($layananList as $key => $label)
             <option value="{{ $key }}" {{ $layananFilter === $key ? 'selected' : '' }}>{{ $label }}</option>
@@ -342,53 +450,27 @@
         </select>
       </div>
 
-      <!-- Filter Status -->
-      <div class="lg:col-span-2">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1">Status</label>
-        <select name="status" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
-          <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status</option>
-          <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Aktif</option>
-          <option value="Sedang Dipasang" {{ $statusFilter === 'Sedang Dipasang' ? 'selected' : '' }}>Sedang Dipasang</option>
-          <option value="Jadwal Teknisi" {{ $statusFilter === 'Jadwal Teknisi' ? 'selected' : '' }}>Jadwal Teknisi</option>
-          <option value="Menunggu Konfirmasi" {{ $statusFilter === 'Menunggu Konfirmasi' ? 'selected' : '' }}>Menunggu Konfirmasi</option>
-        </select>
-      </div>
-
-      <!-- Submit & Reset -->
-      <div class="lg:col-span-1 flex items-center gap-1.5">
-        <button type="submit" class="w-full bg-brand text-white py-2 px-3 rounded-xl text-xs font-bold hover:bg-red-700 transition">
-          Filter
-        </button>
+      <!-- Filter Status & Reset -->
+      <div class="sm:col-span-2 lg:col-span-3 flex items-end gap-2">
+        <div class="flex-1 min-w-0">
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Status</label>
+          <select name="status" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
+            <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status</option>
+            <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Aktif</option>
+            <option value="Sedang Dipasang" {{ $statusFilter === 'Sedang Dipasang' ? 'selected' : '' }}>Sedang Dipasang</option>
+            <option value="Jadwal Teknisi" {{ $statusFilter === 'Jadwal Teknisi' ? 'selected' : '' }}>Jadwal Teknisi</option>
+            <option value="Menunggu Konfirmasi" {{ $statusFilter === 'Menunggu Konfirmasi' ? 'selected' : '' }}>Menunggu Konfirmasi</option>
+          </select>
+        </div>
         @if($search || $wilayahFilter !== 'all' || $layananFilter !== 'all' || $statusFilter !== 'all')
-          <a href="{{ route('admin.pelanggan') }}" class="p-2 text-slate-400 hover:text-red-600 text-xs font-bold" title="Reset Filter">
-            <i class="fa-solid fa-xmark"></i>
+          <a href="{{ route('admin.pelanggan') }}" class="py-2 px-3 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 border border-slate-200" title="Reset Semua Filter">
+            <i class="fa-solid fa-arrow-rotate-left text-[11px]"></i>
+            <span>Reset</span>
           </a>
         @endif
       </div>
 
     </form>
-
-    <!-- Quick Wilayah Filter Pills -->
-    <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-      <span class="text-[11px] font-bold text-slate-400 whitespace-nowrap mr-1 flex items-center gap-1">
-        <i class="fa-solid fa-filter text-[10px]"></i> Wilayah:
-      </span>
-      <a href="{{ route('admin.pelanggan', array_merge(request()->except(['wilayah', 'page']), ['wilayah' => 'all'])) }}"
-         class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap {{ $wilayahFilter === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
-        Semua ({{ $stats['total'] }})
-      </a>
-      @foreach($wilayahList as $key => $name)
-        @php 
-          $cW = $wilayahCounts[$key] ?? 0;
-          $isActive = ($wilayahFilter === $key);
-          $displayName = $name;
-        @endphp
-        <a href="{{ route('admin.pelanggan', array_merge(request()->except(['wilayah', 'page']), ['wilayah' => $key])) }}"
-           class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap {{ $isActive ? 'bg-brand text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
-          {{ $displayName }} ({{ $cW }})
-        </a>
-      @endforeach
-    </div>
   </div>
 
   <!-- Selection Status Bar (Aktif ketika ada data yang dipilih) -->
@@ -489,9 +571,6 @@
               <!-- Nama Pemohon -->
               <td class="py-3.5 px-4 text-center">
                 <div class="font-bold text-slate-900 text-xs">{{ $customer->customer_name }}</div>
-                @if($customer->order_number)
-                  <span class="font-mono text-[10px] text-slate-400 block mt-0.5">{{ $customer->order_number }}</span>
-                @endif
               </td>
 
               <!-- 3. No KTP -->
@@ -534,11 +613,6 @@
                   <div class="font-bold text-slate-900 text-xs">
                     {{ $customer->package_name }}
                   </div>
-                  @if($customer->speed)
-                    <div class="text-[10px] text-slate-500 font-medium mt-0.5">
-                      <i class="fa-solid fa-gauge-high text-[9px] text-slate-400 mr-0.5"></i>{{ $customer->speed }}
-                    </div>
-                  @endif
                 @else
                   <span class="text-[10px] text-slate-400 italic">-</span>
                 @endif
@@ -550,7 +624,6 @@
                   <div class="text-brand font-black text-xs">
                     Rp{{ number_format((float) $customer->price, 0, ',', '.') }}
                   </div>
-                  <div class="text-[9px] text-slate-400 font-normal">/ bln</div>
                 @else
                   <span class="text-xs text-slate-400 font-medium">Rp0</span>
                 @endif
@@ -559,7 +632,7 @@
               <!-- 8. Alamat -->
               <td class="py-3.5 px-4 text-center">
                 <p class="text-xs text-slate-700 leading-relaxed max-w-[280px] mx-auto">
-                  <i class="fa-solid fa-location-dot text-red-500 mr-1"></i>{{ $customer->address }}
+                  {{ $customer->address }}
                 </p>
               </td>
 
@@ -857,15 +930,15 @@
 
             <!-- No KTP / NIK -->
             <div>
-              <label class="block font-bold text-slate-700 mb-1">No. KTP / NIK (16 Digit) <span class="text-red-500">*</span></label>
-              <input type="text" name="id_card_number" required maxlength="20" placeholder="3302xxxxxxxxxxxx"
+              <label class="block font-bold text-slate-700 mb-1">No. KTP / NIK (16 Digit)</label>
+              <input type="text" name="id_card_number" maxlength="20" placeholder="3302xxxxxxxxxxxx"
                      class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono font-semibold">
             </div>
 
             <!-- No Handphone -->
             <div>
-              <label class="block font-bold text-slate-700 mb-1">No. Handphone / WhatsApp <span class="text-red-500">*</span></label>
-              <input type="text" name="customer_phone" required placeholder="08xxxxxxxxxx"
+              <label class="block font-bold text-slate-700 mb-1">No. Handphone / WhatsApp</label>
+              <input type="text" name="customer_phone" placeholder="08xxxxxxxxxx"
                      class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono">
             </div>
 
@@ -886,14 +959,14 @@
             <!-- Email -->
             <div class="sm:col-span-2">
               <label class="block font-bold text-slate-700 mb-1">Alamat Email</label>
-              <input type="email" name="customer_email" placeholder="pelanggan@gmail.com"
+              <input type="text" name="customer_email" placeholder="pelanggan@gmail.com atau -"
                      class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
             </div>
 
             <!-- Pilihan Layanan -->
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Pilihan Layanan / Paket <span class="text-red-500">*</span></label>
-              <select name="package_name" required
+              <label class="block font-bold text-slate-700 mb-1">Pilihan Layanan / Paket</label>
+              <select name="package_name"
                       @change="
                         if ($el.value.includes('50')) document.getElementById('create_price').value = 220000;
                         else if ($el.value.includes('30')) document.getElementById('create_price').value = 165000;
@@ -908,15 +981,15 @@
 
             <!-- Harga Paket -->
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Harga Bulanan (Rp) <span class="text-red-500">*</span></label>
-              <input type="number" name="price" id="create_price" value="110000" required
+              <label class="block font-bold text-slate-700 mb-1">Harga Bulanan (Rp)</label>
+              <input type="number" name="price" id="create_price" value="110000"
                      class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-bold text-brand">
             </div>
 
             <!-- Pilihan Wilayah / Desa Cakupan -->
             <div class="sm:col-span-2">
-              <label class="block font-bold text-slate-700 mb-1">Wilayah / Desa Cakupan <span class="text-red-500">*</span></label>
-              <select name="wilayah" id="create_wilayah" required
+              <label class="block font-bold text-slate-700 mb-1">Wilayah / Desa Cakupan</label>
+              <select name="wilayah" id="create_wilayah"
                       @change="
                         let selectedW = $el.value;
                         let addrEl = document.getElementById('create_address');
@@ -939,8 +1012,8 @@
 
             <!-- Alamat Lengkap -->
             <div class="sm:col-span-2">
-              <label class="block font-bold text-slate-700 mb-1">Alamat Lengkap Pemasangan <span class="text-red-500">*</span></label>
-              <textarea name="address" id="create_address" rows="3" required placeholder="Nama jalan, RT/RW, Dusun, Desa, Kec. Cilongok"
+              <label class="block font-bold text-slate-700 mb-1">Alamat Lengkap Pemasangan</label>
+              <textarea name="address" id="create_address" rows="3" placeholder="Nama jalan, RT/RW, Dusun, Desa, Kec. Cilongok"
                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand"></textarea>
             </div>
 
@@ -1029,15 +1102,15 @@
 
               <!-- No KTP / NIK -->
               <div>
-                <label class="block font-bold text-slate-700 mb-1">No. KTP / NIK (16 Digit) <span class="text-red-500">*</span></label>
-                <input type="text" name="id_card_number" x-model="selectedCustomer.id_card_number" required maxlength="20"
+                <label class="block font-bold text-slate-700 mb-1">No. KTP / NIK (16 Digit)</label>
+                <input type="text" name="id_card_number" x-model="selectedCustomer.id_card_number" maxlength="20"
                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono font-bold text-slate-900">
               </div>
 
               <!-- No Handphone -->
               <div>
-                <label class="block font-bold text-slate-700 mb-1">No. Handphone / WhatsApp <span class="text-red-500">*</span></label>
-                <input type="text" name="customer_phone" x-model="selectedCustomer.customer_phone" required
+                <label class="block font-bold text-slate-700 mb-1">No. Handphone / WhatsApp</label>
+                <input type="text" name="customer_phone" x-model="selectedCustomer.customer_phone"
                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono font-semibold">
               </div>
 
@@ -1058,14 +1131,14 @@
               <!-- Email -->
               <div class="sm:col-span-2">
                 <label class="block font-bold text-slate-700 mb-1">Alamat Email</label>
-                <input type="email" name="customer_email" x-model="selectedCustomer.customer_email"
+                <input type="text" name="customer_email" x-model="selectedCustomer.customer_email" placeholder="pelanggan@gmail.com atau -"
                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
               </div>
 
               <!-- Pilihan Layanan -->
               <div>
-                <label class="block font-bold text-slate-700 mb-1">Pilihan Layanan / Paket <span class="text-red-500">*</span></label>
-                <select name="package_name" x-model="selectedCustomer.package_name" required
+                <label class="block font-bold text-slate-700 mb-1">Pilihan Layanan / Paket</label>
+                <select name="package_name" x-model="selectedCustomer.package_name"
                         @change="
                           if ($el.value.includes('50')) selectedCustomer.price = 220000;
                           else if ($el.value.includes('30')) selectedCustomer.price = 165000;
@@ -1080,8 +1153,8 @@
 
               <!-- Harga Paket -->
               <div>
-                <label class="block font-bold text-slate-700 mb-1">Harga Bulanan (Rp) <span class="text-red-500">*</span></label>
-                <input type="number" name="price" x-model="selectedCustomer.price" required
+                <label class="block font-bold text-slate-700 mb-1">Harga Bulanan (Rp)</label>
+                <input type="number" name="price" x-model="selectedCustomer.price"
                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-bold text-brand">
               </div>
 
@@ -1109,15 +1182,15 @@
 
               <!-- Alamat Lengkap -->
               <div class="sm:col-span-2">
-                <label class="block font-bold text-slate-700 mb-1">Alamat Lengkap Pemasangan <span class="text-red-500">*</span></label>
-                <textarea name="address" rows="3" x-model="selectedCustomer.address" required
+                <label class="block font-bold text-slate-700 mb-1">Alamat Lengkap Pemasangan</label>
+                <textarea name="address" rows="3" x-model="selectedCustomer.address"
                           class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand"></textarea>
               </div>
 
               <!-- Status Pelanggan -->
               <div class="sm:col-span-2">
                 <label class="block font-bold text-slate-700 mb-1">Status Aktivasi Pelanggan</label>
-                <select name="status" x-model="selectedCustomer.status" required
+                <select name="status" x-model="selectedCustomer.status"
                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
                   <option value="Selesai">Selesai / Aktif (Online)</option>
                   <option value="Sedang Dipasang">Sedang Dipasang</option>

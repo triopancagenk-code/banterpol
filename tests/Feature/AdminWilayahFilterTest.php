@@ -64,4 +64,19 @@ class AdminWilayahFilterTest extends TestCase
         $responseBw->assertSee('Nartim Bantarwuni');
         $responseBw->assertDontSee('Erna Linggasari');
     }
+
+    public function test_filter_button_is_removed_and_dropdowns_submit_automatically(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('admin.pelanggan'));
+        $response->assertStatus(200);
+
+        // Pastikan button 'Filter' sudah tidak ada
+        $response->assertDontSee('Filter</button>', false);
+
+        // Pastikan dropdown wilayah, layanan, dan status memiliki onchange="this.form.submit()"
+        $response->assertSee('name="wilayah" onchange="this.form.submit()"', false);
+        $response->assertSee('name="layanan" onchange="this.form.submit()"', false);
+        $response->assertSee('name="status" onchange="this.form.submit()"', false);
+    }
 }
+
