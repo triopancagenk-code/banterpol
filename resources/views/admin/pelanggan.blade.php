@@ -638,7 +638,7 @@
 
               <!-- 8. Status -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
-                @if($customer->status === 'Selesai')
+                @if($customer->status === 'Selesai' || strtolower($customer->status) === 'aktif')
                   <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-300 inline-flex items-center gap-1">
                     <i class="fa-solid fa-circle text-[6px]"></i> Aktif
                   </span>
@@ -752,7 +752,7 @@
             <div class="border-b border-slate-100 pb-4">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg" x-text="selectedCustomer.order_number"></span>
-                <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200" x-text="selectedCustomer.status"></span>
+                <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200" x-text="(selectedCustomer.status === 'Selesai' || selectedCustomer.status === 'Aktif') ? 'Aktif' : selectedCustomer.status"></span>
               </div>
               <h3 class="text-xl font-black text-slate-900" x-text="selectedCustomer.customer_name"></h3>
               <p class="text-xs text-slate-500">Biodata Lengkap Pelanggan SIMS Fiber Broadband</p>

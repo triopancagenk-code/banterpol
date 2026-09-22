@@ -58,7 +58,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/tagihan/export', [AdminController::class, 'exportTagihan'])->name('tagihan.export');
     Route::post('/tagihan/{id}/status', [AdminController::class, 'updateTagihanStatus'])->name('tagihan.status');
     Route::get('/laporan-masalah', [AdminController::class, 'laporanMasalah'])->name('laporan');
+    Route::post('/laporan-masalah/bulk-delete', [AdminController::class, 'bulkDeleteLaporan'])->name('laporan.bulk-delete');
     Route::post('/laporan-masalah/{id}/status', [AdminController::class, 'updateLaporanStatus'])->name('laporan.status');
+    Route::delete('/laporan-masalah/{id}', [AdminController::class, 'deleteLaporan'])->name('laporan.delete');
     Route::get('/mrtg', [AdminController::class, 'mrtg'])->name('mrtg');
     Route::get('/odc-map', [AdminController::class, 'odcMap'])->name('odc-map');
 

@@ -530,7 +530,7 @@
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Tugaskan Teknisi</label>
                   <input type="text" name="technician" x-model="selectedOrder.technician"
-                         placeholder="Contoh: Randi Pratama (Tim Fiber)"
+                         placeholder="Contoh: Mamat (Tim Fiber)"
                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
                 </div>
 

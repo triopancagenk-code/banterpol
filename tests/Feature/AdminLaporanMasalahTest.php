@@ -237,4 +237,71 @@ class AdminLaporanMasalahTest extends TestCase
             @unlink($filePath);
         }
     }
+
+    public function test_admin_laporan_masalah_page_has_neat_layout_matching_pelanggan_feature(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $response = $this->actingAs($admin)->get('/admin/laporan-masalah');
+
+        $response->assertStatus(200);
+
+        // 1. KPI Statistic Cards
+        $response->assertSee('Total Tiket');
+        $response->assertSee('Menunggu Respon');
+        $response->assertSee('Sedang Ditangani');
+        $response->assertSee('Selesai Normal');
+        $response->assertSee('Gangguan Kritis');
+
+        // 2. Search & Filter Bar (4-Kolom)
+        $response->assertSee('Pencarian Laporan Masalah');
+        $response->assertSee('Status Tiket');
+        $response->assertSee('Tingkat Prioritas');
+        $response->assertSee('Kategori Kendala');
+
+        // 3. Tabel Master & Komponen Tampilan Rapi
+        $response->assertSee('Nama Pelanggan');
+        $response->assertSee('No Handphone');
+        $response->assertSee('Jenis Kendala & Bukti', false);
+        $response->assertSee('Titik ODP');
+        $response->assertSee('Teknisi Bertugas');
+        $response->assertSee('wa.me');
+    }
+
+    public function test_admin_can_delete_single_ticket(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $response = $this->actingAs($admin)
+            ->withHeaders(['Accept' => 'application/json'])
+            ->deleteJson('/admin/laporan-masalah/TCK-202605-001');
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        $cachedTickets = Cache::get('trouble_tickets');
+        $found = collect($cachedTickets)->firstWhere('id', 'TCK-202605-001');
+        $this->assertNull($found);
+    }
+
+    public function test_admin_can_bulk_delete_all_tickets(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $response = $this->actingAs($admin)
+            ->withHeaders(['Accept' => 'application/json'])
+            ->postJson('/admin/laporan-masalah/bulk-delete', [
+                'delete_all' => 1,
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        $cachedTickets = Cache::get('trouble_tickets');
+        $this->assertEmpty($cachedTickets);
+    }
 }

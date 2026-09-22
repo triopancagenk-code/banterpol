@@ -155,7 +155,7 @@
 
                 <div class="flex items-center gap-1.5">
                   <!-- WhatsApp Tagih -->
-                  <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $bill->customer_phone) }}?text=Halo%20Bpk%2FIbu%20{{ urlencode($bill->customer_name) }}%2C%20saya%20Bayu%20dari%20Kolektor%20Banterpool%20mengenai%20iuran%20WiFi%20Banterpool%20nomor%20{{ urlencode($bill->bill_number) }}%20sebesar%20Rp%20{{ number_format($bill->total, 0, ',', '.') }}.%20Apakah%20bisa%20saya%20kunjungi%20ke%20rumah%20untuk%20serah%20terima%20tunai%3F%20Terima%20kasih."
+                  <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $bill->customer_phone) }}?text=Halo%20Bpk%2FIbu%20{{ urlencode($bill->customer_name) }}%2C%20saya%20{{ urlencode(Auth::user()->name ?? 'Petugas Kolektor') }}%20dari%20Banterpool%20mengenai%20iuran%20WiFi%20Banterpool%20nomor%20{{ urlencode($bill->bill_number) }}%20sebesar%20Rp%20{{ number_format($bill->total, 0, ',', '.') }}.%20Apakah%20bisa%20saya%20kunjungi%20ke%20rumah%20untuk%20serah%20terima%20tunai%3F%20Terima%20kasih."
                      target="_blank"
                      class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition flex items-center gap-1"
                      title="Kirim Pesan Penagihan Sopan via WA">

@@ -187,7 +187,7 @@
         <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
           <div class="flex items-center gap-1.5">
             <!-- Tombol WA -->
-            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $bill->customer_phone) }}?text=Halo%20Bpk%2FIbu%20{{ urlencode($bill->customer_name) }}%2C%20saya%20Bayu%20dari%20Kolektor%20Banterpool%20mengenai%20tagihan%20WiFi%20nomor%20{{ urlencode($bill->bill_number) }}%20sebesar%20Rp%20{{ number_format($bill->total, 0, ',', '.') }}.%20Apakah%20bisa%20saya%20kunjungi%20ke%20rumah%20untuk%20serah%20terima%20tunai%3F%20Terima%20kasih."
+            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $bill->customer_phone) }}?text=Halo%20Bpk%2FIbu%20{{ urlencode($bill->customer_name) }}%2C%20saya%20{{ urlencode(Auth::user()->name ?? 'Petugas Kolektor') }}%20dari%20Banterpool%20mengenai%20tagihan%20WiFi%20nomor%20{{ urlencode($bill->bill_number) }}%20sebesar%20Rp%20{{ number_format($bill->total, 0, ',', '.') }}.%20Apakah%20bisa%20saya%20kunjungi%20ke%20rumah%20untuk%20serah%20terima%20tunai%3F%20Terima%20kasih."
                target="_blank"
                class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
                title="Hubungi Pelanggan via WhatsApp">
@@ -319,7 +319,7 @@
           <div>
             <label class="block font-bold text-slate-700 mb-1">Catatan Serah Terima Kolektor</label>
             <textarea name="collector_notes" x-model="notesVal" rows="2"
-                      placeholder="Contoh: Diterima tunai pas oleh Kolektor Bayu di rumah pelanggan, titip ke istri..."
+                      placeholder="Contoh: Diterima tunai pas oleh Kolektor di rumah pelanggan, titip ke istri..."
                       class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs focus:ring-emerald-500 focus:border-emerald-500"></textarea>
           </div>
 

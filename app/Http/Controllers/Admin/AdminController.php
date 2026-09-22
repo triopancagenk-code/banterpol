@@ -128,6 +128,74 @@ class AdminController extends Controller
                         ],
                     ],
                 ],
+                [
+                    'id' => 'TCK-202605-003',
+                    'customer_name' => 'Ahmad Dahlan',
+                    'customer_phone' => '082134567890',
+                    'address' => 'Panusupan RT 02/03',
+                    'odp' => 'ODP-PNP-02',
+                    'type' => 'Kabel Putus / Rusak Fisik',
+                    'category' => 'Kabel Dropcore Putus',
+                    'priority' => 'Kritis',
+                    'description' => 'Kabel fiber optik tertimpa dahan pohon di depan rumah sehingga putus.',
+                    'status' => 'Menunggu Respon',
+                    'technician' => 'Randi Pratama (Tim Fiber)',
+                    'notes' => 'Perlu penarikan kabel drop core baru sepanjang 60 meter.',
+                    'created_at' => $now->copy()->subMinutes(80)->translatedFormat('l, d F Y, H:i') . ' WIB',
+                    'created_date' => $now->translatedFormat('l, d F Y'),
+                    'created_time' => $now->format('H:i:s') . ' WIB',
+                    'created_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'created_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'updated_at' => $now->copy()->subMinutes(30)->translatedFormat('l, d F Y, H:i') . ' WIB',
+                    'updated_date' => $now->translatedFormat('l, d F Y'),
+                    'updated_time' => $now->format('H:i:s') . ' WIB',
+                    'updated_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'updated_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'updated_at_iso' => $now->toIso8601String(),
+                    'is_recently_updated' => false,
+                    'status_history' => [
+                        [
+                            'status' => 'Menunggu Respon',
+                            'time' => $now->copy()->subMinutes(80)->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                            'technician' => 'Sistem NOC',
+                            'notes' => 'Laporan masuk dari sistem.',
+                        ],
+                    ],
+                ],
+                [
+                    'id' => 'TCK-202605-004',
+                    'customer_name' => 'Dewi Sartika',
+                    'customer_phone' => '087812983476',
+                    'address' => 'Sawangan Wetan RT 01/01',
+                    'odp' => 'ODP-SWG-01',
+                    'type' => 'WiFi Sering Terputus',
+                    'category' => 'Sinyal WiFi Lemah',
+                    'priority' => 'Normal',
+                    'description' => 'Sinyal WiFi di lantai 2 sering hilang timbul dan perlu restart modem berkali-kali.',
+                    'status' => 'Selesai',
+                    'technician' => 'Bambang Irawan (Perangkat)',
+                    'notes' => 'Penggantian adaptor modem dan reposisi channel frekuensi WiFi 2.4GHz ke Channel 6 berhasil.',
+                    'created_at' => $now->copy()->subHours(6)->translatedFormat('l, d F Y, H:i') . ' WIB',
+                    'created_date' => $now->translatedFormat('l, d F Y'),
+                    'created_time' => $now->format('H:i:s') . ' WIB',
+                    'created_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'created_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'updated_at' => $now->copy()->subHours(1)->translatedFormat('l, d F Y, H:i') . ' WIB',
+                    'updated_date' => $now->translatedFormat('l, d F Y'),
+                    'updated_time' => $now->format('H:i:s') . ' WIB',
+                    'updated_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'updated_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'updated_at_iso' => $now->toIso8601String(),
+                    'is_recently_updated' => false,
+                    'status_history' => [
+                        [
+                            'status' => 'Selesai',
+                            'time' => $now->copy()->subHours(1)->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                            'technician' => 'Bambang Irawan (Perangkat)',
+                            'notes' => 'Penggantian adaptor modem dan optimalisasi channel frekuensi.',
+                        ],
+                    ],
+                ],
             ];
         }
 
@@ -1244,7 +1312,15 @@ class AdminController extends Controller
         }
 
         if ($statusFilter !== 'all') {
-            $query->where('status', $statusFilter);
+            if ($statusFilter === 'Selesai' || strtolower($statusFilter) === 'aktif') {
+                $query->where(function ($q) {
+                    $q->where('status', 'Selesai')
+                      ->orWhere('status', 'Aktif')
+                      ->orWhere('status', 'aktif');
+                });
+            } else {
+                $query->where('status', $statusFilter);
+            }
         }
 
         $customers = $query->paginate(20)->withQueryString();
@@ -1816,17 +1892,26 @@ class AdminController extends Controller
         $allTickets = $this->getTicketsData();
         $statusFilter = $request->input('status', 'all');
         $priorityFilter = $request->input('priority', 'all');
+        $categoryFilter = $request->input('category', 'all');
         $search = $request->input('q', '');
 
-        $tickets = collect($allTickets)->filter(function ($item) use ($statusFilter, $priorityFilter, $search) {
+        $tickets = collect($allTickets)->filter(function ($item) use ($statusFilter, $priorityFilter, $categoryFilter, $search) {
             $matchStatus = ($statusFilter === 'all') || ($item['status'] === $statusFilter);
             $matchPriority = ($priorityFilter === 'all') || ($item['priority'] === $priorityFilter);
-            $matchSearch = empty($search) ||
-                (stripos($item['customer_name'], $search) !== false) ||
-                (stripos($item['id'], $search) !== false) ||
-                (stripos($item['description'], $search) !== false);
+            $matchCategory = ($categoryFilter === 'all') ||
+                (isset($item['category']) && $item['category'] === $categoryFilter) ||
+                (isset($item['type']) && stripos($item['type'], $categoryFilter) !== false);
 
-            return $matchStatus && $matchPriority && $matchSearch;
+            $matchSearch = empty($search) ||
+                (stripos($item['customer_name'] ?? '', $search) !== false) ||
+                (stripos($item['id'] ?? '', $search) !== false) ||
+                (stripos($item['description'] ?? '', $search) !== false) ||
+                (isset($item['customer_phone']) && stripos($item['customer_phone'], $search) !== false) ||
+                (isset($item['odp']) && stripos($item['odp'], $search) !== false) ||
+                (isset($item['address']) && stripos($item['address'], $search) !== false) ||
+                (isset($item['technician']) && stripos($item['technician'], $search) !== false);
+
+            return $matchStatus && $matchPriority && $matchCategory && $matchSearch;
         })->values()->all();
 
         $counts = [
@@ -1848,7 +1933,7 @@ class AdminController extends Controller
             ]);
         }
 
-        return view('admin.laporan-masalah', compact('tickets', 'statusFilter', 'priorityFilter', 'search', 'counts'));
+        return view('admin.laporan-masalah', compact('tickets', 'statusFilter', 'priorityFilter', 'categoryFilter', 'search', 'counts'));
     }
 
     /**
@@ -1939,6 +2024,74 @@ class AdminController extends Controller
         }
 
         return redirect()->back()->with('success', "Tiket {$id} berhasil diperbarui pada {$updatedAtWithSeconds}. Status: {$status}. Teknisi: {$technician}");
+    }
+
+    /**
+     * Hapus Tiket Laporan Masalah Tunggal
+     */
+    public function deleteLaporan(Request $request, $id)
+    {
+        $allTickets = $this->getTicketsData();
+        $filteredTickets = collect($allTickets)->reject(function ($item) use ($id) {
+            return $item['id'] === $id;
+        })->values()->all();
+
+        Cache::forever('trouble_tickets', $filteredTickets);
+        session(['admin_tickets' => $filteredTickets]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Tiket laporan kendala {$id} berhasil dihapus.",
+            ]);
+        }
+
+        return redirect()->back()->with('success', "Tiket laporan kendala {$id} berhasil dihapus.");
+    }
+
+    /**
+     * Hapus Massal / Hapus Semua Tiket Laporan Masalah
+     */
+    public function bulkDeleteLaporan(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        $deleteAll = $request->boolean('delete_all', false);
+
+        if ($deleteAll) {
+            Cache::forever('trouble_tickets', []);
+            session(['admin_tickets' => []]);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Seluruh data laporan masalah berhasil dihapus.",
+                ]);
+            }
+
+            return redirect()->back()->with('success', "Seluruh data laporan masalah berhasil dihapus.");
+        }
+
+        if (empty($ids) || !is_array($ids)) {
+            return redirect()->back()->with('error', 'Silakan pilih minimal satu laporan untuk dihapus.');
+        }
+
+        $allTickets = $this->getTicketsData();
+        $filteredTickets = collect($allTickets)->reject(function ($item) use ($ids) {
+            return in_array($item['id'], $ids);
+        })->values()->all();
+
+        Cache::forever('trouble_tickets', $filteredTickets);
+        session(['admin_tickets' => $filteredTickets]);
+
+        $count = count($ids);
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Sebanyak {$count} tiket laporan kendala berhasil dihapus.",
+            ]);
+        }
+
+        return redirect()->back()->with('success', "Sebanyak {$count} tiket laporan kendala berhasil dihapus.");
     }
 
     /**

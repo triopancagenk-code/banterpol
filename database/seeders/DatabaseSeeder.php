@@ -53,54 +53,6 @@ class DatabaseSeeder extends Seeder
         );
 
         User::updateOrCreate(
-            ['email' => 'teknisi@banterpol.net'],
-            [
-                'name' => 'Randi Pratama (Teknisi Lapangan)',
-                'phone' => '081234567888',
-                'role' => 'technician',
-                'is_active' => true,
-                'email_verified_at' => now(),
-                'password' => Hash::make('teknisi'),
-            ]
-        );
-
-        User::updateOrCreate(
-            ['email' => 'teknisi@banterpool.net'],
-            [
-                'name' => 'Randi Pratama (Teknisi Lapangan)',
-                'phone' => '081234567888',
-                'role' => 'technician',
-                'is_active' => true,
-                'email_verified_at' => now(),
-                'password' => Hash::make('teknisi'),
-            ]
-        );
-
-        User::updateOrCreate(
-            ['email' => 'kolektor@banterpol.net'],
-            [
-                'name' => 'Bayu Saputra (Kolektor Lapangan)',
-                'phone' => '081234567777',
-                'role' => 'collector',
-                'is_active' => true,
-                'email_verified_at' => now(),
-                'password' => Hash::make('kolektor'),
-            ]
-        );
-
-        User::updateOrCreate(
-            ['email' => 'kolektor@banterpool.net'],
-            [
-                'name' => 'Bayu Saputra (Kolektor Lapangan)',
-                'phone' => '081234567777',
-                'role' => 'collector',
-                'is_active' => true,
-                'email_verified_at' => now(),
-                'password' => Hash::make('kolektor'),
-            ]
-        );
-
-        User::updateOrCreate(
             ['email' => 'mamat@teknisi.net'],
             [
                 'name' => 'Mamat (Teknisi Lapangan)',
@@ -133,6 +85,78 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
                 'email_verified_at' => now(),
                 'password' => Hash::make('danuteknisi'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'okta@teknisi.net'],
+            [
+                'name' => 'Okta (Teknisi Lapangan)',
+                'phone' => '081234567004',
+                'role' => 'technician',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('oktateknisi'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'dila@kolektor.net'],
+            [
+                'name' => 'Dila (Kolektor Lapangan)',
+                'phone' => '081234567101',
+                'role' => 'collector',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('dilakolektor'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'saefudin@kolektor.net'],
+            [
+                'name' => 'Saefudin (Kolektor Lapangan)',
+                'phone' => '081234567102',
+                'role' => 'collector',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('saefudinkolektor'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'arti@kolektor.net'],
+            [
+                'name' => 'Arti (Kolektor Lapangan)',
+                'phone' => '081234567103',
+                'role' => 'collector',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('artikolektor'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'aji@kolektor.net'],
+            [
+                'name' => 'Aji (Kolektor Lapangan)',
+                'phone' => '081234567104',
+                'role' => 'collector',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('ajikolektor'),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'bagas@kolektor.net'],
+            [
+                'name' => 'Bagas (Kolektor Lapangan)',
+                'phone' => '081234567105',
+                'role' => 'collector',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('bagaskolektor'),
             ]
         );
 

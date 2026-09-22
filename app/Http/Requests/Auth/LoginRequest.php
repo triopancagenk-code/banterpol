@@ -56,18 +56,17 @@ class LoginRequest extends FormRequest
             $authenticated = Auth::attempt(['email' => 'direktur@banterpool.net', 'password' => $password], $this->boolean('remember'));
         }
 
-        if (!$authenticated && ($loginInput === 'teknisi' || $loginInput === 'teknisi@banterpol.net' || $loginInput === 'teknisi@banterpool.net')) {
-            $authenticated = Auth::attempt(['email' => 'teknisi@banterpol.net', 'password' => $password], $this->boolean('remember'))
-                || Auth::attempt(['email' => 'teknisi@banterpool.net', 'password' => $password], $this->boolean('remember'));
-        }
-
-        if (!$authenticated && ($loginInput === 'kolektor' || $loginInput === 'kolektor@banterpol.net' || $loginInput === 'kolektor@banterpool.net')) {
-            $authenticated = Auth::attempt(['email' => 'kolektor@banterpol.net', 'password' => $password], $this->boolean('remember'))
-                || Auth::attempt(['email' => 'kolektor@banterpool.net', 'password' => $password], $this->boolean('remember'));
-        }
-
-        if (!$authenticated && in_array(strtolower($loginInput), ['mamat', 'aji', 'danu'])) {
+        if (!$authenticated && in_array(strtolower($loginInput), ['mamat', 'danu', 'okta'])) {
             $authenticated = Auth::attempt(['email' => strtolower($loginInput) . '@teknisi.net', 'password' => $password], $this->boolean('remember'));
+        }
+
+        if (!$authenticated && in_array(strtolower($loginInput), ['dila', 'saefudin', 'arti', 'bagas'])) {
+            $authenticated = Auth::attempt(['email' => strtolower($loginInput) . '@kolektor.net', 'password' => $password], $this->boolean('remember'));
+        }
+
+        if (!$authenticated && strtolower($loginInput) === 'aji') {
+            $authenticated = Auth::attempt(['email' => 'aji@teknisi.net', 'password' => $password], $this->boolean('remember'))
+                || Auth::attempt(['email' => 'aji@kolektor.net', 'password' => $password], $this->boolean('remember'));
         }
 
         if (!$authenticated && $loginInput === 'root') {

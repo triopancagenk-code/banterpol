@@ -8,161 +8,306 @@
      x-data="laporanMasalahApp(@js($tickets), @js($counts), '{{ $statusFilter }}')">
 
   <!-- ============================================== -->
-  <!-- 1. HEADER & FILTER BAR                         -->
+  <!-- 1. ALERT NOTIFIKASI                            -->
+  <!-- ============================================== -->
+  @if(session('success'))
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-center justify-between shadow-xs">
+      <div class="flex items-center gap-2.5">
+        <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+        <span class="text-xs font-bold">{{ session('success') }}</span>
+      </div>
+      <button type="button" @click="$el.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 text-sm">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  @endif
+
+  @if(session('error'))
+    <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-2xl flex items-center justify-between shadow-xs">
+      <div class="flex items-center gap-2.5">
+        <i class="fa-solid fa-circle-xmark text-red-600 text-base"></i>
+        <span class="text-xs font-bold">{{ session('error') }}</span>
+      </div>
+      <button type="button" @click="$el.parentElement.remove()" class="text-red-500 hover:text-red-700 text-sm">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  @endif
+
+  <!-- ============================================== -->
+  <!-- 2. HEADER & ACTION BUTTONS                     -->
   <!-- ============================================== -->
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-      <h2 class="text-xl font-black text-slate-900 tracking-tight">Daftar Tiket Gangguan Jaringan</h2>
-      <p class="text-xs text-slate-500 mt-0.5">Kelola laporan kendala pelanggan yang masuk secara real-time, penugasan teknisi lapangan, dan update status tiket.</p>
+      <div class="flex items-center gap-2">
+        <h2 class="text-xl font-black text-slate-900 tracking-tight">Daftar Tiket Gangguan Jaringan</h2>
+        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-brand border border-red-200 uppercase tracking-wider">Trouble Tickets</span>
+      </div>
+      <p class="text-xs text-slate-500 mt-1">
+        Kelola laporan kendala pelanggan yang masuk secara real-time, penugasan teknisi lapangan, dan update status tiket.
+      </p>
     </div>
 
-    <!-- Live Alert Status & Real-Time Sync Indicator -->
-    <div class="flex items-center gap-2">
-      <!-- Live Server Time: Format Hari, Tanggal, Bulan, Tahun & Jam Real-Time -->
-      <div class="hidden lg:flex items-center gap-2.5 bg-slate-900 text-white text-xs px-3.5 py-1.5 rounded-xl border border-slate-800 shadow-xs font-mono">
+    <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+      <!-- Live Server Time -->
+      <div class="hidden lg:flex items-center gap-2 bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl border border-slate-800 shadow-xs font-mono">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
         <span class="text-slate-400 font-sans text-[10px]">Waktu Real-Time:</span>
         <span class="font-bold text-emerald-300" x-text="liveDate + ' • ' + liveTime"></span>
       </div>
 
-      <!-- Live Syncing Indicator -->
-      <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-semibold border border-slate-200">
-        <i class="fa-solid fa-arrows-rotate text-[10px] text-brand" :class="isPolling ? 'fa-spin' : ''"></i>
-      <template x-if="counts.kritis > 0">
-        <span class="bg-red-50 text-red-700 border border-red-200 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-          <span x-text="counts.kritis + ' Gangguan Kritis Terbuka'"></span>
-        </span>
-      </template>
+      <!-- Live Syncing Indicator & Refresh Button -->
+      <button type="button" @click="pollTickets()"
+              class="h-10 px-3.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-2 border border-slate-200/80 shadow-xs"
+              title="Sinkronisasi Data Real-Time Sekarang">
+        <i class="fa-solid fa-arrows-rotate text-brand" :class="isPolling ? 'fa-spin' : ''"></i>
+        <span>Sinkronisasi</span>
+      </button>
+
+      <!-- Tombol Hapus Semua (POV Admin & Direktur) -->
+      <button type="button" @click="confirmBulkDeleteAll()"
+              :disabled="tickets.length === 0"
+              class="h-10 px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Hapus Seluruh Data Laporan Masalah">
+        <i class="fa-solid fa-trash-can"></i>
+        <span>Hapus Semua</span>
+      </button>
     </div>
   </div>
 
-  <!-- Filter Tabs Bar -->
-  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <!-- ============================================== -->
+  <!-- 3. STATISTIC KPI CARDS (Serupa Data Pelanggan) -->
+  <!-- ============================================== -->
+  <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
     
-    <!-- Status Pills -->
-    <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
-      <a href="{{ route('admin.laporan', ['status' => 'all', 'q' => $search]) }}"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'all' ? 'bg-brand text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
-        <span>Semua</span>
-        <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'all' ? 'bg-white/20' : 'bg-slate-200' }}" x-text="counts.all">{{ $counts['all'] }}</span>
-      </a>
-
-      <a href="{{ route('admin.laporan', ['status' => 'Menunggu Respon', 'q' => $search]) }}"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Menunggu Respon' ? 'bg-amber-500 text-white font-bold shadow-xs' : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100' }}">
-        <i class="fa-regular fa-clock"></i>
-        <span>Menunggu Respon</span>
-        <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Menunggu Respon' ? 'bg-white/20' : 'bg-amber-200' }}" x-text="counts.menunggu">{{ $counts['menunggu'] }}</span>
-      </a>
-
-      <a href="{{ route('admin.laporan', ['status' => 'Sedang Ditangani', 'q' => $search]) }}"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Sedang Ditangani' ? 'bg-blue-600 text-white font-bold shadow-xs' : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100' }}">
-        <i class="fa-solid fa-person-digging"></i>
-        <span>Sedang Ditangani</span>
-        <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Sedang Ditangani' ? 'bg-white/20' : 'bg-blue-200' }}" x-text="counts.proses">{{ $counts['proses'] }}</span>
-      </a>
-
-      <a href="{{ route('admin.laporan', ['status' => 'Selesai', 'q' => $search]) }}"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Selesai' ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100' }}">
-        <i class="fa-solid fa-check"></i>
-        <span>Selesai</span>
-        <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Selesai' ? 'bg-white/20' : 'bg-emerald-200' }}" x-text="counts.selesai">{{ $counts['selesai'] }}</span>
-      </a>
-    </div>
-
-    <!-- Search Form -->
-    <form method="GET" action="{{ route('admin.laporan') }}" class="flex items-center gap-2">
-      <input type="hidden" name="status" value="{{ $statusFilter }}">
-      <div class="relative w-full sm:w-64">
-        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-        <input type="text" name="q" value="{{ $search }}" placeholder="Cari nama, tiket, deskripsi..."
-               class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
+    <!-- 1. Total Laporan -->
+    <a href="{{ route('admin.laporan', ['status' => 'all']) }}"
+       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between {{ $statusFilter === 'all' ? 'border-brand ring-2 ring-brand/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Tiket</p>
+        <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="counts.all">{{ $counts['all'] }}</h3>
+        <span class="text-[10px] text-slate-500 font-medium">Laporan Gangguan Masuk</span>
       </div>
-      <button type="submit" class="bg-brand text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-brand-700 transition">
-        Cari
-      </button>
-      @if($search)
-        <a href="{{ route('admin.laporan', ['status' => $statusFilter]) }}" class="text-xs text-slate-400 hover:text-red-500 font-bold">Reset</a>
-      @endif
-    </form>
+      <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg">
+        <i class="fa-solid fa-headset"></i>
+      </div>
+    </a>
+
+    <!-- 2. Menunggu Respon -->
+    <a href="{{ route('admin.laporan', ['status' => 'Menunggu Respon']) }}"
+       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between {{ $statusFilter === 'Menunggu Respon' ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Menunggu Respon</p>
+        <h3 class="text-2xl font-black text-amber-600 mt-1" x-text="counts.menunggu">{{ $counts['menunggu'] }}</h3>
+        <span class="text-[10px] text-slate-500 font-medium">Antrian Perlu Ditangani</span>
+      </div>
+      <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
+        <i class="fa-regular fa-clock"></i>
+      </div>
+    </a>
+
+    <!-- 3. Sedang Ditangani -->
+    <a href="{{ route('admin.laporan', ['status' => 'Sedang Ditangani']) }}"
+       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between {{ $statusFilter === 'Sedang Ditangani' ? 'border-blue-600 ring-2 ring-blue-600/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sedang Ditangani</p>
+        <h3 class="text-2xl font-black text-blue-600 mt-1" x-text="counts.proses">{{ $counts['proses'] }}</h3>
+        <span class="text-[10px] text-slate-500 font-medium">Teknisi Sedang Proses</span>
+      </div>
+      <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
+        <i class="fa-solid fa-person-digging"></i>
+      </div>
+    </a>
+
+    <!-- 4. Selesai Ditangani -->
+    <a href="{{ route('admin.laporan', ['status' => 'Selesai']) }}"
+       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between {{ $statusFilter === 'Selesai' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Selesai Normal</p>
+        <h3 class="text-2xl font-black text-emerald-600 mt-1" x-text="counts.selesai">{{ $counts['selesai'] }}</h3>
+        <span class="text-[10px] text-slate-500 font-medium">Koneksi Sudah Pulih</span>
+      </div>
+      <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+    </a>
+
+    <!-- 5. Gangguan Kritis -->
+    <a href="{{ route('admin.laporan', ['priority' => 'Kritis']) }}"
+       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between col-span-2 sm:col-span-2 lg:col-span-1 {{ $priorityFilter === 'Kritis' ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gangguan Kritis</p>
+        <h3 class="text-2xl font-black text-brand mt-1" x-text="counts.kritis">{{ $counts['kritis'] }}</h3>
+        <span class="text-[10px] text-slate-500 font-medium">Prioritas Darurat NOC</span>
+      </div>
+      <div class="w-10 h-10 rounded-xl bg-red-50 text-brand flex items-center justify-center text-lg">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+    </a>
 
   </div>
 
   <!-- ============================================== -->
-  <!-- 2. TABEL PENGINTAIAN TIKET GANGGUAN            -->
+  <!-- 4. SEARCH & FILTER BAR (4 Kolom Sesuai Pelanggan) -->
+  <!-- ============================================== -->
+  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
+    <form method="GET" action="{{ route('admin.laporan') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+      
+      <!-- 1. Pencarian Laporan Masalah (lg:col-span-4) -->
+      <div class="sm:col-span-2 lg:col-span-4">
+        <label class="block text-[11px] font-bold text-slate-700 mb-1">Pencarian Laporan Masalah</label>
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+          <input type="text" name="q" value="{{ $search }}"
+                 placeholder="Cari ID Tiket, Nama, No. HP, Titik ODP, Kendala..."
+                 class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand transition">
+        </div>
+      </div>
+
+      <!-- 2. Filter Status Tiket (lg:col-span-3) -->
+      <div class="sm:col-span-1 lg:col-span-3">
+        <label class="block text-[11px] font-bold text-slate-700 mb-1">Status Tiket</label>
+        <select name="status" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
+          <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status ({{ $counts['all'] }} Tiket)</option>
+          <option value="Menunggu Respon" {{ $statusFilter === 'Menunggu Respon' ? 'selected' : '' }}>Menunggu Respon ({{ $counts['menunggu'] }})</option>
+          <option value="Sedang Ditangani" {{ $statusFilter === 'Sedang Ditangani' ? 'selected' : '' }}>Sedang Ditangani ({{ $counts['proses'] }})</option>
+          <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Pulih ({{ $counts['selesai'] }})</option>
+        </select>
+      </div>
+
+      <!-- 3. Tingkat Prioritas (lg:col-span-2) -->
+      <div class="sm:col-span-1 lg:col-span-2">
+        <label class="block text-[11px] font-bold text-slate-700 mb-1">Tingkat Prioritas</label>
+        <select name="priority" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
+          <option value="all" {{ $priorityFilter === 'all' ? 'selected' : '' }}>Semua Prioritas</option>
+          <option value="Kritis" {{ $priorityFilter === 'Kritis' ? 'selected' : '' }}>Kritis ({{ $counts['kritis'] }})</option>
+          <option value="Tinggi" {{ $priorityFilter === 'Tinggi' ? 'selected' : '' }}>Tinggi</option>
+          <option value="Normal" {{ $priorityFilter === 'Normal' ? 'selected' : '' }}>Normal</option>
+        </select>
+      </div>
+
+      <!-- 4. Kategori Kendala & Reset (lg:col-span-3) -->
+      <div class="sm:col-span-2 lg:col-span-3 flex items-end gap-2">
+        <div class="flex-1 min-w-0">
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori Kendala</label>
+          <select name="category" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
+            <option value="all" {{ ($categoryFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Kendala</option>
+            <option value="LOS" {{ ($categoryFilter ?? '') === 'LOS' ? 'selected' : '' }}>LOS / Lampu Merah</option>
+            <option value="Lambat" {{ ($categoryFilter ?? '') === 'Lambat' ? 'selected' : '' }}>Koneksi Lambat</option>
+            <option value="WiFi" {{ ($categoryFilter ?? '') === 'WiFi' ? 'selected' : '' }}>WiFi Lemah / Putus</option>
+            <option value="Kabel" {{ ($categoryFilter ?? '') === 'Kabel' ? 'selected' : '' }}>Kabel Putus / Fisik</option>
+          </select>
+        </div>
+        @if($search || $statusFilter !== 'all' || $priorityFilter !== 'all' || ($categoryFilter ?? 'all') !== 'all')
+          <a href="{{ route('admin.laporan') }}" class="py-2 px-3 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 border border-slate-200" title="Reset Semua Filter">
+            <i class="fa-solid fa-arrow-rotate-left text-[11px]"></i>
+            <span>Reset</span>
+          </a>
+        @endif
+      </div>
+
+    </form>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 5. TABEL MASTER LAPORAN MASALAH                -->
   <!-- ============================================== -->
   <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-xs">
-        <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+      <table class="w-full text-center text-xs">
+        <thead class="bg-slate-50 text-slate-500 font-extrabold uppercase text-[10px] border-b border-slate-200 tracking-wider">
           <tr>
-            <th class="px-5 py-3.5">ID Tiket & Waktu Lapor</th>
-            <th class="px-4 py-3.5">Pelanggan</th>
-            <th class="px-4 py-3.5">Jenis Kendala</th>
-            <th class="px-4 py-3.5">Titik ODP</th>
-            <th class="px-4 py-3.5">Prioritas</th>
-            <th class="px-4 py-3.5">Status & Waktu Update</th>
-            <th class="px-4 py-3.5">Teknisi Bertugas</th>
-            <th class="px-5 py-3.5 text-right">Aksi</th>
+            <th class="py-3.5 px-3 text-center w-12">#</th>
+            <th class="py-3.5 px-4 text-center whitespace-nowrap">ID Tiket & Waktu Lapor</th>
+            <th class="py-3.5 px-4 text-center">Nama Pelanggan</th>
+            <th class="py-3.5 px-4 text-center">No Handphone</th>
+            <th class="py-3.5 px-4 text-center">Jenis Kendala & Bukti</th>
+            <th class="py-3.5 px-4 text-center">Titik ODP</th>
+            <th class="py-3.5 px-4 text-center">Prioritas</th>
+            <th class="py-3.5 px-4 text-center">Status & Update</th>
+            <th class="py-3.5 px-4 text-center">Teknisi Bertugas</th>
+            <th class="py-3.5 px-4 text-center w-28">Aksi</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 font-medium">
-          <template x-for="ticket in tickets" :key="ticket.id">
-            <tr class="hover:bg-slate-50/70 transition duration-150"
+          <template x-for="(ticket, index) in tickets" :key="ticket.id">
+            <tr class="hover:bg-slate-50/80 transition duration-150"
                 :class="ticket.is_new_incoming ? 'bg-amber-50/40' : (ticket.is_recently_updated ? 'bg-emerald-50/30' : '')">
-              <!-- ID Tiket & Waktu Lapor -->
-              <td class="px-5 py-4">
-                <div class="flex items-center gap-1.5">
-                  <p class="font-bold text-slate-900 font-mono leading-tight" x-text="ticket.id"></p>
+              
+              <!-- Nomor Urut / Indikator -->
+              <td class="py-3.5 px-3 text-center w-12 text-slate-400 font-mono text-[11px]">
+                <template x-if="ticket.is_new_incoming">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping inline-block" title="Laporan Baru"></span>
+                </template>
+                <template x-if="!ticket.is_new_incoming">
+                  <span x-text="index + 1"></span>
+                </template>
+              </td>
+
+              <!-- 1. ID Tiket & Waktu Lapor -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                <div class="inline-flex items-center justify-center gap-1.5">
+                  <span class="font-mono text-xs font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200"
+                        x-text="ticket.id"></span>
                   <template x-if="ticket.is_new_incoming">
-                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse flex items-center gap-1">
-                      <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
-                      <span>Laporan Baru</span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                      Baru
                     </span>
                   </template>
-                  <template x-if="!ticket.is_new_incoming && ticket.is_recently_updated">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping" title="Baru saja diperbarui"></span>
-                  </template>
                 </div>
-                <!-- Tanggal Lapor: Hari, Tanggal, Bulan, Tahun & Jam Real-Time -->
-                <div class="mt-1.5 space-y-0.5">
-                  <div class="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
-                    <i class="fa-regular fa-calendar-days text-[11px] text-brand shrink-0"></i>
+                <div class="mt-1 space-y-0.5 text-center">
+                  <div class="text-[11px] font-semibold text-slate-700 flex items-center justify-center gap-1">
+                    <i class="fa-regular fa-calendar-days text-[10px] text-brand shrink-0"></i>
                     <span x-text="getFormattedDate(ticket.created_date || ticket.created_at_full || ticket.created_at)"></span>
                   </div>
-                  <div class="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 pl-4">
+                  <div class="text-[10px] text-slate-400 font-mono flex items-center justify-center gap-1">
                     <i class="fa-regular fa-clock text-[9px] text-slate-400"></i>
                     <span x-text="getFormattedTime(ticket.created_time || ticket.created_at_full || ticket.created_at)"></span>
                   </div>
                 </div>
               </td>
 
-              <!-- Pelanggan -->
-              <td class="px-4 py-4">
-                <p class="font-bold text-slate-900" x-text="ticket.customer_name"></p>
-                <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
-                  <i class="fa-brands fa-whatsapp text-emerald-600"></i>
-                  <span x-text="ticket.customer_phone"></span>
-                </div>
+              <!-- 2. Nama Pelanggan & Alamat -->
+              <td class="py-3.5 px-4 text-center">
+                <div class="font-bold text-slate-900 text-xs" x-text="ticket.customer_name"></div>
+                <div class="text-[10px] text-slate-400 max-w-[200px] truncate mx-auto mt-0.5"
+                     x-text="ticket.address"
+                     :title="ticket.address"></div>
               </td>
 
-              <!-- Jenis Kendala & Bukti Gambar -->
-              <td class="px-4 py-4 max-w-xs">
-                <span class="font-bold text-slate-900 block" x-text="ticket.type"></span>
-                <p class="text-[11px] text-slate-500 truncate mt-0.5" x-text="ticket.description"></p>
+              <!-- 3. No Handphone (WhatsApp Button persis seperti Data Pelanggan) -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                <template x-if="ticket.customer_phone && ticket.customer_phone !== '-'">
+                  <a :href="'https://wa.me/' + formatWaPhone(ticket.customer_phone) + '?text=' + encodeURIComponent('Halo Bapak/Ibu ' + ticket.customer_name + ', terkait laporan tiket ' + ticket.id + ' (' + ticket.type + '), tim operasional Banterpool Fiber sedang menindaklanjuti. Terima kasih.')"
+                     target="_blank"
+                     class="inline-flex items-center justify-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold text-xs bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80 transition"
+                     title="Hubungi Pelanggan via WhatsApp">
+                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                    <span x-text="ticket.customer_phone"></span>
+                  </a>
+                </template>
+                <template x-if="!ticket.customer_phone || ticket.customer_phone === '-'">
+                  <span class="text-[11px] text-slate-400 italic">-</span>
+                </template>
+              </td>
 
-                <!-- Indikator / Thumbnail Foto Bukti Lampiran Pelanggan -->
+              <!-- 4. Jenis Kendala & Bukti Gambar -->
+              <td class="py-3.5 px-4 text-center max-w-xs">
+                <div class="font-bold text-slate-900 text-xs" x-text="ticket.type"></div>
+                <p class="text-[11px] text-slate-500 truncate max-w-[220px] mx-auto mt-0.5"
+                   x-text="ticket.description"
+                   :title="ticket.description"></p>
+
+                <!-- Lampiran Foto / PDF jika ada -->
                 <template x-if="ticket.attachment_url">
-                  <div class="mt-1.5 flex items-center gap-1.5">
+                  <div class="mt-1.5 flex items-center justify-center gap-1.5">
                     <template x-if="ticket.attachment_type === 'image' || !ticket.attachment_type || ticket.attachment_type === 'file'">
                       <button type="button" @click.stop="openLightbox(ticket.attachment_url, ticket.id, ticket.attachment || 'Foto Bukti Kendala', ticket.customer_name)"
-                              class="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-lg bg-red-50 hover:bg-red-100 text-brand border border-red-200/80 text-[10px] font-bold transition shadow-2xs group"
+                              class="inline-flex items-center gap-1 py-0.5 px-2 rounded-lg bg-red-50 hover:bg-red-100 text-brand border border-red-200/80 text-[10px] font-bold transition group"
                               title="Klik untuk perbesar foto bukti">
-                        <img :src="ticket.attachment_url" alt="Bukti" class="w-5 h-5 rounded object-cover border border-red-300 group-hover:scale-110 transition shrink-0">
-                        <span class="flex items-center gap-1">
-                          <i class="fa-solid fa-camera text-[9px]"></i>
-                          <span>Foto Bukti</span>
-                        </span>
+                        <img :src="ticket.attachment_url" alt="Bukti" class="w-4 h-4 rounded object-cover border border-red-300 shrink-0">
+                        <i class="fa-solid fa-camera text-[9px]"></i>
+                        <span>Foto Bukti</span>
                       </button>
                     </template>
                     <template x-if="ticket.attachment_type === 'pdf'">
@@ -177,111 +322,121 @@
                 </template>
               </td>
 
-              <!-- Titik ODP -->
-              <td class="px-4 py-4">
-                <a href="{{ route('admin.odc-map') }}" title="Cek di Peta" class="inline-flex items-center gap-1 font-bold text-brand hover:underline">
-                  <i class="fa-solid fa-map-pin text-xs"></i>
+              <!-- 5. Titik ODP -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                <a href="{{ route('admin.odc-map') }}" title="Cek di Peta ODC & Fiber"
+                   class="inline-flex items-center justify-center gap-1 font-bold text-xs text-brand hover:underline bg-red-50/60 px-2 py-0.5 rounded-lg border border-red-100">
+                  <i class="fa-solid fa-map-pin text-[10px]"></i>
                   <span x-text="ticket.odp"></span>
                 </a>
               </td>
 
-              <!-- Prioritas -->
-              <td class="px-4 py-4">
+              <!-- 6. Prioritas -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 <template x-if="ticket.priority === 'Kritis'">
-                  <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 border border-red-200 text-[10px] font-bold px-2.5 py-0.5 rounded-md">
+                  <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 border border-red-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
                     Kritis
                   </span>
                 </template>
                 <template x-if="ticket.priority === 'Tinggi'">
-                  <span class="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold px-2.5 py-0.5 rounded-md">
+                  <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-1 rounded-full">
+                    <i class="fa-solid fa-arrow-up text-[8px]"></i>
                     Tinggi
                   </span>
                 </template>
                 <template x-if="ticket.priority !== 'Kritis' && ticket.priority !== 'Tinggi'">
-                  <span class="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-md">
+                  <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">
+                    <i class="fa-solid fa-minus text-[8px]"></i>
                     Normal
                   </span>
                 </template>
               </td>
 
-              <!-- Status Tiket & WAKTU UPDATE REAL-TIME -->
-              <td class="px-4 py-4">
-                <!-- Status Badge -->
+              <!-- 7. Status & Waktu Update -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 <div>
                   <template x-if="ticket.status === 'Selesai'">
-                    <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-1 rounded-md">
-                      <i class="fa-solid fa-check text-[9px]"></i> Selesai
+                    <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-300 inline-flex items-center gap-1">
+                      <i class="fa-solid fa-circle text-[6px]"></i> Selesai
                     </span>
                   </template>
                   <template x-if="ticket.status === 'Sedang Ditangani'">
-                    <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2.5 py-1 rounded-md">
-                      <i class="fa-solid fa-spinner fa-spin text-[9px]"></i> Diproses
+                    <span class="bg-indigo-100 text-indigo-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-indigo-300 inline-flex items-center gap-1">
+                      <i class="fa-solid fa-screwdriver-wrench text-[9px]"></i> Diproses
                     </span>
                   </template>
                   <template x-if="ticket.status === 'Menunggu Respon'">
-                    <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2.5 py-1 rounded-md animate-pulse">
+                    <span class="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-amber-300 inline-flex items-center gap-1">
                       <i class="fa-regular fa-clock text-[9px]"></i> Menunggu
                     </span>
                   </template>
                 </div>
 
-                <!-- Waktu Update Terakhir (Real-Time Timestamp: Hari, Tanggal, Bulan, Tahun & Jam) -->
-                <div class="mt-1.5 space-y-1">
-                  <div class="inline-flex items-start gap-1.5 text-[10px] text-slate-700 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg font-mono shadow-2xs"
-                       :title="'Waktu update status: ' + (ticket.updated_at_full || ticket.updated_at)">
-                    <i class="fa-solid fa-clock-rotate-left text-[9px] text-brand mt-0.5 shrink-0"></i>
-                    <div>
-                      <div class="font-bold text-slate-900 font-sans text-[10px]">
-                        <span x-text="getFormattedDate(ticket.updated_date || ticket.updated_at_full || ticket.updated_at)"></span>
-                      </div>
-                      <div class="text-slate-500 font-mono text-[9px] flex items-center gap-1">
-                        <span class="text-slate-400">Pukul:</span>
-                        <span class="font-bold text-slate-800" x-text="getFormattedTime(ticket.updated_time || ticket.updated_at_full || ticket.updated_at)"></span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <template x-if="ticket.is_recently_updated">
-                    <div>
-                      <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 animate-pulse inline-flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>Update Real-Time</span>
-                      </span>
-                    </div>
-                  </template>
+                <!-- Update Timestamp Mini -->
+                <div class="mt-1 text-[10px] text-slate-400 font-mono"
+                     :title="'Waktu Update Terakhir: ' + (ticket.updated_at_full || ticket.updated_at)">
+                  <span x-text="getFormattedDate(ticket.updated_date || ticket.updated_at_full || ticket.updated_at)"></span>
                 </div>
               </td>
 
-              <!-- Teknisi -->
-              <td class="px-4 py-4 text-slate-700">
-                <span class="font-medium" x-text="ticket.technician"></span>
+              <!-- 8. Teknisi Bertugas -->
+              <td class="py-3.5 px-4 text-center whitespace-nowrap">
+                <span class="font-semibold text-slate-700 text-xs" x-text="ticket.technician || '-'"></span>
               </td>
 
-              <!-- Aksi -->
-              <td class="px-5 py-4 text-right">
-                <div class="flex items-center justify-end gap-2">
+              <!-- 9. Aksi (Persis seperti ikon tombol Data Pelanggan) -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center w-28">
+                <div class="flex items-center justify-center gap-1.5">
+                  
+                  <!-- Tombol Tangani / Detail Modal -->
                   <button type="button" @click="viewTicket(ticket)"
-                          class="bg-brand hover:bg-brand-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-2xs">
-                    <i class="fa-solid fa-screwdriver-wrench"></i> Tangani
+                          class="w-7 h-7 rounded-lg bg-brand hover:bg-brand-700 text-white flex items-center justify-center transition shadow-2xs"
+                          title="Tangani / Ubah Status Tiket">
+                    <i class="fa-solid fa-screwdriver-wrench text-xs"></i>
                   </button>
 
-                  <a :href="'https://wa.me/' + formatWaPhone(ticket.customer_phone) + '?text=' + encodeURIComponent('Halo Bapak/Ibu ' + ticket.customer_name + ', terkait laporan tiket ' + ticket.id + ' (' + ticket.type + '), tim teknisi Banterpool sedang menindaklanjuti. Terima kasih.')"
-                     target="_blank" title="Hubungi Pelanggan via WA"
-                     class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white flex items-center justify-center transition">
-                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                  <!-- Tombol Hubungi WhatsApp -->
+                  <template x-if="ticket.customer_phone && ticket.customer_phone !== '-'">
+                    <a :href="'https://wa.me/' + formatWaPhone(ticket.customer_phone) + '?text=' + encodeURIComponent('Halo Bapak/Ibu ' + ticket.customer_name + ', terkait laporan kendala ' + ticket.id + ' (' + ticket.type + '), tim teknisi Banterpool sedang menangani. Mohon ditunggu. Terima kasih.')"
+                       target="_blank"
+                       class="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white flex items-center justify-center transition border border-emerald-200/80"
+                       title="Kirim Pesan WhatsApp">
+                      <i class="fa-brands fa-whatsapp text-xs"></i>
+                    </a>
+                  </template>
+
+                  <!-- Tombol Cek Peta ODC -->
+                  <a href="{{ route('admin.odc-map') }}"
+                     class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition"
+                     title="Cek Lokasi di Peta ODC">
+                    <i class="fa-solid fa-map-location-dot text-xs"></i>
                   </a>
+
+                  <!-- Tombol Hapus Tiket -->
+                  <button type="button" @click="confirmDeleteTicket(ticket)"
+                          class="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white flex items-center justify-center transition border border-red-200/80"
+                          title="Hapus Laporan Kendala">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                  </button>
+
                 </div>
               </td>
+
             </tr>
           </template>
 
           <!-- Empty State -->
           <template x-if="tickets.length === 0">
             <tr>
-              <td colspan="8" class="text-center py-12 text-slate-400">
-                <i class="fa-solid fa-headset text-3xl mb-2 text-slate-300"></i>
-                <p>Tidak ada laporan gangguan yang cocok dengan pencarian.</p>
+              <td colspan="10" class="text-center py-16 text-slate-400">
+                <div class="max-w-xs mx-auto space-y-2">
+                  <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-headset"></i>
+                  </div>
+                  <p class="font-bold text-slate-700 text-sm">Tidak Ada Laporan Gangguan</p>
+                  <p class="text-xs text-slate-400">Tidak ada tiket laporan kendala yang cocok dengan kriteria pencarian dan filter saat ini.</p>
+                </div>
               </td>
             </tr>
           </template>
@@ -291,7 +446,7 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- 3. MODAL DETAIL & UPDATE STATUS TIKET          -->
+  <!-- 6. MODAL DETAIL & UPDATE STATUS TIKET          -->
   <!-- ============================================== -->
   <div x-show="openModal" style="display: none;"
        x-transition:enter="ease-out duration-200"
@@ -332,7 +487,7 @@
           </div>
           <div class="flex justify-between items-center">
             <span class="text-slate-500 font-medium">ODP & Koordinat:</span>
-            <a href="{{ route('admin.odc-map') }}" class="font-bold text-brand hover:underline" x-text="selectedTicket?.odp + ' [' + selectedTicket?.coordinates + ']'"></a>
+            <a href="{{ route('admin.odc-map') }}" class="font-bold text-brand hover:underline" x-text="selectedTicket?.odp + (selectedTicket?.coordinates ? ' [' + selectedTicket?.coordinates + ']' : '')"></a>
           </div>
           <div class="flex justify-between items-center pt-1 border-t border-slate-200/60">
             <span class="text-slate-500 font-medium">Waktu Dilaporkan:</span>
@@ -370,14 +525,12 @@
           <!-- Jika Ada Lampiran Foto/Gambar -->
           <template x-if="selectedTicket?.attachment_url && (selectedTicket?.attachment_type === 'image' || !selectedTicket?.attachment_type || selectedTicket?.attachment_type === 'file')">
             <div class="space-y-2.5">
-              <!-- Thumbnail & Preview Container -->
               <div class="relative group rounded-xl overflow-hidden border border-slate-200 bg-white shadow-2xs">
                 <img :src="selectedTicket.attachment_url"
                      alt="Foto Bukti Pelanggan"
                      class="w-full max-h-60 object-contain bg-slate-950/5 p-1 transition duration-200 cursor-pointer"
                      @click="openLightbox(selectedTicket.attachment_url, selectedTicket.id, selectedTicket.attachment, selectedTicket.customer_name)">
                 
-                <!-- Hover Overlay Buttons -->
                 <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center gap-3">
                   <button type="button"
                           @click="openLightbox(selectedTicket.attachment_url, selectedTicket.id, selectedTicket.attachment, selectedTicket.customer_name)"
@@ -393,7 +546,6 @@
                 </div>
               </div>
 
-              <!-- Metadata File & Action Info -->
               <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
                 <div class="flex items-center gap-1.5 truncate max-w-xs">
                   <i class="fa-regular fa-file-image text-slate-400"></i>
@@ -457,12 +609,10 @@
                 </span>
                 <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-mono font-bold">SAAT INI</span>
               </div>
-              <!-- Format Hari, Tanggal, Bulan, Tahun Real-Time -->
               <p class="text-xs font-bold text-slate-200 mt-1 flex items-center gap-1.5">
                 <i class="fa-regular fa-calendar-days text-emerald-400 text-xs"></i>
                 <span x-text="liveDate"></span>
               </p>
-              <!-- Format Jam Real-Time Detik -->
               <p class="text-sm font-black font-mono text-emerald-300 tracking-wide" x-text="liveTime"></p>
             </div>
           </div>
@@ -492,7 +642,7 @@
               <label class="block text-[11px] font-bold text-slate-700 mb-1">Tugaskan Teknisi</label>
               <select name="technician" x-model="formTechnician"
                       class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-semibold focus:ring-brand focus:border-brand">
-                <option value="Randi Pratama (Tim Fiber)">Randi Pratama (Tim Fiber)</option>
+                <option value="Mamat (Tim Fiber)">Mamat (Tim Fiber)</option>
                 <option value="Fajar & Tim Lapangan">Fajar & Tim Lapangan</option>
                 <option value="Bambang Irawan (Perangkat)">Bambang Irawan (Perangkat)</option>
                 <option value="NOC Helpdesk (Remote)">NOC Helpdesk (Remote)</option>
@@ -570,7 +720,7 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- 4. FLOATING TOAST NOTIFIKASI REAL-TIME         -->
+  <!-- 7. FLOATING TOAST NOTIFIKASI REAL-TIME         -->
   <!-- ============================================== -->
   <div x-show="toast.show" style="display: none;"
        x-transition:enter="ease-out duration-300"
@@ -594,7 +744,7 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- 5. MODAL LIGHTBOX PREVIEW FOTO BUKTI           -->
+  <!-- 8. MODAL LIGHTBOX PREVIEW FOTO BUKTI           -->
   <!-- ============================================== -->
   <div x-show="lightbox.open" style="display: none;"
        x-transition:enter="ease-out duration-200"
@@ -649,6 +799,79 @@
         </button>
       </div>
 
+  <!-- ============================================== -->
+  <!-- 9. MODAL KONFIRMASI HAPUS SINGLE TIKET         -->
+  <!-- ============================================== -->
+  <div x-show="openDeleteModal" style="display: none;"
+       x-transition:enter="ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
+    <div @click.away="openDeleteModal = false"
+         class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative text-center space-y-4">
+      <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div>
+        <h3 class="text-base font-black text-slate-900">Hapus Laporan Gangguan?</h3>
+        <p class="text-xs text-slate-500 mt-1">
+          Apakah Anda yakin ingin menghapus tiket <strong class="text-slate-900" x-text="selectedTicketToDelete?.id"></strong> milik <strong class="text-slate-900" x-text="selectedTicketToDelete?.customer_name"></strong>? Tindakan ini tidak dapat dibatalkan.
+        </p>
+      </div>
+      <div class="flex items-center justify-center gap-3 pt-2">
+        <button type="button" @click="openDeleteModal = false" :disabled="isDeleting"
+                class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+          Batal
+        </button>
+        <button type="button" @click="executeDeleteSingle()" :disabled="isDeleting"
+                class="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition shadow-xs flex items-center gap-1.5">
+          <template x-if="isDeleting">
+            <i class="fa-solid fa-circle-notch fa-spin text-xs"></i>
+          </template>
+          <span x-text="isDeleting ? 'Menghapus...' : 'Ya, Hapus Laporan'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 10. MODAL KONFIRMASI HAPUS SEMUA TIKET        -->
+  <!-- ============================================== -->
+  <div x-show="openBulkDeleteModal" style="display: none;"
+       x-transition:enter="ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
+    <div @click.away="openBulkDeleteModal = false"
+         class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative text-center space-y-4">
+      <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-trash-can"></i>
+      </div>
+      <div>
+        <h3 class="text-base font-black text-slate-900">Hapus Seluruh Data Laporan Masalah?</h3>
+        <p class="text-xs text-slate-500 mt-1">
+          Apakah Anda yakin ingin membersihkan seluruh data laporan kendala jaringan? Semua data tiket saat ini akan dihapus dari sistem.
+        </p>
+      </div>
+      <div class="flex items-center justify-center gap-3 pt-2">
+        <button type="button" @click="openBulkDeleteModal = false" :disabled="isDeleting"
+                class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+          Batal
+        </button>
+        <button type="button" @click="executeBulkDelete()" :disabled="isDeleting"
+                class="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition shadow-xs flex items-center gap-1.5">
+          <template x-if="isDeleting">
+            <i class="fa-solid fa-circle-notch fa-spin text-xs"></i>
+          </template>
+          <span x-text="isDeleting ? 'Menghapus Semua...' : 'Ya, Bersihkan Semua'"></span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -683,6 +906,10 @@ function laporanMasalahApp(initialTickets, initialCounts, statusFilter) {
       fileName: '',
       customerName: ''
     },
+    openDeleteModal: false,
+    openBulkDeleteModal: false,
+    selectedTicketToDelete: null,
+    isDeleting: false,
 
     init() {
       this.updateClock();
@@ -779,7 +1006,7 @@ function laporanMasalahApp(initialTickets, initialCounts, statusFilter) {
       const freshTicket = this.tickets.find(t => t.id === ticket.id) || ticket;
       this.selectedTicket = JSON.parse(JSON.stringify(freshTicket));
       this.formStatus = this.selectedTicket.status;
-      this.formTechnician = this.selectedTicket.technician || 'Randi Pratama (Tim Fiber)';
+      this.formTechnician = this.selectedTicket.technician || 'Mamat (Tim Fiber)';
       this.formNotes = this.selectedTicket.notes || '';
       this.openModal = true;
     },
@@ -869,6 +1096,91 @@ function laporanMasalahApp(initialTickets, initialCounts, statusFilter) {
       } finally {
         this.isSubmitting = false;
       }
+    },
+
+    confirmDeleteTicket(ticket) {
+      this.selectedTicketToDelete = ticket;
+      this.openDeleteModal = true;
+    },
+
+    confirmBulkDeleteAll() {
+      this.openBulkDeleteModal = true;
+    },
+
+    async executeDeleteSingle() {
+      if (!this.selectedTicketToDelete) return;
+      this.isDeleting = true;
+
+      const ticketId = this.selectedTicketToDelete.id;
+      const url = '/admin/laporan-masalah/' + encodeURIComponent(ticketId);
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+      try {
+        const response = await fetch(url, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (response.ok) {
+          this.tickets = this.tickets.filter(t => t.id !== ticketId);
+          this.recalculateCounts();
+          this.showToast('Tiket ' + ticketId + ' berhasil dihapus.', 'success');
+          this.openDeleteModal = false;
+          this.selectedTicketToDelete = null;
+        } else {
+          window.location.reload();
+        }
+      } catch (err) {
+        window.location.reload();
+      } finally {
+        this.isDeleting = false;
+      }
+    },
+
+    async executeBulkDelete() {
+      this.isDeleting = true;
+
+      const url = '/admin/laporan-masalah/bulk-delete';
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ delete_all: 1 })
+        });
+
+        if (response.ok) {
+          this.tickets = [];
+          this.counts = { all: 0, menunggu: 0, proses: 0, selesai: 0, kritis: 0 };
+          this.showToast('Seluruh data laporan masalah berhasil dihapus.', 'success');
+          this.openBulkDeleteModal = false;
+        } else {
+          window.location.reload();
+        }
+      } catch (err) {
+        window.location.reload();
+      } finally {
+        this.isDeleting = false;
+      }
+    },
+
+    recalculateCounts() {
+      this.counts.all = this.tickets.length;
+      this.counts.menunggu = this.tickets.filter(t => t.status === 'Menunggu Respon').length;
+      this.counts.proses = this.tickets.filter(t => t.status === 'Sedang Ditangani').length;
+      this.counts.selesai = this.tickets.filter(t => t.status === 'Selesai').length;
+      this.counts.kritis = this.tickets.filter(t => t.priority === 'Kritis' && t.status !== 'Selesai').length;
     }
   };
 }
