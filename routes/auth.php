@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
@@ -13,10 +14,10 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('auth/google', [GoogleAuthController::class, 'redirectToGoogle'])
+    Route::get('auth/google', [AuthController::class, 'google_redirect'])
                 ->name('auth.google');
 
-    Route::get('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])
+    Route::get('auth/google/callback', [AuthController::class, 'google_callback'])
                 ->name('auth.google.callback');
 
     Route::get('register', [RegisteredUserController::class, 'create'])

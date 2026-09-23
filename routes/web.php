@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\WhatsappGatewayController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Collector\CollectorController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
@@ -11,8 +12,13 @@ use Illuminate\Support\Facades\Route;
 // Halaman Utama (Publik)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+// Autentikasi Google (Publik / Guest)
+Route::get('/auth-google-redirect', [AuthController::class, 'google_redirect'])->name('auth.google-redirect');
+Route::get('/auth-google-callback', [AuthController::class, 'google_callback'])->name('auth.google-callback');
+
 // Fitur Layanan & Pelanggan Banterpool (Wajib Login)
 Route::middleware('auth')->group(function () {
+
     Route::get('/tentang-kami', [HomeController::class, 'tentangKami'])->name('tentang-kami');
     Route::get('/paket', [HomeController::class, 'paket'])->name('paket');
     Route::get('/tagihan', [HomeController::class, 'tagihan'])->name('tagihan');
