@@ -97,21 +97,36 @@
         @php
           $techNotifications = [];
           try {
-            $tOrders = \App\Models\Order::where('order_number', 'not like', 'PLG-%')->whereIn('status', ['Menunggu Konfirmasi', 'Jadwal Pemasangan', 'Sedang Dipasang'])->latest()->take(3)->get();
+            $currentUser = auth()->user();
+            $tQuery = \App\Models\Order::where('order_number', 'not like', 'PLG-%')
+              ->whereIn('status', ['Menunggu Konfirmasi', 'Jadwal Pemasangan', 'Jadwal Teknisi', 'Sedang Dipasang', 'Kendala Lapangan']);
+
+            if (!$currentUser->isAdmin()) {
+              $tQuery->forTechnician($currentUser);
+            }
+
+            $tOrders = $tQuery->latest()->take(5)->get();
             foreach ($tOrders as $to) {
+              $isAssignedToMe = $currentUser && ($to->technician_id === $currentUser->id || $to->technician === $currentUser->name || str_contains($to->technician ?? '', explode(' ', $currentUser->name)[0]));
               $techNotifications[] = [
                 'title' => 'Tugas Pemasangan: ' . $to->order_number,
                 'desc' => $to->customer_name . ' (' . ($to->address ?? 'Lokasi') . ')',
-                'time' => $to->created_at ? $to->created_at->diffForHumans() : 'Baru saja',
-                'url' => route('teknisi.pemasangan', ['q' => $to->order_number]),
+                'time' => $to->assigned_at ? $to->assigned_at->diffForHumans() : ($to->created_at ? $to->created_at->diffForHumans() : 'Baru saja'),
+                'url' => route('teknisi.pemasangan', ['q' => $to->order_number, 'scope' => ($currentUser->isAdmin() ? 'all' : 'my')]),
                 'icon' => 'fa-solid fa-wifi',
                 'icon_bg' => 'bg-amber-100 text-amber-600',
+                'badge' => $isAssignedToMe ? 'Ditugaskan ke Anda' : $to->status,
               ];
             }
 
             $cTickets = Cache::get('trouble_tickets') ?: session('admin_tickets') ?: [];
-            $tTickets = collect($cTickets)->whereIn('status', ['Menunggu Respon', 'Sedang Ditangani'])->take(3);
-            foreach ($tTickets as $tt) {
+            $tTickets = collect($cTickets)->whereIn('status', ['Menunggu Respon', 'Sedang Ditangani']);
+            if (!$currentUser->isAdmin()) {
+              $tTickets = $tTickets->filter(function($t) use ($currentUser) {
+                return empty($t['technician']) || str_contains(strtolower($t['technician']), strtolower(explode(' ', $currentUser->name)[0]));
+              });
+            }
+            foreach ($tTickets->take(3) as $tt) {
               $techNotifications[] = [
                 'title' => 'Gangguan: ' . ($tt['type'] ?? 'Teknis'),
                 'desc' => ($tt['id'] ?? '') . ' - ' . ($tt['customer_name'] ?? 'Pelanggan'),
@@ -119,6 +134,7 @@
                 'url' => route('teknisi.gangguan', ['q' => $tt['id'] ?? '']),
                 'icon' => 'fa-solid fa-triangle-exclamation',
                 'icon_bg' => 'bg-red-100 text-red-600',
+                'badge' => 'Gangguan',
               ];
             }
           } catch (\Exception $e) {}
@@ -131,7 +147,7 @@
                   title="Pemberitahuan Tugas Teknisi">
             <i class="fa-regular fa-bell text-sm"></i>
             @if($techNotifCount > 0)
-              <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse border-2 border-slate-900"></span>
             @endif
           </button>
 
@@ -140,11 +156,11 @@
                x-transition:enter="transition ease-out duration-150"
                x-transition:enter-start="transform opacity-0 scale-95"
                x-transition:enter-end="transform opacity-100 scale-100"
-               class="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl py-3 z-50 text-slate-800">
+               class="absolute right-0 mt-2 w-84 bg-white border border-slate-200 rounded-2xl shadow-xl py-3 z-50 text-slate-800">
             <div class="px-4 pb-2 border-b border-slate-100 flex items-center justify-between">
-              <p class="font-bold text-xs text-slate-900">Notifikasi Lapangan</p>
+              <p class="font-bold text-xs text-slate-900">Notifikasi Tugas Lapangan</p>
               @if($techNotifCount > 0)
-                <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $techNotifCount }} Baru</span>
+                <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $techNotifCount }} Tugas</span>
               @else
                 <span class="text-slate-400 text-[10px] font-medium">0 Baru</span>
               @endif
@@ -152,12 +168,17 @@
             <div class="divide-y divide-slate-100 text-xs max-h-80 overflow-y-auto">
               @forelse($techNotifications as $notif)
                 <a href="{{ $notif['url'] }}" class="p-3 flex items-start gap-3 hover:bg-slate-50 transition block">
-                  <div class="w-7 h-7 rounded-lg {{ $notif['icon_bg'] }} flex items-center justify-center shrink-0 text-xs">
+                  <div class="w-7 h-7 rounded-lg {{ $notif['icon_bg'] }} flex items-center justify-center shrink-0 text-xs mt-0.5">
                     <i class="{{ $notif['icon'] }}"></i>
                   </div>
-                  <div class="flex-1">
-                    <p class="font-bold text-slate-900 leading-tight">{{ $notif['title'] }}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">{{ $notif['desc'] }}</p>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-1">
+                      <p class="font-bold text-slate-900 leading-tight truncate text-xs">{{ $notif['title'] }}</p>
+                      @if(isset($notif['badge']))
+                        <span class="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 shrink-0 whitespace-nowrap">{{ $notif['badge'] }}</span>
+                      @endif
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-0.5 truncate">{{ $notif['desc'] }}</p>
                     <span class="text-[9px] text-slate-400 mt-0.5 block">{{ $notif['time'] }}</span>
                   </div>
                 </a>

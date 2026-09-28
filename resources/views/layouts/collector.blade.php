@@ -113,7 +113,7 @@
         @php
           $collectorNotifications = [];
           try {
-            $cBills = \App\Models\Bill::whereIn('status', ['Menunggu Verifikasi', 'Belum Bayar'])->latest()->take(3)->get();
+            $cBills = \App\Models\Bill::activeForMonitoring()->whereIn('status', ['Menunggu Verifikasi', 'Belum Bayar'])->latest()->take(3)->get();
             foreach ($cBills as $cb) {
               $collectorNotifications[] = [
                 'title' => 'Tagihan: ' . $cb->bill_number,

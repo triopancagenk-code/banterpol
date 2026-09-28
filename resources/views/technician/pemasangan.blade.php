@@ -40,6 +40,7 @@
 
     <!-- Search Box -->
     <form method="GET" action="{{ route('teknisi.pemasangan') }}" class="flex items-center gap-2">
+      <input type="hidden" name="scope" value="{{ $scope }}">
       <div class="relative w-full sm:w-72">
         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
         <input type="text" name="q" value="{{ $search }}" placeholder="Cari nama, order, ODP, alamat..."
@@ -52,7 +53,7 @@
         Cari
       </button>
       @if(!empty($search))
-        <a href="{{ route('teknisi.pemasangan', ['status' => $statusFilter]) }}" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-2 rounded-xl text-xs" title="Reset Pencarian">
+        <a href="{{ route('teknisi.pemasangan', ['scope' => $scope, 'status' => $statusFilter]) }}" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-2 rounded-xl text-xs" title="Reset Pencarian">
           <i class="fa-solid fa-xmark"></i>
         </a>
       @endif
@@ -60,37 +61,56 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- 2. STATUS FILTER TABS                          -->
+  <!-- 2. SCOPE TABS (TUGAS SAYA VS SEMUA LAPANGAN)   -->
+  <!-- ============================================== -->
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="{{ route('teknisi.pemasangan', ['scope' => 'my', 'status' => $statusFilter, 'q' => $search]) }}"
+       class="px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 shadow-xs {{ $scope === 'my' ? 'bg-slate-900 text-amber-400 border border-slate-800' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50' }}">
+      <i class="fa-solid fa-user-check text-amber-400"></i>
+      <span>Tiket Ditugaskan ke Saya</span>
+      <span class="px-2 py-0.5 rounded-full text-[10px] {{ $scope === 'my' ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-100 text-slate-600' }}">{{ $counts['my_total'] }}</span>
+    </a>
+
+    <a href="{{ route('teknisi.pemasangan', ['scope' => 'all', 'status' => $statusFilter, 'q' => $search]) }}"
+       class="px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 shadow-xs {{ $scope === 'all' ? 'bg-slate-900 text-amber-400 border border-slate-800' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50' }}">
+      <i class="fa-solid fa-users text-blue-400"></i>
+      <span>Semua Tiket Lapangan</span>
+      <span class="px-2 py-0.5 rounded-full text-[10px] {{ $scope === 'all' ? 'bg-slate-700 text-slate-200 font-bold' : 'bg-slate-100 text-slate-600' }}">{{ $counts['all_total'] }}</span>
+    </a>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 3. STATUS FILTER TABS                          -->
   <!-- ============================================== -->
   <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
-    <a href="{{ route('teknisi.pemasangan', ['status' => 'all', 'q' => $search]) }}"
+    <a href="{{ route('teknisi.pemasangan', ['scope' => $scope, 'status' => 'all', 'q' => $search]) }}"
        class="px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'all' ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' }}">
-      <span>Semua Tiket</span>
+      <span>Semua Status</span>
       <span class="text-[10px] px-1.5 py-0.5 rounded-full {{ $statusFilter === 'all' ? 'bg-slate-950/15' : 'bg-slate-100' }}">{{ $counts['all'] }}</span>
     </a>
 
-    <a href="{{ route('teknisi.pemasangan', ['status' => 'Jadwal Teknisi', 'q' => $search]) }}"
+    <a href="{{ route('teknisi.pemasangan', ['scope' => $scope, 'status' => 'Jadwal Teknisi', 'q' => $search]) }}"
        class="px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Jadwal Teknisi' ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' }}">
       <i class="fa-regular fa-calendar text-xs"></i>
       <span>Jadwal Pasang</span>
       <span class="text-[10px] px-1.5 py-0.5 rounded-full {{ $statusFilter === 'Jadwal Teknisi' ? 'bg-slate-950/15' : 'bg-slate-100' }}">{{ $counts['jadwal'] }}</span>
     </a>
 
-    <a href="{{ route('teknisi.pemasangan', ['status' => 'Sedang Dipasang', 'q' => $search]) }}"
+    <a href="{{ route('teknisi.pemasangan', ['scope' => $scope, 'status' => 'Sedang Dipasang', 'q' => $search]) }}"
        class="px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Sedang Dipasang' ? 'bg-blue-600 text-white font-bold shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' }}">
       <i class="fa-solid fa-person-digging text-xs"></i>
       <span>Sedang Dipasang</span>
       <span class="text-[10px] px-1.5 py-0.5 rounded-full {{ $statusFilter === 'Sedang Dipasang' ? 'bg-white/20' : 'bg-slate-100' }}">{{ $counts['proses'] }}</span>
     </a>
 
-    <a href="{{ route('teknisi.pemasangan', ['status' => 'Selesai', 'q' => $search]) }}"
+    <a href="{{ route('teknisi.pemasangan', ['scope' => $scope, 'status' => 'Selesai', 'q' => $search]) }}"
        class="px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Selesai' ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' }}">
       <i class="fa-solid fa-circle-check text-xs"></i>
       <span>Selesai Terpasang</span>
       <span class="text-[10px] px-1.5 py-0.5 rounded-full {{ $statusFilter === 'Selesai' ? 'bg-white/20' : 'bg-slate-100' }}">{{ $counts['selesai'] }}</span>
     </a>
 
-    <a href="{{ route('teknisi.pemasangan', ['status' => 'Kendala Lapangan', 'q' => $search]) }}"
+    <a href="{{ route('teknisi.pemasangan', ['scope' => $scope, 'status' => 'Kendala Lapangan', 'q' => $search]) }}"
        class="px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Kendala Lapangan' ? 'bg-red-600 text-white font-bold shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' }}">
       <i class="fa-solid fa-triangle-exclamation text-xs"></i>
       <span>Kendala Lapangan</span>
@@ -99,7 +119,7 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- 3. LIST TIKET PEMASANGAN                       -->
+  <!-- 4. LIST TIKET PEMASANGAN                       -->
   <!-- ============================================== -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     @forelse($orders as $order)
@@ -108,7 +128,26 @@
           <!-- Card Header -->
           <div class="flex items-start justify-between gap-2 pb-3 border-b border-slate-100">
             <div>
-              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ $order->order_number }}</span>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ $order->order_number }}</span>
+                @php
+                  $isMyTask = auth()->user() && ($order->technician_id === auth()->id() || $order->technician === auth()->user()->name || str_contains($order->technician ?? '', explode(' ', auth()->user()->name)[0]));
+                @endphp
+                @if($isMyTask)
+                  <span class="bg-amber-100 text-amber-900 border border-amber-300 font-black px-2 py-0.5 rounded-md text-[9px] flex items-center gap-1">
+                    <i class="fa-solid fa-user-check text-amber-600"></i>
+                    <span>Tugas Anda</span>
+                  </span>
+                @elseif($order->technician)
+                  <span class="bg-slate-100 text-slate-700 border border-slate-200 font-medium px-2 py-0.5 rounded-md text-[9px]">
+                    Teknisi: {{ $order->technician }}
+                  </span>
+                @else
+                  <span class="bg-red-50 text-red-700 border border-red-200 font-medium px-2 py-0.5 rounded-md text-[9px]">
+                    Belum Ditugaskan
+                  </span>
+                @endif
+              </div>
               <h3 class="text-sm font-bold text-slate-900 mt-0.5 leading-snug">{{ $order->customer_name }}</h3>
             </div>
 
@@ -153,6 +192,12 @@
               <div class="flex items-center justify-between text-[11px]">
                 <span class="text-slate-500">Titik ODP:</span>
                 <span class="font-bold text-blue-600">{{ $order->assigned_odp ?? 'Belum Diatur NOC' }}</span>
+              </div>
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="text-slate-500">Teknisi Bertugas:</span>
+                <span class="font-bold {{ $isMyTask ? 'text-amber-700' : 'text-slate-800' }}">
+                  {{ $order->technician ?: 'Belum ditentukan' }}
+                </span>
               </div>
               @if($order->opm_dbm)
                 <div class="flex items-center justify-between text-[11px]">

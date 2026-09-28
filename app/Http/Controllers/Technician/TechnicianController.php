@@ -25,24 +25,42 @@ class TechnicianController extends Controller
      */
     public function dashboard()
     {
-        $allOrders = Order::where('order_number', 'not like', 'PLG-%')->get();
+        $user = auth()->user();
+        $isTechnician = $user && ($user->role === 'technician' || $user->role === 'teknisi');
+
+        $activeStatuses = ['Menunggu Konfirmasi', 'Jadwal Pemasangan', 'Jadwal Teknisi', 'Sedang Dipasang', 'Kendala Lapangan'];
+        $baseOrdersQuery = Order::where('order_number', 'not like', 'PLG-%');
+
+        // Orders relevant for metrics: if user is field technician, focus on their assigned tasks
+        if ($isTechnician && !$user->isAdmin()) {
+            $relevantOrders = (clone $baseOrdersQuery)->forTechnician($user)->get();
+        } else {
+            $relevantOrders = (clone $baseOrdersQuery)->get();
+        }
+
         $tickets = $this->getTroubleTickets();
 
-        // Metrik Pemasangan (Semua pesanan aktif yang butuh instalasi/penanganan)
-        $activeStatuses = ['Menunggu Konfirmasi', 'Jadwal Pemasangan', 'Jadwal Teknisi', 'Sedang Dipasang', 'Kendala Lapangan'];
-        $pendingInstallations = $allOrders->whereIn('status', $activeStatuses)->count();
-        $completedInstallations = $allOrders->where('status', 'Selesai')->count();
+        $pendingInstallations = $relevantOrders->whereIn('status', $activeStatuses)->count();
+        $completedInstallations = $relevantOrders->where('status', 'Selesai')->count();
 
         // Metrik Gangguan
         $activeTroubles = collect($tickets)->whereIn('status', ['Menunggu Respon', 'Sedang Ditangani'])->count();
         $criticalTroubles = collect($tickets)->where('priority', 'Kritis')->where('status', '!=', 'Selesai')->count();
 
         // Tugas Instalasi Aktif Terbaru
-        $activeOrders = Order::where('order_number', 'not like', 'PLG-%')
-            ->whereIn('status', $activeStatuses)
-            ->latest()
-            ->take(4)
-            ->get();
+        $activeOrdersQuery = Order::where('order_number', 'not like', 'PLG-%')
+            ->whereIn('status', $activeStatuses);
+
+        if ($isTechnician && !$user->isAdmin()) {
+            $activeOrdersQuery->forTechnician($user);
+        }
+
+        $activeOrders = $activeOrdersQuery->latest()->take(6)->get();
+
+        // Tiket yang baru ditugaskan ke akun teknisi ini
+        $newAssignedOrders = $activeOrders->filter(function ($ord) {
+            return $ord->assigned_at && $ord->assigned_at->gt(now()->subHours(48));
+        });
 
         // Tiket Gangguan Butuh Penanganan Segera
         $urgentTickets = collect($tickets)
@@ -55,9 +73,10 @@ class TechnicianController extends Controller
             'active_troubles' => $activeTroubles,
             'critical_troubles' => $criticalTroubles,
             'total_tasks_today' => $pendingInstallations + $activeTroubles,
+            'my_assigned_count' => $pendingInstallations,
         ];
 
-        return view('technician.dashboard', compact('stats', 'activeOrders', 'urgentTickets'));
+        return view('technician.dashboard', compact('stats', 'activeOrders', 'urgentTickets', 'newAssignedOrders', 'isTechnician'));
     }
 
     /**
@@ -65,10 +84,20 @@ class TechnicianController extends Controller
      */
     public function pemasangan(Request $request)
     {
+        $user = auth()->user();
+        $isTechnician = $user && ($user->role === 'technician' || $user->role === 'teknisi');
+
+        // Scope filter: 'my' = Tugas Saya, 'all' = Semua Tim Lapangan
+        // Default ke 'my' untuk akun teknisi, 'all' untuk admin
+        $scope = $request->input('scope', ($isTechnician && !$user->isAdmin()) ? 'my' : 'all');
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('q', '');
 
         $query = Order::where('order_number', 'not like', 'PLG-%')->latest();
+
+        if ($scope === 'my' && $user) {
+            $query->forTechnician($user);
+        }
 
         if ($statusFilter !== 'all') {
             if ($statusFilter === 'Jadwal Teknisi') {
@@ -85,22 +114,33 @@ class TechnicianController extends Controller
                   ->orWhere('customer_phone', 'like', "%{$search}%")
                   ->orWhere('package_name', 'like', "%{$search}%")
                   ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhere('technician', 'like', "%{$search}%")
                   ->orWhere('assigned_odp', 'like', "%{$search}%");
             });
         }
 
         $orders = $query->paginate(15)->withQueryString();
-        $allOrders = Order::where('order_number', 'not like', 'PLG-%')->get();
+
+        $scopedBase = Order::where('order_number', 'not like', 'PLG-%');
+        if ($scope === 'my' && $user) {
+            $scopedBase->forTechnician($user);
+        }
+        $scopedOrders = $scopedBase->get();
+
+        $myCount = Order::where('order_number', 'not like', 'PLG-%')->forTechnician($user)->count();
+        $allCount = Order::where('order_number', 'not like', 'PLG-%')->count();
 
         $counts = [
-            'all' => $allOrders->count(),
-            'jadwal' => $allOrders->whereIn('status', ['Menunggu Konfirmasi', 'Jadwal Pemasangan', 'Jadwal Teknisi'])->count(),
-            'proses' => $allOrders->where('status', 'Sedang Dipasang')->count(),
-            'selesai' => $allOrders->where('status', 'Selesai')->count(),
-            'kendala' => $allOrders->where('status', 'Kendala Lapangan')->count(),
+            'all' => $scopedOrders->count(),
+            'jadwal' => $scopedOrders->whereIn('status', ['Menunggu Konfirmasi', 'Jadwal Pemasangan', 'Jadwal Teknisi'])->count(),
+            'proses' => $scopedOrders->where('status', 'Sedang Dipasang')->count(),
+            'selesai' => $scopedOrders->where('status', 'Selesai')->count(),
+            'kendala' => $scopedOrders->where('status', 'Kendala Lapangan')->count(),
+            'my_total' => $myCount,
+            'all_total' => $allCount,
         ];
 
-        return view('technician.pemasangan', compact('orders', 'counts', 'statusFilter', 'search'));
+        return view('technician.pemasangan', compact('orders', 'counts', 'statusFilter', 'search', 'scope', 'isTechnician'));
     }
 
     /**
@@ -133,10 +173,12 @@ class TechnicianController extends Controller
             $order->installed_at = now();
             if (empty($order->technician)) {
                 $order->technician = auth()->user()->name;
+                $order->technician_id = auth()->id();
             }
         } elseif ($status === 'Sedang Dipasang') {
             if (empty($order->technician)) {
                 $order->technician = auth()->user()->name;
+                $order->technician_id = auth()->id();
             }
         }
 

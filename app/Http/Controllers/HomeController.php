@@ -54,7 +54,7 @@ class HomeController extends Controller
         return view('pages.paket', compact('packages'));
     }
 
-    public function tagihan()
+    public function tagihan(Request $request)
     {
         if (auth()->check()) {
             if (auth()->user()->role === 'collector' || auth()->user()->role === 'kolektor') {
@@ -69,41 +69,175 @@ class HomeController extends Controller
         BillingService::syncCompletedOrdersWithoutBills();
 
         $user = auth()->user();
-        $activeBillModel = null;
-        $userPaidBills = collect();
+        $statusFilter = $request->input('status', 'all');
+        $search = $request->input('q', '');
 
-        if ($user) {
-            // Cari tagihan belum bayar / jatuh tempo milik pengguna
-            $activeBillModel = Bill::whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
-                ->where(function ($query) use ($user) {
-                    $query->where('customer_email', $user->email);
-                    if (!empty($user->phone)) {
-                        $query->orWhere('customer_phone', $user->phone);
-                    }
-                    $query->orWhere('customer_name', $user->name);
+        $isAdminPreview = false;
+        $adminPreviewCustomer = null;
+        $availablePreviewCustomers = [];
+        $targetEmail = null;
+        $targetName = null;
+        $targetPhone = null;
+        $targetOrderId = null;
 
-                    $orderIds = Order::where('customer_email', $user->email)
-                        ->orWhere('customer_name', $user->name)
-                        ->pluck('id');
-                    if ($orderIds->isNotEmpty()) {
-                        $query->orWhereIn('order_id', $orderIds);
-                    }
-                })
-                ->latest()
-                ->first();
-
-            // Riwayat pembayaran lunas milik pengguna dari database
-            $userPaidBills = Bill::where('status', 'Lunas')
-                ->where(function ($query) use ($user) {
-                    $query->where('customer_email', $user->email)
-                        ->orWhere('customer_name', $user->name);
-                    if (!empty($user->phone)) {
-                        $query->orWhere('customer_phone', $user->phone);
-                    }
-                })
-                ->latest()
-                ->get();
+        // 1. Cek parameter eksplisit di URL query
+        if ($request->has('customer_email')) {
+            $targetEmail = $request->input('customer_email');
         }
+        if ($request->has('order_id')) {
+            $targetOrderId = (int) $request->input('order_id');
+        }
+
+        // 2. Tentukan target pelanggan yang tagihannya sedang dilihat
+        if ($user && ($user->isAdmin() || $user->role === 'admin' || $user->role === 'direktur')) {
+            $hasOwnBills = Bill::where('customer_email', $user->email)->exists();
+            if (!$hasOwnBills) {
+                // Admin sedang meninjau POV Pelanggan (Mode Pratinjau Admin)
+                $isAdminPreview = true;
+
+                $availablePreviewCustomers = Bill::select('customer_name', 'customer_email', 'customer_phone', 'order_id')
+                    ->latest('id')
+                    ->get()
+                    ->unique(function ($item) {
+                        return $item->customer_email ?: $item->customer_name;
+                    })
+                    ->values();
+
+                if (empty($targetEmail) && empty($targetOrderId)) {
+                    $selectedCust = $availablePreviewCustomers->first();
+                    if ($selectedCust) {
+                        $targetEmail = $selectedCust->customer_email;
+                        $targetName = $selectedCust->customer_name;
+                        $targetPhone = $selectedCust->customer_phone;
+                        $targetOrderId = $selectedCust->order_id;
+                    }
+                } else {
+                    $selectedCust = $availablePreviewCustomers->first(function ($c) use ($targetEmail, $targetOrderId) {
+                        return ($targetEmail && $c->customer_email === $targetEmail) || ($targetOrderId && $c->order_id === $targetOrderId);
+                    });
+                    if ($selectedCust) {
+                        $targetName = $selectedCust->customer_name;
+                        $targetPhone = $selectedCust->customer_phone;
+                    }
+                }
+
+                if ($targetName || $targetEmail) {
+                    $adminPreviewCustomer = [
+                        'name' => $targetName ?: 'Pelanggan',
+                        'email' => $targetEmail ?: '-',
+                        'phone' => $targetPhone ?: '-',
+                    ];
+                }
+            } else {
+                $targetEmail = $user->email;
+                $targetName = $user->name;
+                $targetPhone = $user->phone;
+            }
+        } elseif ($user) {
+            // User adalah Pelanggan (Customer)
+            $targetEmail = $user->email;
+            $targetName = $user->name;
+            $targetPhone = $user->phone;
+
+            // Cari apakah ada order atau bill langsung dengan email/nama/phone ini
+            $hasDirect = Order::where('customer_email', $user->email)->orWhere('customer_name', $user->name)->exists()
+                || Bill::where('customer_email', $user->email)->orWhere('customer_name', $user->name)->exists();
+
+            if (!$hasDirect) {
+                // Cek dari session order jika baru selesai checkout
+                if (session()->has('customer_order_id')) {
+                    $sessOrder = Order::find(session('customer_order_id'));
+                    if ($sessOrder) {
+                        $targetEmail = $sessOrder->customer_email;
+                        $targetName = $sessOrder->customer_name;
+                        $targetPhone = $sessOrder->customer_phone;
+                        $targetOrderId = $sessOrder->id;
+                    }
+                }
+
+                // Cek pencocokan nama depan / prefix email
+                if (empty($targetOrderId)) {
+                    $firstWord = explode(' ', trim($user->name))[0];
+                    $emailPrefix = explode('@', $user->email)[0];
+                    
+                    $matchedBill = Bill::where('customer_name', 'like', "%{$firstWord}%")
+                        ->orWhere('customer_email', 'like', "%{$emailPrefix}%")
+                        ->latest('id')
+                        ->first();
+
+                    if ($matchedBill) {
+                        $targetEmail = $matchedBill->customer_email;
+                        $targetName = $matchedBill->customer_name;
+                        $targetPhone = $matchedBill->customer_phone;
+                        $targetOrderId = $matchedBill->order_id;
+                    }
+                }
+            }
+        } else {
+            // Guest / Tanpa Login
+            if (session()->has('customer_order_id')) {
+                $sessOrder = Order::find(session('customer_order_id'));
+                if ($sessOrder) {
+                    $targetEmail = $sessOrder->customer_email;
+                    $targetName = $sessOrder->customer_name;
+                    $targetPhone = $sessOrder->customer_phone;
+                    $targetOrderId = $sessOrder->id;
+                }
+            }
+
+            // Jika guest mencari q tertentu (no invoice atau hp)
+            if (!empty($search)) {
+                $searchBill = Bill::where('bill_number', 'like', "%{$search}%")
+                    ->orWhere('customer_phone', 'like', "%{$search}%")
+                    ->orWhere('customer_email', 'like', "%{$search}%")
+                    ->latest('id')
+                    ->first();
+                if ($searchBill) {
+                    $targetEmail = $searchBill->customer_email;
+                    $targetName = $searchBill->customer_name;
+                    $targetPhone = $searchBill->customer_phone;
+                    $targetOrderId = $searchBill->order_id;
+                }
+            }
+        }
+
+        // 3. Otomatis sinkronkan tagihan pelanggan (tagihan pendaftaran awal & tagihan bulan selanjutnya setelah lunas)
+        if (!empty($targetEmail) || !empty($targetName) || !empty($targetPhone) || !empty($targetOrderId)) {
+            BillingService::syncCustomerBillsForCustomer($targetEmail, $targetName, $targetPhone, $targetOrderId);
+        } elseif ($user) {
+            BillingService::syncCustomerBills($user);
+        }
+
+        // 4. Ambil seluruh tagihan milik pelanggan ini dari database
+        $userAllBills = Bill::where(function ($query) use ($targetEmail, $targetName, $targetPhone, $targetOrderId, $user) {
+                $matched = false;
+                if (!empty($targetOrderId)) {
+                    $query->where('order_id', $targetOrderId);
+                    $matched = true;
+                }
+                if (!empty($targetEmail)) {
+                    $matched ? $query->orWhere('customer_email', $targetEmail) : $query->where('customer_email', $targetEmail);
+                    $matched = true;
+                }
+                if (!empty($targetName)) {
+                    $matched ? $query->orWhere('customer_name', $targetName) : $query->where('customer_name', $targetName);
+                    $matched = true;
+                }
+                if (!empty($targetPhone)) {
+                    $matched ? $query->orWhere('customer_phone', $targetPhone) : $query->where('customer_phone', $targetPhone);
+                    $matched = true;
+                }
+                if ($user && !$matched) {
+                    $query->where('customer_email', $user->email)
+                          ->orWhere('customer_name', $user->name);
+                }
+            })
+            ->latest('id')
+            ->get();
+
+        // Tagihan belum bayar / jatuh tempo aktif pengguna (tagihan bulan selanjutnya jika sebelumnya sudah lunas)
+        $activeBillModel = $userAllBills->whereIn('status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])->first();
+        $userPaidBills = $userAllBills->where('status', 'Lunas');
 
         if ($activeBillModel) {
             $activeBill = [
@@ -117,7 +251,7 @@ class HomeController extends Controller
                 'tax' => number_format($activeBillModel->tax, 0, ',', '.'),
                 'total' => number_format($activeBillModel->total, 0, ',', '.'),
                 'total_raw' => (int) $activeBillModel->total,
-                'status' => $activeBillModel->status === 'Jatuh Tempo' ? 'Jatuh Tempo' : 'Belum Dibayar',
+                'status' => $activeBillModel->status === 'Jatuh Tempo' ? 'Jatuh Tempo' : ($activeBillModel->status === 'Menunggu Verifikasi' ? 'Menunggu Verifikasi' : 'Belum Dibayar'),
                 'has_unpaid' => true,
             ];
         } else {
@@ -137,6 +271,54 @@ class HomeController extends Controller
             ];
         }
 
+        // Susun daftar tagihan terstruktur seperti pada POV Admin dan Direktur
+        $allBillsData = $userAllBills->map(function ($b) {
+            return [
+                'id' => $b->bill_number,
+                'customer_name' => $b->customer_name,
+                'customer_phone' => $b->customer_phone,
+                'customer_email' => $b->customer_email ?? '-',
+                'package_name' => $b->package_name,
+                'speed' => $b->speed ?? '20 Mbps',
+                'period' => $b->period,
+                'due_date' => $b->due_date,
+                'bill_date' => $b->bill_date,
+                'amount' => number_format((float) $b->amount, 0, ',', '.'),
+                'tax' => number_format((float) $b->tax, 0, ',', '.'),
+                'total' => number_format((float) $b->total, 0, ',', '.'),
+                'total_raw' => (float) $b->total,
+                'status' => $b->status,
+                'payment_method' => $b->payment_method ?? 'Transfer Bank',
+                'proof_image' => null,
+                'created_at' => $b->created_at ? $b->created_at->format('Y-m-d H:i') : '-',
+                'paid_date' => $b->paid_at ? \Carbon\Carbon::parse($b->paid_at)->translatedFormat('d M Y') : '-',
+                'address' => $b->address,
+                'odp' => 'ODP-CLK-01',
+            ];
+        });
+
+        // Filter tab dan pencarian seperti POV Admin & Direktur
+        $bills = $allBillsData->filter(function ($item) use ($statusFilter, $search) {
+            $matchStatus = ($statusFilter === 'all') || ($item['status'] === $statusFilter);
+            $matchSearch = empty($search) ||
+                (stripos($item['package_name'], $search) !== false) ||
+                (stripos($item['id'], $search) !== false) ||
+                (stripos($item['period'], $search) !== false) ||
+                (stripos($item['due_date'], $search) !== false) ||
+                (stripos($item['payment_method'], $search) !== false) ||
+                (stripos($item['status'], $search) !== false);
+
+            return $matchStatus && $matchSearch;
+        })->values()->all();
+
+        $counts = [
+            'all' => $allBillsData->count(),
+            'menunggu' => $allBillsData->where('status', 'Menunggu Verifikasi')->count(),
+            'belum_bayar' => $allBillsData->where('status', 'Belum Bayar')->count(),
+            'lunas' => $allBillsData->where('status', 'Lunas')->count(),
+            'jatuh_tempo' => $allBillsData->where('status', 'Jatuh Tempo')->count(),
+        ];
+
         $historyBills = $userPaidBills->map(function ($b) {
             return [
                 'id' => $b->bill_number,
@@ -150,9 +332,12 @@ class HomeController extends Controller
                 'payment_method' => $b->payment_method ?? 'Transfer Bank',
                 'status' => $b->status,
             ];
-        })->toArray();
+        })->values()->toArray();
 
-        return view('pages.tagihan', compact('activeBill', 'historyBills'));
+        return view('pages.tagihan', compact(
+            'activeBill', 'historyBills', 'bills', 'statusFilter', 'search', 'counts',
+            'isAdminPreview', 'adminPreviewCustomer', 'availablePreviewCustomers'
+        ));
     }
 
     public function paymentTagihan(Request $request)
@@ -162,7 +347,14 @@ class HomeController extends Controller
         if ($invoice) {
             $dbBill = Bill::where('bill_number', $invoice)->first();
         } elseif (auth()->check()) {
-            $dbBill = Bill::where('user_id', auth()->id())->where('status', 'Belum Bayar')->latest()->first();
+            $user = auth()->user();
+            $orderIds = Order::where('customer_email', $user->email)->orWhere('customer_name', $user->name)->pluck('id');
+            $dbBill = Bill::where(function ($q) use ($user, $orderIds) {
+                $q->where('customer_email', $user->email)->orWhere('customer_name', $user->name);
+                if ($orderIds->isNotEmpty()) {
+                    $q->orWhereIn('order_id', $orderIds);
+                }
+            })->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])->latest('id')->first();
             if ($dbBill) {
                 $invoice = $dbBill->bill_number;
             }
@@ -176,7 +368,7 @@ class HomeController extends Controller
             'invoice' => $invoice ?? ('INV-' . date('Ym') . '-0001'),
             'package_name' => $dbBill ? $dbBill->package_name : $request->input('package', 'Paket WiFi Banterpool'),
             'period' => $dbBill ? $dbBill->period : $request->input('period', now()->locale('id')->translatedFormat('F Y')),
-            'due_date' => $dbBill ? $dbBill->due_date : $request->input('due_date', '10 ' . now()->locale('id')->translatedFormat('F Y')),
+            'due_date' => $dbBill ? $dbBill->due_date : $request->input('due_date', '05 ' . now()->locale('id')->addMonth()->translatedFormat('M Y')),
             'price' => $dbBill ? number_format($dbBill->amount, 0, ',', '.') : $request->input('price', '150.000'),
             'price_raw' => $dbBill ? (int) $dbBill->amount : (int) $request->input('price_raw', 150000),
             'tax' => $dbBill ? number_format($dbBill->tax, 0, ',', '.') : $request->input('tax', '0'),
@@ -188,6 +380,51 @@ class HomeController extends Controller
         ];
 
         return view('pages.payment-tagihan', compact('billData'));
+    }
+
+    /**
+     * Konfirmasi Pembayaran Tagihan dari Pelanggan & Terbitkan Tagihan Bulan Selanjutnya
+     */
+    public function confirmPaymentTagihan(Request $request)
+    {
+        $invoice = $request->input('invoice');
+        $paymentMethod = $request->input('payment_method', 'Transfer Bank');
+
+        $bill = null;
+        if ($invoice) {
+            $bill = Bill::where('bill_number', $invoice)->first();
+        }
+
+        if (!$bill && auth()->check()) {
+            $user = auth()->user();
+            $orderIds = Order::where('customer_email', $user->email)->orWhere('customer_name', $user->name)->pluck('id');
+            $bill = Bill::where(function ($q) use ($user, $orderIds) {
+                $q->where('customer_email', $user->email)->orWhere('customer_name', $user->name);
+                if ($orderIds->isNotEmpty()) {
+                    $q->orWhereIn('order_id', $orderIds);
+                }
+            })->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])->latest('id')->first();
+        }
+
+        if ($bill) {
+            $bill->status = 'Lunas';
+            $bill->paid_at = now('Asia/Jakarta');
+            $bill->payment_method = $paymentMethod;
+            $bill->save();
+
+            // Terbitkan otomatis tagihan untuk bulan selanjutnya dengan jatuh tempo tanggal 5
+            BillingService::generateNextBillForPaidBill($bill);
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pembayaran berhasil dikonfirmasi.',
+                'invoice' => $bill ? $bill->bill_number : $invoice,
+            ]);
+        }
+
+        return redirect()->route('tagihan')->with('success', 'Pembayaran berhasil dikonfirmasi! Tagihan bulan selanjutnya telah diterbitkan.');
     }
 
     public function checkout(Request $request)
@@ -254,7 +491,7 @@ class HomeController extends Controller
             $orderNumber = 'ORD-' . date('Ymd') . '-' . rand(100, 999);
             
             try {
-                Order::updateOrCreate(
+                $order = Order::updateOrCreate(
                     ['order_number' => $orderNumber],
                     [
                         'user_id' => auth()->id(),
@@ -281,6 +518,25 @@ class HomeController extends Controller
                         'admin_notes' => 'Pesanan baru masuk dari website pelanggan.',
                     ]
                 );
+
+                // Langsung terbitkan tagihan bulan depan untuk pesanan pendaftaran baru
+                BillingService::generateBillForOrder($order);
+
+                session([
+                    'customer_order_id' => $order->id,
+                    'customer_order_number' => $order->order_number,
+                    'customer_email' => $order->customer_email,
+                    'customer_name' => $order->customer_name,
+                    'customer_phone' => $order->customer_phone,
+                ]);
+
+                if (auth()->check()) {
+                    $currUser = auth()->user();
+                    if (empty($currUser->phone) && !empty($order->customer_phone)) {
+                        $currUser->phone = $order->customer_phone;
+                        $currUser->save();
+                    }
+                }
             } catch (\Exception $e) {
                 // Resilient fallback
             }
@@ -372,6 +628,8 @@ class HomeController extends Controller
         $defaultTickets = [];
 
         $myTickets = session('my_tickets', $defaultTickets);
+        $myTickets = \App\Http\Controllers\Admin\AdminController::pruneOldTickets($myTickets, 3);
+        session(['my_tickets' => $myTickets]);
 
         return view('pages.laporan-masalah', compact('myTickets'));
     }
@@ -457,6 +715,9 @@ class HomeController extends Controller
             'updated_at_full' => $createdAtWithSeconds,
             'updated_at_short' => $createdAtWithSeconds,
             'updated_at_iso' => $now->toIso8601String(),
+            'created_at_iso' => $now->toIso8601String(),
+            'created_timestamp' => $now->timestamp,
+            'updated_timestamp' => $now->timestamp,
             'notes' => 'Laporan kendala baru masuk dari portal pelanggan.',
             'coordinates' => '-7.4132, 109.1388',
             'attachment' => $attachmentName,
@@ -476,8 +737,10 @@ class HomeController extends Controller
             ]
         ];
 
-        // 1. Simpan ke Global Cache & Session Admin (POV Admin)
+        // 1. Simpan ke Global Cache & Session Admin (POV Admin & Direktur)
         $adminTickets = Cache::get('trouble_tickets') ?: session('admin_tickets') ?: (new AdminController)->getTicketsData();
+        // Prune otomatis riwayat tiket > 3 hari sebelum menambah tiket baru
+        $adminTickets = AdminController::pruneOldTickets($adminTickets, 3);
         array_unshift($adminTickets, $newTicket);
         Cache::forever('trouble_tickets', $adminTickets);
         session(['admin_tickets' => $adminTickets]);

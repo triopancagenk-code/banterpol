@@ -39,12 +39,16 @@
   <!-- ============================================== -->
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <h2 class="text-xl font-black text-slate-900 tracking-tight">Daftar Tiket Gangguan Jaringan</h2>
         <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-brand border border-red-200 uppercase tracking-wider">Trouble Tickets</span>
+        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 shadow-xs" title="Sistem otomatis membersihkan riwayat tiket berstatus Selesai yang telah berusia lebih dari 3 hari">
+          <i class="fa-solid fa-clock-rotate-left text-emerald-600"></i>
+          <span>Auto-Hapus 3 Hari (Tiket Selesai)</span>
+        </span>
       </div>
       <p class="text-xs text-slate-500 mt-1">
-        Kelola laporan kendala pelanggan yang masuk secara real-time, penugasan teknisi lapangan, dan update status tiket.
+        Kelola laporan kendala pelanggan secara real-time. Sistem otomatis menghapus riwayat laporan berstatus Selesai yang berusia lebih dari 3 hari. Admin & Direktur tetap dapat menghapus pilihan tiket maupun seluruh data laporan secara manual kapan saja.
       </p>
     </div>
 
@@ -64,13 +68,26 @@
         <span>Sinkronisasi</span>
       </button>
 
-      <!-- Tombol Hapus Semua (POV Admin & Direktur) -->
-      <button type="button" @click="confirmBulkDeleteAll()"
+      <!-- Tombol Hapus Pilihan (Selalu Terlihat) -->
+      <button type="button"
+              @click="selectedIds.length > 0 ? confirmBulkDelete(false) : showToast('Silakan centang minimal satu tiket pada kolom kotak centang tabel.', 'error')"
+              :class="selectedIds.length > 0 ? 'bg-red-600 hover:bg-red-700 text-white shadow-xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-500 border border-slate-200/80'"
+              class="h-10 px-3.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+              title="Hapus Tiket Laporan Kendala Terpilih">
+        <i class="fa-solid fa-trash-can" :class="selectedIds.length > 0 ? 'text-white' : 'text-slate-400'"></i>
+        <span>Hapus Pilihan</span>
+        <template x-if="selectedIds.length > 0">
+          <span class="bg-black/20 text-white px-1.5 py-0.5 rounded-full text-[10px] font-mono ml-0.5" x-text="selectedIds.length"></span>
+        </template>
+      </button>
+
+      <!-- Tombol Hapus Semua Data (POV Admin & Direktur) -->
+      <button type="button" @click="confirmBulkDelete(true)"
               :disabled="tickets.length === 0"
-              class="h-10 px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              class="h-10 px-3.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
               title="Hapus Seluruh Data Laporan Masalah">
-        <i class="fa-solid fa-trash-can"></i>
-        <span>Hapus Semua</span>
+        <i class="fa-solid fa-trash-arrow-up text-white"></i>
+        <span>Hapus Semua Data</span>
       </button>
     </div>
   </div>
@@ -209,6 +226,42 @@
     </form>
   </div>
 
+  <!-- Selection Status Bar (Aktif ketika ada data yang dipilih) -->
+  <div x-show="selectedIds.length > 0"
+       x-cloak
+       class="bg-slate-900 text-white p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg border border-slate-700">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-xl bg-brand/30 border border-brand/50 text-brand flex items-center justify-center font-black text-xs shrink-0">
+        <span x-text="selectedIds.length"></span>
+      </div>
+      <div class="text-xs">
+        <p class="font-extrabold text-white">
+          <span x-text="selectedIds.length"></span> laporan kendala dipilih
+        </p>
+        <template x-if="tickets.length > selectedIds.length">
+          <p class="text-[11px] text-slate-400 mt-0.5">
+            Ingin memilih seluruh data?
+            <button type="button" @click="selectAllTickets()" class="text-amber-400 hover:underline font-bold ml-1">
+              Pilih Semua (<span x-text="tickets.length"></span> Laporan)
+            </button>
+          </p>
+        </template>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 shrink-0">
+      <button type="button" @click="clearSelection()"
+              class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition">
+        Batal Pilihan
+      </button>
+      <button type="button" @click="confirmBulkDelete(false)"
+              class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+        <i class="fa-solid fa-trash-can"></i>
+        <span>Hapus Pilihan (<span x-text="selectedIds.length"></span>)</span>
+      </button>
+    </div>
+  </div>
+
   <!-- ============================================== -->
   <!-- 5. TABEL MASTER LAPORAN MASALAH                -->
   <!-- ============================================== -->
@@ -217,7 +270,16 @@
       <table class="w-full text-center text-xs">
         <thead class="bg-slate-50 text-slate-500 font-extrabold uppercase text-[10px] border-b border-slate-200 tracking-wider">
           <tr>
-            <th class="py-3.5 px-3 text-center w-12">#</th>
+            <!-- Checkbox Select All Column (Sticky Left) -->
+            <th class="py-3.5 px-3 text-center w-12 min-w-[48px] sticky left-0 bg-slate-50 z-20 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)] border-r border-slate-200">
+              <div class="flex items-center justify-center">
+                <input type="checkbox"
+                       :checked="tickets.length > 0 && selectedIds.length === tickets.length"
+                       @change="toggleSelectAll()"
+                       class="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer"
+                       title="Pilih Semua Laporan Kendala">
+              </div>
+            </th>
             <th class="py-3.5 px-4 text-center whitespace-nowrap">ID Tiket & Waktu Lapor</th>
             <th class="py-3.5 px-4 text-center">Nama Pelanggan</th>
             <th class="py-3.5 px-4 text-center">No Handphone</th>
@@ -232,16 +294,18 @@
         <tbody class="divide-y divide-slate-100 font-medium">
           <template x-for="(ticket, index) in tickets" :key="ticket.id">
             <tr class="hover:bg-slate-50/80 transition duration-150"
-                :class="ticket.is_new_incoming ? 'bg-amber-50/40' : (ticket.is_recently_updated ? 'bg-emerald-50/30' : '')">
+                :class="selectedIds.includes(ticket.id) ? 'bg-red-50/50' : (ticket.is_new_incoming ? 'bg-amber-50/40' : (ticket.is_recently_updated ? 'bg-emerald-50/30' : ''))">
               
-              <!-- Nomor Urut / Indikator -->
-              <td class="py-3.5 px-3 text-center w-12 text-slate-400 font-mono text-[11px]">
-                <template x-if="ticket.is_new_incoming">
-                  <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping inline-block" title="Laporan Baru"></span>
-                </template>
-                <template x-if="!ticket.is_new_incoming">
-                  <span x-text="index + 1"></span>
-                </template>
+              <!-- Checkbox Select Row (Sticky Left) -->
+              <td class="py-3.5 px-3 text-center w-12 min-w-[48px] sticky left-0 z-10 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)] border-r border-slate-200"
+                  :class="selectedIds.includes(ticket.id) ? '!bg-red-100' : '!bg-white'"
+                  @click.stop>
+                <div class="flex items-center justify-center">
+                  <input type="checkbox"
+                         :value="ticket.id"
+                         x-model="selectedIds"
+                         class="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer">
+                </div>
               </td>
 
               <!-- 1. ID Tiket & Waktu Lapor -->
@@ -798,6 +862,8 @@
           Tutup Preview
         </button>
       </div>
+    </div>
+  </div>
 
   <!-- ============================================== -->
   <!-- 9. MODAL KONFIRMASI HAPUS SINGLE TIKET         -->
@@ -821,24 +887,29 @@
           Apakah Anda yakin ingin menghapus tiket <strong class="text-slate-900" x-text="selectedTicketToDelete?.id"></strong> milik <strong class="text-slate-900" x-text="selectedTicketToDelete?.customer_name"></strong>? Tindakan ini tidak dapat dibatalkan.
         </p>
       </div>
-      <div class="flex items-center justify-center gap-3 pt-2">
+      <form :action="'/admin/laporan-masalah/' + (selectedTicketToDelete ? selectedTicketToDelete.id : '')"
+            method="POST"
+            @submit.prevent="executeDeleteSingle($event)"
+            class="flex items-center justify-center gap-3 pt-2">
+        @csrf
+        @method('DELETE')
         <button type="button" @click="openDeleteModal = false" :disabled="isDeleting"
                 class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
           Batal
         </button>
-        <button type="button" @click="executeDeleteSingle()" :disabled="isDeleting"
+        <button type="submit" :disabled="isDeleting"
                 class="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition shadow-xs flex items-center gap-1.5">
           <template x-if="isDeleting">
             <i class="fa-solid fa-circle-notch fa-spin text-xs"></i>
           </template>
           <span x-text="isDeleting ? 'Menghapus...' : 'Ya, Hapus Laporan'"></span>
         </button>
-      </div>
+      </form>
     </div>
   </div>
 
   <!-- ============================================== -->
-  <!-- 10. MODAL KONFIRMASI HAPUS SEMUA TIKET        -->
+  <!-- 10. MODAL KONFIRMASI HAPUS MASSAL & PILIHAN   -->
   <!-- ============================================== -->
   <div x-show="openBulkDeleteModal" style="display: none;"
        x-transition:enter="ease-out duration-200"
@@ -854,24 +925,46 @@
         <i class="fa-solid fa-trash-can"></i>
       </div>
       <div>
-        <h3 class="text-base font-black text-slate-900">Hapus Seluruh Data Laporan Masalah?</h3>
-        <p class="text-xs text-slate-500 mt-1">
-          Apakah Anda yakin ingin membersihkan seluruh data laporan kendala jaringan? Semua data tiket saat ini akan dihapus dari sistem.
+        <h3 class="text-base font-black text-slate-900">
+          <span x-text="bulkDeleteAll ? 'Hapus Seluruh Data Laporan Masalah?' : 'Hapus ' + selectedIds.length + ' Laporan Terpilih?'"></span>
+        </h3>
+        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+          <span x-show="!bulkDeleteAll">
+            Apakah Anda yakin ingin menghapus <strong class="text-slate-900"><span x-text="selectedIds.length"></span> laporan kendala</strong> yang dipilih?
+          </span>
+          <span x-show="bulkDeleteAll">
+            Apakah Anda yakin ingin membersihkan <strong class="text-red-600">SELURUH data laporan kendala jaringan</strong> (<span x-text="tickets.length"></span> tiket)?
+          </span>
+          Tindakan ini tidak dapat dibatalkan.
         </p>
+        <div class="mt-2.5 p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-left">
+          <p class="text-[11px] text-slate-600 flex items-start gap-2">
+            <i class="fa-solid fa-circle-info text-blue-500 mt-0.5 shrink-0"></i>
+            <span><strong>Info Otomatis:</strong> Sistem secara berkala hanya menghapus riwayat laporan yang telah berstatus <strong>Selesai</strong> lebih dari <strong>3 hari</strong>. Tombol Hapus Pilihan dan Hapus Semua Data ini memberikan kontrol penuh bagi Admin & Direktur untuk menghapus data secara manual.</span>
+          </p>
+        </div>
       </div>
-      <div class="flex items-center justify-center gap-3 pt-2">
+      
+      <form action="{{ route('admin.laporan.bulk-delete') }}" method="POST" @submit.prevent="executeBulkDelete($event)" class="pt-2 flex items-center justify-center gap-3">
+        @csrf
+        <input type="hidden" name="delete_all" :value="bulkDeleteAll ? '1' : '0'">
+        <input type="hidden" name="ids_json" :value="JSON.stringify(selectedIds)">
+        <template x-for="id in selectedIds" :key="id">
+          <input type="hidden" name="ids[]" :value="id">
+        </template>
+
         <button type="button" @click="openBulkDeleteModal = false" :disabled="isDeleting"
                 class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
           Batal
         </button>
-        <button type="button" @click="executeBulkDelete()" :disabled="isDeleting"
-                class="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition shadow-xs flex items-center gap-1.5">
+        <button type="submit" :disabled="isDeleting || (!bulkDeleteAll && selectedIds.length === 0)"
+                class="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition shadow-xs flex items-center gap-1.5 disabled:opacity-50">
           <template x-if="isDeleting">
             <i class="fa-solid fa-circle-notch fa-spin text-xs"></i>
           </template>
-          <span x-text="isDeleting ? 'Menghapus Semua...' : 'Ya, Bersihkan Semua'"></span>
+          <span x-text="isDeleting ? 'Menghapus...' : (bulkDeleteAll ? 'Ya, Bersihkan Semua' : 'Ya, Hapus Pilihan')"></span>
         </button>
-      </div>
+      </form>
     </div>
   </div>
 
@@ -906,6 +999,8 @@ function laporanMasalahApp(initialTickets, initialCounts, statusFilter) {
       fileName: '',
       customerName: ''
     },
+    selectedIds: [],
+    bulkDeleteAll: false,
     openDeleteModal: false,
     openBulkDeleteModal: false,
     selectedTicketToDelete: null,
@@ -921,6 +1016,215 @@ function laporanMasalahApp(initialTickets, initialCounts, statusFilter) {
       setInterval(() => {
         this.pollTickets();
       }, 6000);
+    },
+
+    toggleSelectAll() {
+      if (this.tickets.length > 0 && this.selectedIds.length === this.tickets.length) {
+        this.selectedIds = [];
+      } else {
+        this.selectedIds = this.tickets.map(t => t.id);
+      }
+    },
+
+    selectAllTickets() {
+      this.selectedIds = this.tickets.map(t => t.id);
+    },
+
+    clearSelection() {
+      this.selectedIds = [];
+    },
+
+    confirmBulkDelete(all = false) {
+      if (all) {
+        this.bulkDeleteAll = true;
+        this.openBulkDeleteModal = true;
+      } else {
+        if (this.selectedIds.length === 0) {
+          this.showToast('Silakan pilih minimal satu laporan untuk dihapus.', 'error');
+          return;
+        }
+        this.bulkDeleteAll = false;
+        this.openBulkDeleteModal = true;
+      }
+    },
+
+    confirmBulkDeleteAll() {
+      this.confirmBulkDelete(true);
+    },
+
+    async pollTickets() {
+      if (this.openModal || this.openDeleteModal || this.openBulkDeleteModal || this.isSubmitting || this.isDeleting) return;
+      this.isPolling = true;
+
+      try {
+        const url = '{{ route("admin.laporan") }}?status=' + encodeURIComponent(this.statusFilter) + '&q=' + encodeURIComponent('{{ $search }}');
+        const response = await fetch(url, {
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.tickets && Array.isArray(data.tickets)) {
+            const currentIds = new Set(this.tickets.map(t => t.id));
+            const newTickets = data.tickets.filter(t => !currentIds.has(t.id));
+
+            if (newTickets.length > 0) {
+              newTickets.forEach(t => t.is_new_incoming = true);
+              this.showToast('Laporan kendala baru masuk dari ' + newTickets[0].customer_name + ' (' + newTickets[0].id + ')', 'info');
+            }
+
+            const recentMap = {};
+            this.tickets.forEach(t => {
+              if (t.is_recently_updated) recentMap[t.id] = true;
+            });
+
+            this.tickets = data.tickets.map(t => {
+              if (recentMap[t.id]) t.is_recently_updated = true;
+              return t;
+            });
+
+            // Sinkronkan selectedIds dengan tiket yang masih ada
+            if (this.selectedIds.length > 0) {
+              const liveIds = new Set(this.tickets.map(t => t.id));
+              this.selectedIds = this.selectedIds.filter(id => liveIds.has(id));
+            }
+
+            if (data.counts) {
+              this.counts = data.counts;
+            }
+          }
+        }
+      } catch (e) {
+        // Silent
+      } finally {
+        this.isPolling = false;
+      }
+    },
+
+    confirmDeleteTicket(ticket) {
+      this.selectedTicketToDelete = ticket;
+      this.openDeleteModal = true;
+    },
+
+    async executeDeleteSingle(event) {
+      if (!this.selectedTicketToDelete) return;
+      this.isDeleting = true;
+
+      const ticketId = this.selectedTicketToDelete.id;
+      const url = '/admin/laporan-masalah/' + encodeURIComponent(ticketId);
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+
+      try {
+        const response = await fetch(url, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          this.tickets = this.tickets.filter(t => t.id !== ticketId);
+          this.selectedIds = this.selectedIds.filter(id => id !== ticketId);
+          if (resData.counts) {
+            this.counts = resData.counts;
+          } else {
+            this.recalculateCounts();
+          }
+          this.showToast('Tiket ' + ticketId + ' berhasil dihapus.', 'success');
+          this.openDeleteModal = false;
+          this.selectedTicketToDelete = null;
+        } else {
+          if (event && event.target && event.target.tagName === 'FORM') {
+            event.target.submit();
+          } else {
+            window.location.reload();
+          }
+        }
+      } catch (err) {
+        if (event && event.target && event.target.tagName === 'FORM') {
+          event.target.submit();
+        } else {
+          window.location.reload();
+        }
+      } finally {
+        this.isDeleting = false;
+      }
+    },
+
+    async executeBulkDelete(event) {
+      this.isDeleting = true;
+
+      const url = '{{ route("admin.laporan.bulk-delete") }}';
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+      const payload = this.bulkDeleteAll 
+        ? { delete_all: 1 } 
+        : { ids: this.selectedIds, ids_json: JSON.stringify(this.selectedIds) };
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          if (this.bulkDeleteAll) {
+            this.tickets = [];
+            this.selectedIds = [];
+            this.counts = { all: 0, menunggu: 0, proses: 0, selesai: 0, kritis: 0 };
+          } else {
+            const removedIds = new Set(this.selectedIds);
+            this.tickets = this.tickets.filter(t => !removedIds.has(t.id));
+            this.selectedIds = [];
+            if (resData.counts) {
+              this.counts = resData.counts;
+            } else {
+              this.recalculateCounts();
+            }
+          }
+          this.showToast(resData.message || 'Laporan masalah berhasil dihapus.', 'success');
+          this.openBulkDeleteModal = false;
+        } else {
+          this.fallbackSubmitBulkDelete(event);
+        }
+      } catch (err) {
+        this.fallbackSubmitBulkDelete(event);
+      } finally {
+        this.isDeleting = false;
+      }
+    },
+
+    fallbackSubmitBulkDelete(event) {
+      let form = (event && event.target && event.target.tagName === 'FORM') 
+        ? event.target 
+        : document.querySelector('form[action="{{ route("admin.laporan.bulk-delete") }}"]');
+      if (form) {
+        if (!this.bulkDeleteAll && this.selectedIds.length > 0) {
+          this.selectedIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'ids[]';
+            input.value = id;
+            form.appendChild(input);
+          });
+        }
+        form.submit();
+      } else {
+        window.location.reload();
+      }
     },
 
     updateClock() {
@@ -954,52 +1258,6 @@ function laporanMasalahApp(initialTickets, initialCounts, statusFilter) {
     formatFullDateTime(str) {
       if (!str) return '-';
       return str;
-    },
-
-    async pollTickets() {
-      if (this.openModal || this.isSubmitting) return;
-      this.isPolling = true;
-
-      try {
-        const url = '{{ route("admin.laporan") }}?status=' + encodeURIComponent(this.statusFilter) + '&q=' + encodeURIComponent('{{ $search }}');
-        const response = await fetch(url, {
-          headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.tickets && Array.isArray(data.tickets)) {
-            const currentIds = new Set(this.tickets.map(t => t.id));
-            const newTickets = data.tickets.filter(t => !currentIds.has(t.id));
-
-            if (newTickets.length > 0) {
-              newTickets.forEach(t => t.is_new_incoming = true);
-              this.showToast('Laporan kendala baru masuk dari ' + newTickets[0].customer_name + ' (' + newTickets[0].id + ')', 'info');
-            }
-
-            const recentMap = {};
-            this.tickets.forEach(t => {
-              if (t.is_recently_updated) recentMap[t.id] = true;
-            });
-
-            this.tickets = data.tickets.map(t => {
-              if (recentMap[t.id]) t.is_recently_updated = true;
-              return t;
-            });
-
-            if (data.counts) {
-              this.counts = data.counts;
-            }
-          }
-        }
-      } catch (e) {
-        // Silent
-      } finally {
-        this.isPolling = false;
-      }
     },
 
     viewTicket(ticket) {
@@ -1043,7 +1301,7 @@ function laporanMasalahApp(initialTickets, initialCounts, statusFilter) {
       this.isSubmitting = true;
 
       const url = '/admin/laporan-masalah/' + encodeURIComponent(this.selectedTicket.id) + '/status';
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
 
       try {
         const response = await fetch(url, {
@@ -1095,83 +1353,6 @@ function laporanMasalahApp(initialTickets, initialCounts, statusFilter) {
         event.target.submit();
       } finally {
         this.isSubmitting = false;
-      }
-    },
-
-    confirmDeleteTicket(ticket) {
-      this.selectedTicketToDelete = ticket;
-      this.openDeleteModal = true;
-    },
-
-    confirmBulkDeleteAll() {
-      this.openBulkDeleteModal = true;
-    },
-
-    async executeDeleteSingle() {
-      if (!this.selectedTicketToDelete) return;
-      this.isDeleting = true;
-
-      const ticketId = this.selectedTicketToDelete.id;
-      const url = '/admin/laporan-masalah/' + encodeURIComponent(ticketId);
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-      try {
-        const response = await fetch(url, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
-          }
-        });
-
-        if (response.ok) {
-          this.tickets = this.tickets.filter(t => t.id !== ticketId);
-          this.recalculateCounts();
-          this.showToast('Tiket ' + ticketId + ' berhasil dihapus.', 'success');
-          this.openDeleteModal = false;
-          this.selectedTicketToDelete = null;
-        } else {
-          window.location.reload();
-        }
-      } catch (err) {
-        window.location.reload();
-      } finally {
-        this.isDeleting = false;
-      }
-    },
-
-    async executeBulkDelete() {
-      this.isDeleting = true;
-
-      const url = '/admin/laporan-masalah/bulk-delete';
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: JSON.stringify({ delete_all: 1 })
-        });
-
-        if (response.ok) {
-          this.tickets = [];
-          this.counts = { all: 0, menunggu: 0, proses: 0, selesai: 0, kritis: 0 };
-          this.showToast('Seluruh data laporan masalah berhasil dihapus.', 'success');
-          this.openBulkDeleteModal = false;
-        } else {
-          window.location.reload();
-        }
-      } catch (err) {
-        window.location.reload();
-      } finally {
-        this.isDeleting = false;
       }
     },
 

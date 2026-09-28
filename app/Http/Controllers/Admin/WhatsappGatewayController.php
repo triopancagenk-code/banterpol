@@ -28,8 +28,11 @@ class WhatsappGatewayController extends Controller
 
         // 1. Ambil dari database Bills (data tagihan)
         try {
-            $bills = Bill::latest()->get();
+            $bills = Bill::with('order')->latest()->get();
             foreach ($bills as $bill) {
+                if (!$bill->isOrderCompleted()) {
+                    continue;
+                }
                 $phone = $this->gatewayService->formatPhoneNumber($bill->customer_phone);
                 if (!isset($customersByPhone[$phone])) {
                     $customersByPhone[$phone] = [

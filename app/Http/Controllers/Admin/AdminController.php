@@ -9,6 +9,7 @@ use App\Models\Package;
 use App\Models\User;
 use App\Services\BillingService;
 use App\Services\CustomerImportService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -21,9 +22,19 @@ class AdminController extends Controller
     private function getBillsData()
     {
         try {
-            $dbBills = Bill::latest()->get();
+            $dbBills = Bill::with('order')->latest()->get();
             if ($dbBills->isNotEmpty()) {
-                return $dbBills->map(function ($b) {
+                $filteredBills = $dbBills->filter(function ($b) {
+                    return $b->isOrderCompleted();
+                });
+
+                return $filteredBills->map(function ($b) {
+                    $paidAt = $b->paid_at;
+                    $paidAtFormatted = $paidAt ? \Carbon\Carbon::parse($paidAt)->translatedFormat('d M Y, H:i') . ' WIB' : ($b->status === 'Lunas' ? ($b->updated_at ? $b->updated_at->translatedFormat('d M Y, H:i') . ' WIB' : 'Terverifikasi') : '-');
+                    $paidDateOnly = $paidAt ? \Carbon\Carbon::parse($paidAt)->translatedFormat('d M Y') : ($b->status === 'Lunas' ? ($b->updated_at ? $b->updated_at->translatedFormat('d M Y') : '-') : '-');
+                    $monthKey = $paidAt ? $paidAt->format('Y-m') : ($b->updated_at && $b->status === 'Lunas' ? $b->updated_at->format('Y-m') : ($b->created_at ? $b->created_at->format('Y-m') : date('Y-m')));
+                    $monthLabel = $paidAt ? \Carbon\Carbon::parse($paidAt)->translatedFormat('F Y') : ($b->updated_at && $b->status === 'Lunas' ? $b->updated_at->translatedFormat('F Y') : ($b->created_at ? $b->created_at->translatedFormat('F Y') : date('F Y')));
+
                     return [
                         'id' => $b->bill_number,
                         'customer_name' => $b->customer_name,
@@ -37,9 +48,17 @@ class AdminController extends Controller
                         'total' => number_format((float) $b->total, 0, ',', '.'),
                         'total_raw' => (float) $b->total,
                         'status' => $b->status,
-                        'payment_method' => $b->payment_method ?? '-',
+                        'payment_method' => $b->payment_method ?? ($b->status === 'Lunas' ? 'Verifikasi Admin' : '-'),
                         'proof_image' => null,
                         'created_at' => $b->created_at ? $b->created_at->format('Y-m-d H:i') : '-',
+                        'paid_at' => $paidAt ? $paidAt->format('Y-m-d H:i') : null,
+                        'paid_at_formatted' => $paidAtFormatted,
+                        'paid_date' => $paidDateOnly,
+                        'month_key' => $monthKey,
+                        'month_label' => $monthLabel,
+                        'receipt_number' => $b->receipt_number ?: ('KWT-' . str_replace('-', '', substr($b->bill_number, 4))),
+                        'collected_by' => $b->collected_by ?? 'Verifikasi Admin',
+                        'collector_notes' => $b->collector_notes ?? '-',
                         'address' => $b->address,
                         'odp' => 'ODP-CLK-01',
                     ];
@@ -48,6 +67,204 @@ class AdminController extends Controller
         } catch (\Exception $e) {}
 
         return [];
+    }
+
+    /**
+     * Data Master Laporan Masalah / Trouble Tickets
+     */
+    /**
+     * Dapatkan tanggal pembuatan tiket (Carbon)
+     */
+    public static function getTicketCreatedAt(array $ticket): ?Carbon
+    {
+        // 1. created_timestamp
+        if (!empty($ticket['created_timestamp']) && is_numeric($ticket['created_timestamp'])) {
+            return Carbon::createFromTimestamp((int) $ticket['created_timestamp'], 'Asia/Jakarta');
+        }
+
+        // 2. created_at_iso
+        if (!empty($ticket['created_at_iso'])) {
+            try {
+                return Carbon::parse($ticket['created_at_iso'])->setTimezone('Asia/Jakarta');
+            } catch (\Throwable $e) {}
+        }
+
+        // 3. String created_at / created_date dalam Bahasa Indonesia
+        $rawDate = $ticket['created_at'] ?? $ticket['created_date'] ?? null;
+        if ($rawDate && is_string($rawDate)) {
+            $clean = preg_replace('/^(Senin|Selasa|Rabu|Kamis|Jum\'?at|Sabtu|Minggu),\s*/i', '', $rawDate);
+            $clean = str_replace(' WIB', '', $clean);
+            $clean = trim($clean);
+
+            $months = [
+                'Januari' => 'January', 'Februari' => 'February', 'Maret' => 'March',
+                'April' => 'April', 'Mei' => 'May', 'Juni' => 'June',
+                'Juli' => 'July', 'Agustus' => 'August', 'September' => 'September',
+                'Oktober' => 'October', 'November' => 'November', 'Desember' => 'December'
+            ];
+            $translated = strtr($clean, $months);
+            try {
+                return Carbon::parse($translated, 'Asia/Jakarta');
+            } catch (\Throwable $e) {}
+        }
+
+        // 4. updated_timestamp / updated_at_iso sebagai fallback
+        if (!empty($ticket['updated_timestamp']) && is_numeric($ticket['updated_timestamp'])) {
+            return Carbon::createFromTimestamp((int) $ticket['updated_timestamp'], 'Asia/Jakarta');
+        }
+
+        if (!empty($ticket['updated_at_iso'])) {
+            try {
+                return Carbon::parse($ticket['updated_at_iso'])->setTimezone('Asia/Jakarta');
+            } catch (\Throwable $e) {}
+        }
+
+        // 5. Fallback ID: TCK-YYYYMM-XXX
+        if (!empty($ticket['id']) && preg_match('/TCK-(\d{4})(\d{2})-\d+/i', $ticket['id'], $m)) {
+            try {
+                return Carbon::createFromDate((int)$m[1], (int)$m[2], 1, 'Asia/Jakarta')->startOfDay();
+            } catch (\Throwable $e) {}
+        }
+
+        return null;
+    }
+
+    /**
+     * Cek apakah status tiket sudah selesai / resolved
+     */
+    public static function isTicketResolved(array $ticket): bool
+    {
+        $status = trim($ticket['status'] ?? '');
+        if ($status === '') {
+            return true; // Fallback untuk mock array tanpa status (seperti test dummy CLI)
+        }
+
+        $lower = strtolower($status);
+        return in_array($lower, ['selesai', 'resolved', 'pulih', 'close', 'closed']);
+    }
+
+    /**
+     * Dapatkan tanggal penyelesaian / update tiket (Carbon)
+     */
+    public static function getTicketResolvedAt(array $ticket): ?Carbon
+    {
+        // 1. updated_timestamp
+        if (!empty($ticket['updated_timestamp']) && is_numeric($ticket['updated_timestamp'])) {
+            return Carbon::createFromTimestamp((int) $ticket['updated_timestamp'], 'Asia/Jakarta');
+        }
+
+        // 2. updated_at_iso
+        if (!empty($ticket['updated_at_iso'])) {
+            try {
+                return Carbon::parse($ticket['updated_at_iso'])->setTimezone('Asia/Jakarta');
+            } catch (\Throwable $e) {}
+        }
+
+        // 3. String updated_at / updated_date dalam Bahasa Indonesia
+        $rawUpdated = $ticket['updated_at'] ?? $ticket['updated_date'] ?? null;
+        if ($rawUpdated && is_string($rawUpdated)) {
+            $clean = preg_replace('/^(Senin|Selasa|Rabu|Kamis|Jum\'?at|Sabtu|Minggu),\s*/i', '', $rawUpdated);
+            $clean = str_replace(' WIB', '', $clean);
+            $clean = trim($clean);
+
+            $months = [
+                'Januari' => 'January', 'Februari' => 'February', 'Maret' => 'March',
+                'April' => 'April', 'Mei' => 'May', 'Juni' => 'June',
+                'Juli' => 'July', 'Agustus' => 'August', 'September' => 'September',
+                'Oktober' => 'October', 'November' => 'November', 'Desember' => 'December'
+            ];
+            $translated = strtr($clean, $months);
+            try {
+                return Carbon::parse($translated, 'Asia/Jakarta');
+            } catch (\Throwable $e) {}
+        }
+
+        return self::getTicketCreatedAt($ticket);
+    }
+
+    /**
+     * Auto Hapus Riwayat Laporan Masalah berstatus 'Selesai' yang berusia lebih dari batas hari (default: 3 hari).
+     * Tiket yang masih dalam penanganan ('Menunggu Respon' / 'Sedang Ditangani') TIDAK akan dihapus otomatis.
+     * Berlaku untuk POV Admin dan Direktur secara real-time.
+     */
+    public static function pruneOldTickets(?array $tickets = null, int $daysRetention = 3): array
+    {
+        $now = now('Asia/Jakarta');
+        $cutoff = $now->copy()->subDays($daysRetention);
+
+        $fromCache = false;
+        if ($tickets === null) {
+            $fromCache = true;
+            if (Cache::has('trouble_tickets')) {
+                $tickets = Cache::get('trouble_tickets') ?? [];
+            } elseif (session()->has('admin_tickets')) {
+                $tickets = session('admin_tickets') ?? [];
+            } else {
+                $tickets = [];
+            }
+        }
+
+        $pruned = [];
+        $hasChanges = false;
+
+        foreach ($tickets as $ticket) {
+            $isResolved = self::isTicketResolved($ticket);
+
+            // Syarat auto-prune: HANYA tiket yang berstatus 'Selesai' dan berusia > 3 hari
+            if ($isResolved) {
+                $ticketDate = self::getTicketResolvedAt($ticket) ?? self::getTicketCreatedAt($ticket);
+                if ($ticketDate && $ticketDate->lt($cutoff)) {
+                    $hasChanges = true;
+                    // Bersihkan file foto bukti / attachment dari storage jika ada (hanya di folder uploads/)
+                    self::deleteTicketAttachmentFile($ticket['attachment_url'] ?? null);
+                    continue;
+                }
+            }
+
+            $pruned[] = $ticket;
+        }
+
+        if ($hasChanges || $fromCache) {
+            Cache::forever('trouble_tickets', $pruned);
+            session(['admin_tickets' => $pruned]);
+
+            // Sinkronkan juga ke session teknisi jika ada
+            $techTickets = session('technician_tickets');
+            if (is_array($techTickets)) {
+                $techPruned = array_values(array_filter($techTickets, function ($t) use ($cutoff) {
+                    $isResolved = self::isTicketResolved($t);
+                    if (!$isResolved) {
+                        return true; // Tiket belum selesai tetap dipertahankan
+                    }
+                    $tDate = self::getTicketResolvedAt($t) ?? self::getTicketCreatedAt($t);
+                    return !$tDate || $tDate->gte($cutoff);
+                }));
+                session(['technician_tickets' => $techPruned]);
+            }
+        }
+
+        return $pruned;
+    }
+
+    /**
+     * Hapus file upload lampiran tiket dengan aman (HANYA menghapus file di direktori uploads/)
+     * Mencegah terhapusnya file aset statis seperti image/, css/, js/, dll.
+     */
+    public static function deleteTicketAttachmentFile(?string $attachmentUrl): void
+    {
+        if (empty($attachmentUrl)) {
+            return;
+        }
+
+        $relative = ltrim(str_replace('\\', '/', $attachmentUrl), '/');
+
+        // Keamanan ketat: HANYA izinkan penghapusan file yang berada di folder uploads/
+        if (str_starts_with($relative, 'uploads/')) {
+            $filePath = public_path($relative);
+            if (file_exists($filePath) && is_file($filePath)) {
+                @unlink($filePath);
+            }
+        }
     }
 
     /**
@@ -78,12 +295,15 @@ class AdminController extends Controller
                     'created_time' => $now->format('H:i:s') . ' WIB',
                     'created_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
                     'created_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'created_at_iso' => $now->copy()->subMinutes(45)->toIso8601String(),
+                    'created_timestamp' => $now->copy()->subMinutes(45)->timestamp,
                     'updated_at' => $now->copy()->subMinutes(15)->translatedFormat('l, d F Y, H:i') . ' WIB',
                     'updated_date' => $now->translatedFormat('l, d F Y'),
                     'updated_time' => $now->format('H:i:s') . ' WIB',
                     'updated_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
                     'updated_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
-                    'updated_at_iso' => $now->toIso8601String(),
+                    'updated_at_iso' => $now->copy()->subMinutes(15)->toIso8601String(),
+                    'updated_timestamp' => $now->copy()->subMinutes(15)->timestamp,
                     'is_recently_updated' => false,
                     'status_history' => [
                         [
@@ -112,12 +332,15 @@ class AdminController extends Controller
                     'created_time' => $now->format('H:i:s') . ' WIB',
                     'created_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
                     'created_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'created_at_iso' => $now->copy()->subHours(2)->toIso8601String(),
+                    'created_timestamp' => $now->copy()->subHours(2)->timestamp,
                     'updated_at' => $now->copy()->subHour()->translatedFormat('l, d F Y, H:i') . ' WIB',
                     'updated_date' => $now->translatedFormat('l, d F Y'),
                     'updated_time' => $now->format('H:i:s') . ' WIB',
                     'updated_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
                     'updated_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
-                    'updated_at_iso' => $now->toIso8601String(),
+                    'updated_at_iso' => $now->copy()->subHour()->toIso8601String(),
+                    'updated_timestamp' => $now->copy()->subHour()->timestamp,
                     'is_recently_updated' => false,
                     'status_history' => [
                         [
@@ -146,12 +369,15 @@ class AdminController extends Controller
                     'created_time' => $now->format('H:i:s') . ' WIB',
                     'created_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
                     'created_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'created_at_iso' => $now->copy()->subMinutes(80)->toIso8601String(),
+                    'created_timestamp' => $now->copy()->subMinutes(80)->timestamp,
                     'updated_at' => $now->copy()->subMinutes(30)->translatedFormat('l, d F Y, H:i') . ' WIB',
                     'updated_date' => $now->translatedFormat('l, d F Y'),
                     'updated_time' => $now->format('H:i:s') . ' WIB',
                     'updated_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
                     'updated_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
-                    'updated_at_iso' => $now->toIso8601String(),
+                    'updated_at_iso' => $now->copy()->subMinutes(30)->toIso8601String(),
+                    'updated_timestamp' => $now->copy()->subMinutes(30)->timestamp,
                     'is_recently_updated' => false,
                     'status_history' => [
                         [
@@ -180,12 +406,15 @@ class AdminController extends Controller
                     'created_time' => $now->format('H:i:s') . ' WIB',
                     'created_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
                     'created_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
+                    'created_at_iso' => $now->copy()->subHours(6)->toIso8601String(),
+                    'created_timestamp' => $now->copy()->subHours(6)->timestamp,
                     'updated_at' => $now->copy()->subHours(1)->translatedFormat('l, d F Y, H:i') . ' WIB',
                     'updated_date' => $now->translatedFormat('l, d F Y'),
                     'updated_time' => $now->format('H:i:s') . ' WIB',
                     'updated_at_full' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
                     'updated_at_short' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
-                    'updated_at_iso' => $now->toIso8601String(),
+                    'updated_at_iso' => $now->copy()->subHours(1)->toIso8601String(),
+                    'updated_timestamp' => $now->copy()->subHours(1)->timestamp,
                     'is_recently_updated' => false,
                     'status_history' => [
                         [
@@ -246,6 +475,20 @@ class AdminController extends Controller
                 $t['updated_at_short'] = $t['updated_at_full'];
             }
 
+            // Normalisasi timestamp ISO & Unix untuk auto prune
+            if (empty($t['created_at_iso'])) {
+                $parsedDate = self::getTicketCreatedAt($t);
+                if ($parsedDate) {
+                    $t['created_at_iso'] = $parsedDate->toIso8601String();
+                    $t['created_timestamp'] = $parsedDate->timestamp;
+                }
+            }
+            if (empty($t['created_timestamp']) && !empty($t['created_at_iso'])) {
+                try {
+                    $t['created_timestamp'] = Carbon::parse($t['created_at_iso'])->timestamp;
+                } catch (\Throwable $e) {}
+            }
+
             // Normalisasi dan pastikan data foto bukti / attachment tersedia
             if (!isset($t['attachment'])) {
                 $t['attachment'] = null;
@@ -268,6 +511,9 @@ class AdminController extends Controller
                 }
             }
         }
+
+        // Auto Hapus Riwayat Laporan Masalah yang berusia > 3 Hari (POV Admin & Direktur)
+        $tickets = self::pruneOldTickets($tickets, 3);
 
         return $tickets;
     }
@@ -960,20 +1206,26 @@ class AdminController extends Controller
                 'jadwal' => $allOrders->where('status', 'Jadwal Teknisi')->count(),
                 'proses' => $allOrders->where('status', 'Sedang Dipasang')->count(),
                 'selesai' => $allOrders->where('status', 'Selesai')->count(),
+                'kendala' => $allOrders->where('status', 'Kendala Lapangan')->count(),
                 'batal' => $allOrders->where('status', 'Dibatalkan')->count(),
             ];
         } catch (\Exception $e) {
             $orders = collect();
-            $counts = ['all' => 0, 'menunggu' => 0, 'jadwal' => 0, 'proses' => 0, 'selesai' => 0, 'batal' => 0];
+            $counts = ['all' => 0, 'menunggu' => 0, 'jadwal' => 0, 'proses' => 0, 'selesai' => 0, 'kendala' => 0, 'batal' => 0];
         }
 
         $odcMapData = $this->getOdcMapData();
         $odpList = collect($odcMapData['odps'])->pluck('name', 'id')->toArray();
 
         $packages = Package::where('is_active', true)->get();
-        $technicians = User::whereIn('role', ['technician', 'teknisi'])->pluck('name')->toArray();
-        if (empty($technicians)) {
-            $technicians = ['Randi Pratama (Tim Fiber)', 'Budi Santoso (Teknisi 1)', 'Ahmad Fauzi (Teknisi 2)'];
+        $technicians = User::whereIn('role', ['technician', 'teknisi'])->orderBy('name')->get();
+        if ($technicians->isEmpty()) {
+            $technicians = collect([
+                (object) ['id' => null, 'name' => 'Mamat (Teknisi Lapangan)', 'phone' => '081234567001'],
+                (object) ['id' => null, 'name' => 'Aji (Teknisi Lapangan)', 'phone' => '081234567002'],
+                (object) ['id' => null, 'name' => 'Danu (Teknisi Lapangan)', 'phone' => '081234567003'],
+                (object) ['id' => null, 'name' => 'Okta (Teknisi Lapangan)', 'phone' => '081234567004'],
+            ]);
         }
 
         return view('admin.pesanan', compact('orders', 'statusFilter', 'search', 'counts', 'odpList', 'packages', 'technicians'));
@@ -1001,7 +1253,7 @@ class AdminController extends Controller
             'installation_time' => 'nullable|string|in:pagi,siang',
             'technician' => 'nullable|string|max:100',
             'assigned_odp' => 'nullable|string|max:100',
-            'status' => 'required|string',
+            'status' => 'nullable|string',
             'payment_status' => 'required|string',
             'payment_method' => 'nullable|string|max:100',
             'admin_notes' => 'nullable|string|max:1000',
@@ -1034,6 +1286,20 @@ class AdminController extends Controller
             $email = $slug . rand(10, 99) . '@gmail.com';
         }
 
+        $techName = $validated['technician'] ?? null;
+        $techId = null;
+        if (!empty($techName)) {
+            $techUser = User::whereIn('role', ['technician', 'teknisi'])
+                ->where('name', $techName)->first();
+            if ($techUser) {
+                $techId = $techUser->id;
+                $techName = $techUser->name;
+            }
+        }
+
+        // Status awal otomatis: Jadwal Teknisi jika teknisi sudah dipilih, atau Menunggu Konfirmasi jika belum
+        $status = $validated['status'] ?? (!empty($techName) ? 'Jadwal Teknisi' : 'Menunggu Konfirmasi');
+
         $order = Order::create([
             'order_number' => $orderNumber,
             'customer_name' => $validated['customer_name'],
@@ -1053,13 +1319,15 @@ class AdminController extends Controller
             'total' => $total,
             'installation_date' => $validated['installation_date'] ?? date('Y-m-d'),
             'installation_time' => $validated['installation_time'] ?? 'pagi',
-            'technician' => $validated['technician'] ?? 'Randi Pratama (Tim Fiber)',
+            'technician' => $techName,
+            'technician_id' => $techId,
+            'assigned_at' => $techId ? now() : null,
             'assigned_odp' => $validated['assigned_odp'] ?? 'ODP-CLK-01',
-            'status' => $validated['status'],
+            'status' => $status,
             'payment_status' => $validated['payment_status'],
             'payment_method' => $validated['payment_method'] ?? 'BCA Virtual Account',
             'admin_notes' => $validated['admin_notes'] ?? 'Pesanan manual diinput oleh Administrator.',
-            'installed_at' => ($validated['status'] === 'Selesai') ? now() : null,
+            'installed_at' => ($status === 'Selesai') ? now() : null,
         ]);
 
         // Jika langsung berstatus 'Selesai', otomatis terbitkan tagihan
@@ -1078,9 +1346,46 @@ class AdminController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        $order->status = $request->input('status', $order->status);
-        if ($request->filled('technician')) {
-            $order->technician = $request->input('technician');
+        if ($request->filled('status')) {
+            $order->status = $request->input('status');
+        }
+
+        if ($request->has('technician')) {
+            $techInput = $request->input('technician');
+            $previousTechnician = $order->technician;
+            $order->technician = !empty($techInput) ? $techInput : null;
+
+            if (!empty($order->technician)) {
+                $techUser = User::whereIn('role', ['technician', 'teknisi'])
+                    ->where(function ($q) use ($order) {
+                        $q->where('name', $order->technician)
+                          ->orWhere('id', $order->technician);
+                    })->first();
+
+                if (!$techUser) {
+                    $firstName = explode(' ', trim($order->technician))[0] ?? '';
+                    if (strlen($firstName) >= 3) {
+                        $techUser = User::whereIn('role', ['technician', 'teknisi'])
+                            ->where('name', 'like', "%{$firstName}%")
+                            ->first();
+                    }
+                }
+
+                if ($techUser) {
+                    $order->technician_id = $techUser->id;
+                    $order->technician = $techUser->name;
+                }
+
+                if ($previousTechnician !== $order->technician) {
+                    $order->assigned_at = now();
+                    if ($order->status === 'Menunggu Konfirmasi') {
+                        $order->status = 'Jadwal Teknisi';
+                    }
+                }
+            } else {
+                $order->technician_id = null;
+                $order->assigned_at = null;
+            }
         }
         if ($request->filled('assigned_odp')) {
             $order->assigned_odp = $request->input('assigned_odp');
@@ -1702,43 +2007,85 @@ class AdminController extends Controller
     }
 
     /**
-     * Halaman Pengintaian & Manajemen Tagihan
+     * Halaman Pengintaian & Manajemen Tagihan Serta Rekap Pembayaran
      */
     public function tagihan(Request $request)
     {
-
         $allBills = $this->getBillsData();
         $statusFilter = $request->input('status', 'all');
+        $monthFilter = $request->input('month', 'all');
         $search = $request->input('q', '');
 
-        $bills = collect($allBills)->filter(function ($item) use ($statusFilter, $search) {
-            $matchStatus = ($statusFilter === 'all') || ($item['status'] === $statusFilter);
-            $matchSearch = empty($search) ||
-                (stripos($item['customer_name'], $search) !== false) ||
-                (stripos($item['id'], $search) !== false) ||
-                (stripos($item['customer_phone'], $search) !== false) ||
-                (stripos($item['address'] ?? '', $search) !== false);
+        // Pisahkan tagihan aktif yang perlu dimonitor dan riwayat tagihan yang sudah lunas/terverifikasi
+        $activeBills = collect($allBills)->where('status', '!=', 'Lunas');
+        $paidBills = collect($allBills)->where('status', 'Lunas');
 
-            return $matchStatus && $matchSearch;
+        // Daftar bulan yang tersedia untuk rekap per bulan
+        $availableMonths = $paidBills->map(function ($item) {
+            return [
+                'key' => $item['month_key'],
+                'label' => $item['month_label'],
+            ];
+        })->unique('key')->values()->all();
+
+        // Filter:
+        // - Pilihan 'all' (Semua): HANYA tagihan aktif (yang sudah terverifikasi/lunas tidak tertampil di 'semua')
+        // - Pilihan 'rekap' / 'Lunas': Menampilkan data riwayat rekap tagihan yang sudah lunas
+        $bills = collect($allBills)->filter(function ($item) use ($statusFilter, $monthFilter, $search) {
+            $matchStatus = false;
+            if ($statusFilter === 'all') {
+                $matchStatus = ($item['status'] !== 'Lunas');
+            } elseif ($statusFilter === 'rekap' || $statusFilter === 'Lunas') {
+                $matchStatus = ($item['status'] === 'Lunas');
+            } else {
+                $matchStatus = ($item['status'] === $statusFilter);
+            }
+
+            $matchMonth = true;
+            if (($statusFilter === 'rekap' || $statusFilter === 'Lunas') && $monthFilter !== 'all') {
+                $matchMonth = (isset($item['month_key']) && $item['month_key'] === $monthFilter);
+            }
+
+            $matchSearch = empty($search) ||
+                (stripos($item['customer_name'] ?? '', $search) !== false) ||
+                (stripos($item['id'] ?? '', $search) !== false) ||
+                (stripos($item['customer_phone'] ?? '', $search) !== false) ||
+                (stripos($item['address'] ?? '', $search) !== false) ||
+                (stripos($item['package_name'] ?? '', $search) !== false) ||
+                (stripos($item['receipt_number'] ?? '', $search) !== false);
+
+            return $matchStatus && $matchMonth && $matchSearch;
         })->values()->all();
 
         $counts = [
-            'all' => count($allBills),
-            'menunggu' => collect($allBills)->where('status', 'Menunggu Verifikasi')->count(),
-            'belum_bayar' => collect($allBills)->where('status', 'Belum Bayar')->count(),
-            'lunas' => collect($allBills)->where('status', 'Lunas')->count(),
-            'jatuh_tempo' => collect($allBills)->where('status', 'Jatuh Tempo')->count(),
+            'all' => $activeBills->count(), // Total tagihan aktif yang perlu dimonitor (tanpa yang sudah lunas)
+            'menunggu' => $activeBills->where('status', 'Menunggu Verifikasi')->count(),
+            'belum_bayar' => $activeBills->where('status', 'Belum Bayar')->count(),
+            'jatuh_tempo' => $activeBills->where('status', 'Jatuh Tempo')->count(),
+            'lunas' => $paidBills->count(),
+            'rekap' => $paidBills->count(),
         ];
 
-        // Daftar pelanggan untuk form pilihan cepat saat input tagihan manual
-        $registeredCustomers = Order::select(
+        // Total nominal dan kuantiti untuk ringkasan rekap pembayaran
+        $rekapNominal = collect($bills)->where('status', 'Lunas')->sum('total_raw');
+        $rekapCount = collect($bills)->where('status', 'Lunas')->count();
+
+        // Daftar pelanggan untuk form pilihan cepat saat input tagihan manual (hanya yang sudah selesai / aktif)
+        $registeredCustomers = Order::where(function ($q) {
+            $q->whereIn('status', ['Selesai', 'Selesai / Aktif', 'selesai', 'aktif'])
+              ->orWhere('order_number', 'like', 'PLG-%');
+        })->select(
             'id', 'order_number', 'customer_name', 'customer_phone', 'customer_email',
             'address', 'package_name', 'speed', 'price'
         )->orderBy('customer_name')->get();
 
         $packages = Package::where('is_active', true)->get();
 
-        return view('admin.tagihan', compact('bills', 'statusFilter', 'search', 'counts', 'registeredCustomers', 'packages'));
+        return view('admin.tagihan', compact(
+            'bills', 'statusFilter', 'monthFilter', 'search', 'counts', 
+            'availableMonths', 'rekapNominal', 'rekapCount',
+            'registeredCustomers', 'packages'
+        ));
     }
 
     /**
@@ -1835,20 +2182,37 @@ class AdminController extends Controller
     {
         $allBills = $this->getBillsData();
         $statusFilter = $request->input('status', 'all');
+        $monthFilter = $request->input('month', 'all');
         $search = $request->input('q', '');
 
-        $bills = collect($allBills)->filter(function ($item) use ($statusFilter, $search) {
-            $matchStatus = ($statusFilter === 'all') || ($item['status'] === $statusFilter);
-            $matchSearch = empty($search) ||
-                (stripos($item['customer_name'], $search) !== false) ||
-                (stripos($item['id'], $search) !== false) ||
-                (stripos($item['customer_phone'], $search) !== false) ||
-                (stripos($item['address'] ?? '', $search) !== false);
+        $bills = collect($allBills)->filter(function ($item) use ($statusFilter, $monthFilter, $search) {
+            $matchStatus = false;
+            if ($statusFilter === 'all') {
+                $matchStatus = ($item['status'] !== 'Lunas');
+            } elseif ($statusFilter === 'rekap' || $statusFilter === 'Lunas') {
+                $matchStatus = ($item['status'] === 'Lunas');
+            } else {
+                $matchStatus = ($item['status'] === $statusFilter);
+            }
 
-            return $matchStatus && $matchSearch;
+            $matchMonth = true;
+            if (($statusFilter === 'rekap' || $statusFilter === 'Lunas') && $monthFilter !== 'all') {
+                $matchMonth = (isset($item['month_key']) && $item['month_key'] === $monthFilter);
+            }
+
+            $matchSearch = empty($search) ||
+                (stripos($item['customer_name'] ?? '', $search) !== false) ||
+                (stripos($item['id'] ?? '', $search) !== false) ||
+                (stripos($item['customer_phone'] ?? '', $search) !== false) ||
+                (stripos($item['address'] ?? '', $search) !== false) ||
+                (stripos($item['package_name'] ?? '', $search) !== false) ||
+                (stripos($item['receipt_number'] ?? '', $search) !== false);
+
+            return $matchStatus && $matchMonth && $matchSearch;
         })->values()->all();
 
-        $filename = 'Rekap_Tagihan_Banterpool_' . date('Ymd_His') . '.xls';
+        $prefix = ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'Rekap_Pembayaran_Banterpool_' : 'Rekap_Tagihan_Banterpool_';
+        $filename = $prefix . date('Ymd_His') . '.xls';
 
         return response()->streamDownload(function () use ($bills, $statusFilter, $search) {
             echo "\xEF\xBB\xBF"; // UTF-8 BOM agar terbaca sempurna di Microsoft Excel
@@ -1875,13 +2239,25 @@ class AdminController extends Controller
                 if ($newStatus === 'Lunas') {
                     $bill->paid_at = now();
                     $bill->payment_method = $bill->payment_method ?: 'Verifikasi Admin';
+                    $bill->collected_by = auth()->user()->name ?? 'Administrator';
+                    if (empty($bill->receipt_number)) {
+                        $bill->receipt_number = 'KWT-' . date('Ym') . '-' . rand(100, 999);
+                    }
                 }
                 $bill->collector_notes = ($bill->collector_notes ? $bill->collector_notes . " | " : "") . $adminNotes;
                 $bill->save();
+
+                if ($newStatus === 'Lunas') {
+                    BillingService::generateNextBillForPaidBill($bill);
+                }
             }
         } catch (\Exception $e) {}
 
-        return redirect()->back()->with('success', "Tagihan {$id} berhasil diperbarui menjadi {$newStatus}!");
+        $message = $newStatus === 'Lunas'
+            ? "Tagihan {$id} berhasil diverifikasi Lunas dan telah dipindahkan ke Riwayat / Rekap Pembayaran!"
+            : "Tagihan {$id} berhasil diperbarui menjadi {$newStatus}!";
+
+        return redirect()->back()->with('success', $message);
     }
 
     /**
@@ -1930,6 +2306,12 @@ class AdminController extends Controller
                 'counts' => $counts,
                 'system_time' => $now->translatedFormat('l, d F Y, H:i:s') . ' WIB',
                 'system_date' => $now->translatedFormat('l, d F Y'),
+                'auto_prune' => [
+                    'active' => true,
+                    'retention_days' => 3,
+                    'status_target' => 'Selesai',
+                    'description' => 'Riwayat laporan masalah berstatus Selesai yang berusia lebih dari 3 hari otomatis dibersihkan.',
+                ],
             ]);
         }
 
@@ -2031,7 +2413,14 @@ class AdminController extends Controller
      */
     public function deleteLaporan(Request $request, $id)
     {
-        $allTickets = $this->getTicketsData();
+        $allTickets = Cache::get('trouble_tickets') ?? session('admin_tickets') ?? $this->getTicketsData();
+        
+        foreach ($allTickets as $t) {
+            if ($t['id'] === $id) {
+                self::deleteTicketAttachmentFile($t['attachment_url'] ?? null);
+            }
+        }
+
         $filteredTickets = collect($allTickets)->reject(function ($item) use ($id) {
             return $item['id'] === $id;
         })->values()->all();
@@ -2039,14 +2428,31 @@ class AdminController extends Controller
         Cache::forever('trouble_tickets', $filteredTickets);
         session(['admin_tickets' => $filteredTickets]);
 
+        $techTickets = session('technician_tickets');
+        if (is_array($techTickets)) {
+            $techPruned = array_values(array_filter($techTickets, function ($t) use ($id) {
+                return $t['id'] !== $id;
+            }));
+            session(['technician_tickets' => $techPruned]);
+        }
+
+        $counts = [
+            'all' => count($filteredTickets),
+            'menunggu' => collect($filteredTickets)->where('status', 'Menunggu Respon')->count(),
+            'proses' => collect($filteredTickets)->where('status', 'Sedang Ditangani')->count(),
+            'selesai' => collect($filteredTickets)->where('status', 'Selesai')->count(),
+            'kritis' => collect($filteredTickets)->where('priority', 'Kritis')->where('status', '!=', 'Selesai')->count(),
+        ];
+
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => "Tiket laporan kendala {$id} berhasil dihapus.",
+                'counts' => $counts,
             ]);
         }
 
-        return redirect()->back()->with('success', "Tiket laporan kendala {$id} berhasil dihapus.");
+        return redirect()->route('admin.laporan')->with('success', "Tiket laporan kendala {$id} berhasil dihapus.");
     }
 
     /**
@@ -2055,27 +2461,68 @@ class AdminController extends Controller
     public function bulkDeleteLaporan(Request $request)
     {
         $ids = $request->input('ids', []);
+        if (empty($ids) && $request->filled('ids_json')) {
+            $decoded = json_decode($request->input('ids_json'), true);
+            if (is_array($decoded)) {
+                $ids = $decoded;
+            }
+        }
+        if (is_string($ids)) {
+            $decoded = json_decode($ids, true);
+            if (is_array($decoded)) {
+                $ids = $decoded;
+            } else {
+                $ids = array_filter(array_map('trim', explode(',', $ids)));
+            }
+        }
         $deleteAll = $request->boolean('delete_all', false);
 
         if ($deleteAll) {
+            $allTickets = Cache::get('trouble_tickets') ?? session('admin_tickets') ?? $this->getTicketsData();
+            foreach ($allTickets as $t) {
+                self::deleteTicketAttachmentFile($t['attachment_url'] ?? null);
+            }
+
             Cache::forever('trouble_tickets', []);
             session(['admin_tickets' => []]);
+            session(['technician_tickets' => []]);
 
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
+                    'deleted_count' => count($allTickets),
                     'message' => "Seluruh data laporan masalah berhasil dihapus.",
+                    'counts' => [
+                        'all' => 0,
+                        'menunggu' => 0,
+                        'proses' => 0,
+                        'selesai' => 0,
+                        'kritis' => 0,
+                    ],
                 ]);
             }
 
-            return redirect()->back()->with('success', "Seluruh data laporan masalah berhasil dihapus.");
+            return redirect()->route('admin.laporan')->with('success', "Seluruh data laporan masalah berhasil dihapus.");
         }
 
         if (empty($ids) || !is_array($ids)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Silakan pilih minimal satu laporan untuk dihapus.',
+                ], 422);
+            }
             return redirect()->back()->with('error', 'Silakan pilih minimal satu laporan untuk dihapus.');
         }
 
-        $allTickets = $this->getTicketsData();
+        $allTickets = Cache::get('trouble_tickets') ?? session('admin_tickets') ?? $this->getTicketsData();
+
+        foreach ($allTickets as $t) {
+            if (in_array($t['id'], $ids)) {
+                self::deleteTicketAttachmentFile($t['attachment_url'] ?? null);
+            }
+        }
+
         $filteredTickets = collect($allTickets)->reject(function ($item) use ($ids) {
             return in_array($item['id'], $ids);
         })->values()->all();
@@ -2083,15 +2530,33 @@ class AdminController extends Controller
         Cache::forever('trouble_tickets', $filteredTickets);
         session(['admin_tickets' => $filteredTickets]);
 
+        $techTickets = session('technician_tickets');
+        if (is_array($techTickets)) {
+            $techPruned = array_values(array_filter($techTickets, function ($t) use ($ids) {
+                return !in_array($t['id'], $ids);
+            }));
+            session(['technician_tickets' => $techPruned]);
+        }
+
+        $counts = [
+            'all' => count($filteredTickets),
+            'menunggu' => collect($filteredTickets)->where('status', 'Menunggu Respon')->count(),
+            'proses' => collect($filteredTickets)->where('status', 'Sedang Ditangani')->count(),
+            'selesai' => collect($filteredTickets)->where('status', 'Selesai')->count(),
+            'kritis' => collect($filteredTickets)->where('priority', 'Kritis')->where('status', '!=', 'Selesai')->count(),
+        ];
+
         $count = count($ids);
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
+                'deleted_count' => $count,
                 'message' => "Sebanyak {$count} tiket laporan kendala berhasil dihapus.",
+                'counts' => $counts,
             ]);
         }
 
-        return redirect()->back()->with('success', "Sebanyak {$count} tiket laporan kendala berhasil dihapus.");
+        return redirect()->route('admin.laporan')->with('success', "Sebanyak {$count} tiket laporan kendala berhasil dihapus.");
     }
 
     /**

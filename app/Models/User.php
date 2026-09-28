@@ -55,4 +55,9 @@ class User extends Authenticatable
     {
         return $this->role === 'collector' || $this->role === 'kolektor' || $this->isAdmin();
     }
+
+    public function assignedOrders()
+    {
+        return $this->hasMany(Order::class, 'technician_id');
+    }
 }

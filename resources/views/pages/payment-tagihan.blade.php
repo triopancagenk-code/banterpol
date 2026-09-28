@@ -73,6 +73,36 @@
         copyText(text, label) {
             navigator.clipboard.writeText(text);
             this.toast.trigger(label + ' berhasil disalin!');
+        },
+
+        confirmPayment() {
+            let methodLabel = 'Transfer Bank';
+            if (this.paymentMethod === 'transfer') {
+                methodLabel = this.banks[this.selectedBank] ? this.banks[this.selectedBank].name : 'Transfer Bank';
+            } else if (this.paymentMethod === 'va') {
+                methodLabel = this.virtualAccounts[this.selectedVA] ? this.virtualAccounts[this.selectedVA].name : 'Virtual Account';
+            } else if (this.paymentMethod === 'ewallet') {
+                methodLabel = this.ewallets[this.selectedEwallet] ? 'E-Wallet (' + this.ewallets[this.selectedEwallet].name + ')' : 'E-Wallet';
+            } else if (this.paymentMethod === 'qris') {
+                methodLabel = 'QRIS';
+            }
+
+            fetch('{{ route('tagihan.payment.confirm') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    invoice: '{{ $billData['invoice'] }}',
+                    payment_method: methodLabel
+                })
+            }).then(() => {
+                this.step = 3;
+            }).catch(() => {
+                this.step = 3;
+            });
         }
      }">
 
@@ -638,7 +668,7 @@
           </button>
 
           <button type="button"
-                  @click="step = 3"
+                  @click="confirmPayment()"
                   class="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-white bg-brand hover:bg-brand-700 px-7 py-2.5 rounded-xl shadow-sm transition duration-200">
             <span>Saya Sudah Bayar</span>
             <i class="fa-solid fa-check text-xs"></i>

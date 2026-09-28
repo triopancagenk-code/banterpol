@@ -22,8 +22,9 @@ class GoogleAuthTest extends TestCase
 
         // Pastikan target URL diarahkan ke Google OAuth
         $this->assertStringStartsWith('https://accounts.google.com/o/oauth2/auth', $targetUrl);
-        // Pastikan redirect_uri yang dikirim memiliki protokol http:// atau https://
-        $this->assertStringContainsString('redirect_uri=http%3A%2F%2F127.0.0.1%3A8000%2Fauth%2Fgoogle%2Fcallback', $targetUrl);
+        // Pastikan redirect_uri yang dikirim sesuai konfigurasi
+        $expectedRedirect = urlencode(config('services.google.redirect'));
+        $this->assertStringContainsString('redirect_uri=' . $expectedRedirect, $targetUrl);
     }
 
     public function test_google_callback_creates_and_authenticates_new_user(): void

@@ -23,6 +23,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/paket', [HomeController::class, 'paket'])->name('paket');
     Route::get('/tagihan', [HomeController::class, 'tagihan'])->name('tagihan');
     Route::get('/tagihan/pembayaran', [HomeController::class, 'paymentTagihan'])->name('tagihan.payment');
+    Route::post('/tagihan/pembayaran/konfirmasi', [HomeController::class, 'confirmPaymentTagihan'])->name('tagihan.payment.confirm');
     Route::get('/checkout', [HomeController::class, 'checkout'])->name('checkout');
     Route::get('/payment', [HomeController::class, 'payment'])->name('payment');
     Route::get('/payment/status', [HomeController::class, 'paymentStatus'])->name('payment.status');

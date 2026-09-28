@@ -33,6 +33,8 @@ class Order extends Model
         'payment_status',
         'status',
         'technician',
+        'technician_id',
+        'assigned_at',
         'assigned_odp',
         'admin_notes',
         'ont_sn',
@@ -48,6 +50,8 @@ class Order extends Model
         'total' => 'float',
         'installation_date' => 'date',
         'birth_date' => 'date',
+        'assigned_at' => 'datetime',
+        'installed_at' => 'datetime',
     ];
 
     /**
@@ -61,6 +65,30 @@ class Order extends Model
     public function getFormattedPriceAttribute(): string
     {
         return 'Rp' . number_format($this->price, 0, ',', '.');
+    }
+
+    public function technicianUser()
+    {
+        return $this->belongsTo(User::class, 'technician_id');
+    }
+
+    public function scopeForTechnician($query, $user)
+    {
+        if (!$user) {
+            return $query;
+        }
+
+        $userName = $user->name;
+        $firstName = explode(' ', trim($userName))[0] ?? '';
+
+        return $query->where(function ($q) use ($user, $userName, $firstName) {
+            $q->where('technician_id', $user->id)
+              ->orWhere('technician', $userName)
+              ->orWhere('technician', 'like', "%{$userName}%");
+            if (!empty($firstName) && strlen($firstName) >= 3) {
+                $q->orWhere('technician', 'like', "%{$firstName}%");
+            }
+        });
     }
 
     public function bill()

@@ -133,17 +133,43 @@
         @php
           $pendingBillsCount = 0;
           try {
-              $pendingBillsCount = \App\Models\Bill::whereIn('status', ['Menunggu Verifikasi', 'Belum Bayar'])->count();
+              if (isset($counts['all'])) {
+                  $pendingBillsCount = $counts['all'];
+              } else {
+                  $pendingBillsCount = \App\Models\Bill::activeForMonitoring()->whereIn('status', ['Menunggu Verifikasi', 'Belum Bayar', 'Jatuh Tempo'])->count();
+              }
           } catch (\Exception $e) {}
         @endphp
         <a href="{{ route('admin.tagihan') }}"
-           class="flex items-center justify-between px-3.5 py-3 rounded-xl transition duration-150 {{ request()->routeIs('admin.tagihan*') ? 'bg-brand text-white shadow-md shadow-red-950/40 font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+           class="flex items-center justify-between px-3.5 py-3 rounded-xl transition duration-150 {{ request()->routeIs('admin.tagihan*') && request('status') !== 'rekap' && request('status') !== 'Lunas' ? 'bg-brand text-white shadow-md shadow-red-950/40 font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
           <div class="flex items-center gap-3">
-            <i class="fa-solid fa-file-invoice-dollar text-base w-5 text-center {{ request()->routeIs('admin.tagihan*') ? 'text-white' : 'text-slate-400' }}"></i>
+            <i class="fa-solid fa-file-invoice-dollar text-base w-5 text-center {{ request()->routeIs('admin.tagihan*') && request('status') !== 'rekap' && request('status') !== 'Lunas' ? 'text-white' : 'text-slate-400' }}"></i>
             <span>Monitoring Tagihan</span>
           </div>
           @if($pendingBillsCount > 0)
             <span class="bg-amber-400/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400/30">{{ $pendingBillsCount }} Cek</span>
+          @endif
+        </a>
+
+        <!-- 4. Riwayat / Rekap Pembayaran Per Bulan -->
+        @php
+          $verifiedBillsCount = 0;
+          try {
+              if (isset($counts['lunas'])) {
+                  $verifiedBillsCount = $counts['lunas'];
+              } else {
+                  $verifiedBillsCount = \App\Models\Bill::activeForMonitoring()->where('status', 'Lunas')->count();
+              }
+          } catch (\Exception $e) {}
+        @endphp
+        <a href="{{ route('admin.tagihan', ['status' => 'rekap']) }}"
+           class="flex items-center justify-between px-3.5 py-3 rounded-xl transition duration-150 {{ request()->routeIs('admin.tagihan*') && (request('status') === 'rekap' || request('status') === 'Lunas') ? 'bg-brand text-white shadow-md shadow-red-950/40 font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-receipt text-base w-5 text-center {{ request()->routeIs('admin.tagihan*') && (request('status') === 'rekap' || request('status') === 'Lunas') ? 'text-white' : 'text-slate-400' }}"></i>
+            <span>Rekap Pembayaran</span>
+          </div>
+          @if($verifiedBillsCount > 0)
+            <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">{{ $verifiedBillsCount }} Lunas</span>
           @endif
         </a>
 
@@ -325,7 +351,7 @@
                 ];
               }
 
-              $pBills = \App\Models\Bill::where('status', 'Menunggu Verifikasi')->latest()->take(3)->get();
+              $pBills = \App\Models\Bill::activeForMonitoring()->where('status', 'Menunggu Verifikasi')->latest()->take(3)->get();
               foreach ($pBills as $pb) {
                 $recentNotifications[] = [
                   'title' => 'Bukti Transfer Masuk',

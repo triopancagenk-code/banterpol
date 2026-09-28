@@ -304,4 +304,320 @@ class AdminLaporanMasalahTest extends TestCase
         $cachedTickets = Cache::get('trouble_tickets');
         $this->assertEmpty($cachedTickets);
     }
+
+    public function test_admin_can_bulk_delete_selected_tickets(): void
+    {
+        $admin = $this->createAdminUser();
+
+        // Admin selects only TCK-202605-001 and TCK-202605-003, leaving TCK-202605-002
+        $response = $this->actingAs($admin)
+            ->withHeaders(['Accept' => 'application/json'])
+            ->postJson('/admin/laporan-masalah/bulk-delete', [
+                'ids' => ['TCK-202605-001', 'TCK-202605-003'],
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'deleted_count' => 2,
+        ]);
+
+        $cachedTickets = Cache::get('trouble_tickets');
+        $this->assertCount(2, $cachedTickets);
+        $remainingIds = collect($cachedTickets)->pluck('id')->all();
+        $this->assertContains('TCK-202605-002', $remainingIds);
+        $this->assertContains('TCK-202605-004', $remainingIds);
+        $this->assertNotContains('TCK-202605-001', $remainingIds);
+        $this->assertNotContains('TCK-202605-003', $remainingIds);
+    }
+
+    public function test_admin_can_bulk_delete_via_standard_form_redirect(): void
+    {
+        $admin = $this->createAdminUser();
+
+        // Submit via standard HTML form post with redirect
+        $response = $this->actingAs($admin)->post('/admin/laporan-masalah/bulk-delete', [
+            'ids' => ['TCK-202605-001'],
+        ]);
+
+        $response->assertRedirect('/admin/laporan-masalah');
+        $response->assertSessionHas('success');
+
+        $cachedTickets = Cache::get('trouble_tickets');
+        $found = collect($cachedTickets)->firstWhere('id', 'TCK-202605-001');
+        $this->assertNull($found);
+    }
+
+    public function test_admin_can_bulk_delete_via_ids_json(): void
+    {
+        $admin = $this->createAdminUser();
+
+        // Submit via form with ids_json
+        $response = $this->actingAs($admin)->post('/admin/laporan-masalah/bulk-delete', [
+            'ids_json' => json_encode(['TCK-202605-002']),
+        ]);
+
+        $response->assertRedirect('/admin/laporan-masalah');
+        $response->assertSessionHas('success');
+
+        $cachedTickets = Cache::get('trouble_tickets');
+        $found = collect($cachedTickets)->firstWhere('id', 'TCK-202605-002');
+        $this->assertNull($found);
+    }
+
+    private function createDirekturUser(): User
+    {
+        return User::factory()->create([
+            'name' => 'Direktur Utama',
+            'email' => 'direktur.noc@banterpool.net',
+            'role' => 'direktur',
+        ]);
+    }
+
+    public function test_auto_prune_deletes_tickets_older_than_3_days_for_admin_and_direktur_pov(): void
+    {
+        $admin = $this->createAdminUser();
+        $direktur = $this->createDirekturUser();
+        $now = now('Asia/Jakarta')->locale('id');
+
+        // Setup tiket:
+        // 1. Tiket baru 1 hari lalu (Sedang Ditangani) -> TIDAK terhapus
+        // 2. Tiket lama 4 hari lalu tapi belum selesai (Menunggu Respon) -> TIDAK terhapus (karena belum Selesai)
+        // 3. Tiket lama 4 hari lalu sudah selesai (Selesai) -> OTOMATIS terhapus
+        $recentDate = $now->copy()->subDays(1);
+        $expiredDate = $now->copy()->subDays(4);
+
+        $initialTickets = [
+            [
+                'id' => 'TCK-RECENT-001',
+                'customer_name' => 'Pelanggan Baru',
+                'customer_phone' => '081234567891',
+                'address' => 'Jl. Baru No. 1',
+                'odp' => 'ODP-CLK-01',
+                'type' => 'LOS Merah',
+                'category' => 'LOS',
+                'priority' => 'Kritis',
+                'description' => 'Kendala 1 hari lalu.',
+                'status' => 'Sedang Ditangani',
+                'technician' => 'Randi',
+                'created_at' => $recentDate->translatedFormat('l, d F Y, H:i') . ' WIB',
+                'created_date' => $recentDate->translatedFormat('l, d F Y'),
+                'created_time' => $recentDate->format('H:i:s') . ' WIB',
+                'created_at_iso' => $recentDate->toIso8601String(),
+                'created_timestamp' => $recentDate->timestamp,
+                'updated_at' => $recentDate->translatedFormat('l, d F Y, H:i') . ' WIB',
+                'updated_date' => $recentDate->translatedFormat('l, d F Y'),
+                'updated_time' => $recentDate->format('H:i:s') . ' WIB',
+                'updated_at_iso' => $recentDate->toIso8601String(),
+                'updated_timestamp' => $recentDate->timestamp,
+            ],
+            [
+                'id' => 'TCK-UNRESOLVED-002',
+                'customer_name' => 'Pelanggan Belum Selesai',
+                'customer_phone' => '081234567893',
+                'address' => 'Jl. Belum Selesai No. 3',
+                'odp' => 'ODP-CLK-03',
+                'type' => 'WiFi Putus',
+                'category' => 'WiFi',
+                'priority' => 'Tinggi',
+                'description' => 'Kendala 4 hari lalu tapi belum beres penanganannya.',
+                'status' => 'Menunggu Respon',
+                'technician' => 'Belum Ditugaskan',
+                'created_at' => $expiredDate->translatedFormat('l, d F Y, H:i') . ' WIB',
+                'created_date' => $expiredDate->translatedFormat('l, d F Y'),
+                'created_time' => $expiredDate->format('H:i:s') . ' WIB',
+                'created_at_iso' => $expiredDate->toIso8601String(),
+                'created_timestamp' => $expiredDate->timestamp,
+                'updated_at' => $expiredDate->translatedFormat('l, d F Y, H:i') . ' WIB',
+                'updated_date' => $expiredDate->translatedFormat('l, d F Y'),
+                'updated_time' => $expiredDate->format('H:i:s') . ' WIB',
+                'updated_at_iso' => $expiredDate->toIso8601String(),
+                'updated_timestamp' => $expiredDate->timestamp,
+            ],
+            [
+                'id' => 'TCK-EXPIRED-003',
+                'customer_name' => 'Pelanggan Lama Selesai',
+                'customer_phone' => '081234567892',
+                'address' => 'Jl. Lama No. 9',
+                'odp' => 'ODP-CLK-02',
+                'type' => 'Koneksi Lambat',
+                'category' => 'Drop Speed',
+                'priority' => 'Normal',
+                'description' => 'Kendala 4 hari lalu sudah lampau dan beres.',
+                'status' => 'Selesai',
+                'technician' => 'Bambang',
+                'created_at' => $expiredDate->translatedFormat('l, d F Y, H:i') . ' WIB',
+                'created_date' => $expiredDate->translatedFormat('l, d F Y'),
+                'created_time' => $expiredDate->format('H:i:s') . ' WIB',
+                'created_at_iso' => $expiredDate->toIso8601String(),
+                'created_timestamp' => $expiredDate->timestamp,
+                'updated_at' => $expiredDate->translatedFormat('l, d F Y, H:i') . ' WIB',
+                'updated_date' => $expiredDate->translatedFormat('l, d F Y'),
+                'updated_time' => $expiredDate->format('H:i:s') . ' WIB',
+                'updated_at_iso' => $expiredDate->toIso8601String(),
+                'updated_timestamp' => $expiredDate->timestamp,
+            ],
+        ];
+
+        Cache::forever('trouble_tickets', $initialTickets);
+        session(['admin_tickets' => $initialTickets]);
+
+        // 1. Verifikasi POV Admin: Tiket 4 hari lalu yang SUDAH SELESAI otomatis hilang.
+        // Tiket yang belum selesai (TCK-UNRESOLVED-002) dan tiket baru (TCK-RECENT-001) TETAP ADA.
+        $adminResponse = $this->actingAs($admin)->get('/admin/laporan-masalah');
+        $adminResponse->assertStatus(200);
+        $adminResponse->assertSee('Auto-Hapus 3 Hari');
+        $adminResponse->assertSee('TCK-RECENT-001');
+        $adminResponse->assertSee('TCK-UNRESOLVED-002');
+        $adminResponse->assertDontSee('TCK-EXPIRED-003');
+
+        // Pastikan di Cache: TCK-EXPIRED-003 terhapus, sisa 2 tiket
+        $cachedAfterAdmin = Cache::get('trouble_tickets');
+        $this->assertCount(2, $cachedAfterAdmin);
+        $remainingIds = collect($cachedAfterAdmin)->pluck('id')->all();
+        $this->assertContains('TCK-RECENT-001', $remainingIds);
+        $this->assertContains('TCK-UNRESOLVED-002', $remainingIds);
+        $this->assertNotContains('TCK-EXPIRED-003', $remainingIds);
+
+        // 2. Verifikasi POV Direktur: Akses halaman yang sama, data sinkron
+        $direkturResponse = $this->actingAs($direktur)->get('/admin/laporan-masalah');
+        $direkturResponse->assertStatus(200);
+        $direkturResponse->assertSee('Auto-Hapus 3 Hari');
+        $direkturResponse->assertSee('TCK-RECENT-001');
+        $direkturResponse->assertSee('TCK-UNRESOLVED-002');
+        $direkturResponse->assertDontSee('TCK-EXPIRED-003');
+
+        // 3. Verifikasi JSON Polling POV Direktur membawa info auto_prune 3 hari
+        $jsonResponse = $this->actingAs($direktur)
+            ->withHeaders(['Accept' => 'application/json'])
+            ->get('/admin/laporan-masalah');
+        $jsonResponse->assertStatus(200);
+        $jsonResponse->assertJson([
+            'success' => true,
+            'auto_prune' => [
+                'active' => true,
+                'retention_days' => 3,
+            ],
+        ]);
+        $tickets = $jsonResponse->json('tickets');
+        $this->assertCount(2, $tickets);
+    }
+
+    public function test_admin_and_direktur_can_manually_delete_selected_and_all_tickets_regardless_of_status(): void
+    {
+        $admin = $this->createAdminUser();
+        $direktur = $this->createDirekturUser();
+
+        // 1. Siapkan tiket dengan berbagai status (Menunggu Respon, Sedang Ditangani, Selesai)
+        $sampleTickets = [
+            ['id' => 'MAN-01', 'customer_name' => 'User 1', 'status' => 'Menunggu Respon'],
+            ['id' => 'MAN-02', 'customer_name' => 'User 2', 'status' => 'Sedang Ditangani'],
+            ['id' => 'MAN-03', 'customer_name' => 'User 3', 'status' => 'Selesai'],
+        ];
+
+        Cache::forever('trouble_tickets', $sampleTickets);
+
+        // 2. Direktur dapat menghapus tiket pilihan secara manual walaupun statusnya belum selesai
+        $responseDirektur = $this->actingAs($direktur)
+            ->withHeaders(['Accept' => 'application/json'])
+            ->postJson('/admin/laporan-masalah/bulk-delete', [
+                'ids' => ['MAN-01'], // Menghapus tiket Menunggu Respon secara manual
+            ]);
+
+        $responseDirektur->assertStatus(200);
+        $responseDirektur->assertJson([
+            'success' => true,
+            'deleted_count' => 1,
+        ]);
+
+        $cached = Cache::get('trouble_tickets');
+        $this->assertCount(2, $cached);
+        $this->assertNull(collect($cached)->firstWhere('id', 'MAN-01'));
+        $this->assertNotNull(collect($cached)->firstWhere('id', 'MAN-02'));
+        $this->assertNotNull(collect($cached)->firstWhere('id', 'MAN-03'));
+
+        // 3. Admin dapat menghapus seluruh data secara manual
+        $responseAdmin = $this->actingAs($admin)
+            ->withHeaders(['Accept' => 'application/json'])
+            ->postJson('/admin/laporan-masalah/bulk-delete', [
+                'delete_all' => 1,
+            ]);
+
+        $responseAdmin->assertStatus(200);
+        $responseAdmin->assertJson([
+            'success' => true,
+            'deleted_count' => 2,
+        ]);
+
+        $cachedFinal = Cache::get('trouble_tickets');
+        $this->assertEmpty($cachedFinal);
+    }
+
+    public function test_artisan_tickets_prune_command_deletes_tickets_older_than_3_days(): void
+    {
+        $now = now('Asia/Jakarta');
+        $expiredDate = $now->copy()->subDays(5);
+        $recentDate = $now->copy()->subDays(1);
+
+        $tickets = [
+            [
+                'id' => 'TCK-CLI-EXP-01',
+                'customer_name' => 'User CLI Expired',
+                'created_at_iso' => $expiredDate->toIso8601String(),
+                'created_timestamp' => $expiredDate->timestamp,
+            ],
+            [
+                'id' => 'TCK-CLI-REC-02',
+                'customer_name' => 'User CLI Recent',
+                'created_at_iso' => $recentDate->toIso8601String(),
+                'created_timestamp' => $recentDate->timestamp,
+            ],
+        ];
+
+        Cache::forever('trouble_tickets', $tickets);
+
+        $this->artisan('tickets:prune', ['--days' => 3])
+            ->assertExitCode(0)
+            ->expectsOutputToContain('Auto-hapus riwayat laporan masalah selesai.')
+            ->expectsOutputToContain('Tiket dihapus : 1 tiket');
+
+        $remaining = Cache::get('trouble_tickets');
+        $this->assertCount(1, $remaining);
+        $this->assertEquals('TCK-CLI-REC-02', $remaining[0]['id']);
+    }
+
+    public function test_auto_prune_removes_physical_attachment_file_for_expired_tickets(): void
+    {
+        $now = now('Asia/Jakarta');
+        $expiredDate = $now->copy()->subDays(5);
+
+        // Siapkan file fisik dummy
+        $testDir = public_path('uploads/laporan');
+        if (!file_exists($testDir)) {
+            mkdir($testDir, 0755, true);
+        }
+        $dummyFileName = 'test_expired_ticket_' . time() . '.jpg';
+        $dummyPath = $testDir . DIRECTORY_SEPARATOR . $dummyFileName;
+        file_put_contents($dummyPath, 'fake-image-content');
+        $this->assertFileExists($dummyPath);
+
+        $tickets = [
+            [
+                'id' => 'TCK-ATTACH-EXP-01',
+                'customer_name' => 'User With Attachment',
+                'created_at_iso' => $expiredDate->toIso8601String(),
+                'created_timestamp' => $expiredDate->timestamp,
+                'attachment_url' => '/uploads/laporan/' . $dummyFileName,
+            ],
+        ];
+
+        Cache::forever('trouble_tickets', $tickets);
+
+        // Jalankan prune dengan retensi 3 hari
+        \App\Http\Controllers\Admin\AdminController::pruneOldTickets(null, 3);
+
+        // Verifikasi file fisik terhapus
+        $this->assertFileDoesNotExist($dummyPath);
+    }
 }
+

@@ -108,7 +108,7 @@
   <!-- ============================================== -->
   <!-- 2. STATISTIC METRIC CARDS                      -->
   <!-- ============================================== -->
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
     
     <!-- Total Pesanan -->
     <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -143,6 +143,13 @@
       <p class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Selesai / Aktif</p>
       <h3 class="text-2xl font-black text-emerald-900 mt-1">{{ $counts['selesai'] }}</h3>
       <span class="text-[10px] text-emerald-700 font-medium">Online</span>
+    </div>
+
+    <!-- Kendala Lapangan -->
+    <div class="bg-rose-50/60 p-4 rounded-2xl border border-rose-200/70 shadow-2xs">
+      <p class="text-[10px] font-bold text-rose-700 uppercase tracking-wider">Kendala</p>
+      <h3 class="text-2xl font-black text-rose-900 mt-1">{{ $counts['kendala'] ?? 0 }}</h3>
+      <span class="text-[10px] text-rose-700 font-medium">Laporan teknisi</span>
     </div>
 
     <!-- Dibatalkan -->
@@ -194,6 +201,13 @@
         <i class="fa-solid fa-circle-check"></i>
         <span>Selesai / Aktif</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Selesai' ? 'bg-white/20' : 'bg-emerald-200' }}">{{ $counts['selesai'] }}</span>
+      </a>
+
+      <a href="{{ route('admin.pesanan', ['status' => 'Kendala Lapangan', 'q' => $search]) }}"
+         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Kendala Lapangan' ? 'bg-rose-600 text-white font-bold shadow-xs' : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100' }}">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Kendala Lapangan</span>
+        <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Kendala Lapangan' ? 'bg-white/20' : 'bg-rose-200' }}">{{ $counts['kendala'] ?? 0 }}</span>
       </a>
 
       <a href="{{ route('admin.pesanan', ['status' => 'Dibatalkan', 'q' => $search]) }}"
@@ -320,12 +334,20 @@
                     <i class="fa-solid fa-calendar-check text-xs"></i> Jadwal Teknisi
                   </span>
                 @elseif($order->status === 'Sedang Dipasang')
-                  <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+                  <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 animate-pulse">
                     <i class="fa-solid fa-screwdriver-wrench text-xs"></i> Sedang Dipasang
                   </span>
                 @elseif($order->status === 'Selesai')
                   <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
                     <i class="fa-solid fa-wifi text-xs"></i> Selesai / Aktif
+                  </span>
+                @elseif($order->status === 'Kendala Lapangan')
+                  <span class="bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+                    <i class="fa-solid fa-triangle-exclamation text-xs"></i> Kendala Lapangan
+                  </span>
+                @elseif($order->status === 'Dibatalkan')
+                  <span class="bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+                    <i class="fa-solid fa-ban text-xs"></i> Dibatalkan
                   </span>
                 @else
                   <span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
@@ -481,25 +503,93 @@
               </div>
             </div>
 
-            <!-- Form Update Status & Assignment -->
+            <!-- Live Status Pemasangan Terhubung Teknisi -->
+            <div class="bg-gradient-to-r from-slate-50 to-blue-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <div>
+                    <h4 class="font-bold text-slate-800 text-xs">Status Pemasangan Lapangan (Terhubung Teknisi)</h4>
+                    <p class="text-[10px] text-slate-400">Sinkronisasi real-time dengan progres kerja tim teknisi di lokasi</p>
+                  </div>
+                </div>
+                
+                <!-- Status Badge -->
+                <div>
+                  <template x-if="selectedOrder.status === 'Menunggu Konfirmasi'">
+                    <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-extrabold px-3 py-1 rounded-full inline-flex items-center gap-1.5 shadow-2xs animate-pulse">
+                      <i class="fa-regular fa-clock"></i> Menunggu Konfirmasi
+                    </span>
+                  </template>
+                  <template x-if="selectedOrder.status === 'Jadwal Teknisi'">
+                    <span class="bg-blue-100 text-blue-800 border border-blue-300 text-[11px] font-bold px-3 py-1 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
+                      <i class="fa-solid fa-calendar-check"></i> Jadwal Teknisi
+                    </span>
+                  </template>
+                  <template x-if="selectedOrder.status === 'Sedang Dipasang'">
+                    <span class="bg-indigo-100 text-indigo-800 border border-indigo-300 text-[11px] font-bold px-3 py-1 rounded-full inline-flex items-center gap-1.5 shadow-2xs animate-pulse">
+                      <i class="fa-solid fa-screwdriver-wrench"></i> Sedang Dipasang Teknisi
+                    </span>
+                  </template>
+                  <template x-if="selectedOrder.status === 'Selesai'">
+                    <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-black px-3 py-1 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
+                      <i class="fa-solid fa-circle-check"></i> Selesai / Aktif
+                    </span>
+                  </template>
+                  <template x-if="selectedOrder.status === 'Kendala Lapangan'">
+                    <span class="bg-rose-100 text-rose-800 border border-rose-300 text-[11px] font-black px-3 py-1 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
+                      <i class="fa-solid fa-triangle-exclamation"></i> Kendala Lapangan
+                    </span>
+                  </template>
+                  <template x-if="selectedOrder.status === 'Dibatalkan'">
+                    <span class="bg-red-100 text-red-800 border border-red-300 text-[11px] font-bold px-3 py-1 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
+                      <i class="fa-solid fa-ban"></i> Dibatalkan
+                    </span>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Info Detail Lapangan dari Teknisi -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div class="bg-white/80 p-2.5 rounded-xl border border-slate-200/70">
+                  <span class="text-[10px] text-slate-400 block font-semibold uppercase">Teknisi Bertugas</span>
+                  <span class="font-bold text-slate-800 block mt-0.5" x-text="selectedOrder.technician || 'Belum Ditugaskan'"></span>
+                </div>
+                <div class="bg-white/80 p-2.5 rounded-xl border border-slate-200/70">
+                  <span class="text-[10px] text-slate-400 block font-semibold uppercase">Nomor SN ONT / Modem</span>
+                  <span class="font-mono font-bold text-slate-800 block mt-0.5" x-text="selectedOrder.ont_sn || '-'"></span>
+                </div>
+                <div class="bg-white/80 p-2.5 rounded-xl border border-slate-200/70">
+                  <span class="text-[10px] text-slate-400 block font-semibold uppercase">Redaman Sinyal OPM</span>
+                  <span class="font-bold text-slate-800 block mt-0.5" x-text="selectedOrder.opm_dbm ? selectedOrder.opm_dbm + ' dBm' : '-'"></span>
+                </div>
+              </div>
+
+              <!-- Laporan Hasil Pemasangan Lapangan dari Teknisi jika ada -->
+              <template x-if="selectedOrder.technician_notes">
+                <div class="bg-amber-50/80 p-2.5 rounded-xl border border-amber-200/80 text-xs">
+                  <span class="font-bold text-amber-800 flex items-center gap-1.5 mb-1">
+                    <i class="fa-solid fa-clipboard-user text-amber-600"></i> Catatan / Laporan Lapangan Teknisi:
+                  </span>
+                  <p class="text-slate-700 italic" x-text="selectedOrder.technician_notes"></p>
+                </div>
+              </template>
+
+              <div class="flex items-center gap-1.5 text-[11px] text-slate-500 italic">
+                <i class="fa-solid fa-link text-brand"></i>
+                <span>Status pemasangan diperbarui langsung oleh teknisi lapangan dari portal penugasan teknisi.</span>
+              </div>
+            </div>
+
+            <!-- Form Penugasan & Data Berlangganan (Admin / Direktur) -->
             <form :action="'{{ url('admin/pesanan') }}/' + selectedOrder.id + '/status'" method="POST" class="space-y-4 text-xs">
               @csrf
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 
-                <!-- Status Pesanan -->
-                <div>
-                  <label class="block font-bold text-slate-700 mb-1">Status Pengerjaan Pesanan</label>
-                  <select name="status" x-model="selectedOrder.status" required
-                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
-                    <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
-                    <option value="Jadwal Teknisi">Jadwal Teknisi</option>
-                    <option value="Sedang Dipasang">Sedang Dipasang</option>
-                    <option value="Selesai">Selesai / Aktif</option>
-                    <option value="Dibatalkan">Dibatalkan</option>
-                  </select>
-                </div>
-
                 <!-- Paket Berlangganan (Sinkron POV Pelanggan) -->
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Paket Berlangganan</label>
@@ -511,10 +601,6 @@
                   </select>
                 </div>
 
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
                 <!-- Status Pembayaran -->
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Status Pembayaran</label>
@@ -526,26 +612,44 @@
                   </select>
                 </div>
 
-                <!-- Teknisi yang Ditugaskan -->
-                <div>
-                  <label class="block font-bold text-slate-700 mb-1">Tugaskan Teknisi</label>
-                  <input type="text" name="technician" x-model="selectedOrder.technician"
-                         placeholder="Contoh: Mamat (Tim Fiber)"
-                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
-                </div>
-
               </div>
 
-              <!-- Titik ODP Penugasan -->
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Titik ODP Penyambungan (GIS Cilongok)</label>
-                <select name="assigned_odp" x-model="selectedOrder.assigned_odp"
-                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
-                  <option value="">Pilih ODP Terdekat</option>
-                  @foreach($odpList as $odpId => $odpName)
-                    <option value="{{ $odpId }}">{{ $odpId }} - {{ $odpName }}</option>
-                  @endforeach
-                </select>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                <!-- Teknisi yang Ditugaskan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Tugaskan Teknisi</span>
+                    <span class="text-[10px] font-normal text-slate-400">Pilih dari akun teknisi</span>
+                  </label>
+                  <select name="technician" x-model="selectedOrder.technician"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-medium text-slate-800">
+                    <option value="">-- Belum Ditugaskan / Pilih Teknisi --</option>
+                    @foreach($technicians as $tech)
+                      @php
+                        $techName = is_string($tech) ? $tech : $tech->name;
+                        $techPhone = (!is_string($tech) && !empty($tech->phone)) ? ' • ' . $tech->phone : '';
+                      @endphp
+                      <option value="{{ $techName }}">{{ $techName }}{{ $techPhone }}</option>
+                    @endforeach
+                    <template x-if="selectedOrder && selectedOrder.technician && !@js(collect($technicians)->map(fn($t) => is_string($t) ? $t : $t->name)->toArray()).includes(selectedOrder.technician)">
+                      <option :value="selectedOrder.technician" x-text="selectedOrder.technician + ' (Tersimpan)'"></option>
+                    </template>
+                  </select>
+                </div>
+
+                <!-- Titik ODP Penugasan -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Titik ODP Penyambungan (GIS Cilongok)</label>
+                  <select name="assigned_odp" x-model="selectedOrder.assigned_odp"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                    <option value="">Pilih ODP Terdekat</option>
+                    @foreach($odpList as $odpId => $odpName)
+                      <option value="{{ $odpId }}">{{ $odpId }} - {{ $odpName }}</option>
+                    @endforeach
+                  </select>
+                </div>
+
               </div>
 
               <!-- Catatan Admin / NOC -->
@@ -781,9 +885,14 @@
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Teknisi Ditugaskan</label>
                   <select name="technician"
-                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-medium">
-                    @foreach($technicians as $techName)
-                      <option value="{{ $techName }}">{{ $techName }}</option>
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-medium text-slate-800">
+                    <option value="">-- Belum Ditugaskan / Pilih Teknisi --</option>
+                    @foreach($technicians as $tech)
+                      @php
+                        $techName = is_string($tech) ? $tech : $tech->name;
+                        $techPhone = (!is_string($tech) && !empty($tech->phone)) ? ' • ' . $tech->phone : '';
+                      @endphp
+                      <option value="{{ $techName }}">{{ $techName }}{{ $techPhone }}</option>
                     @endforeach
                   </select>
                 </div>
@@ -811,19 +920,18 @@
                 <span>4. Status Pengerjaan & Pembayaran</span>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <!-- Status Pesanan -->
-                <div>
-                  <label class="block font-bold text-slate-700 mb-1">Status Pesanan <span class="text-red-500">*</span></label>
-                  <select name="status" required
-                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold">
-                    <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
-                    <option value="Jadwal Teknisi">Jadwal Teknisi</option>
-                    <option value="Sedang Dipasang">Sedang Dipasang</option>
-                    <option value="Selesai">Selesai / Aktif (Auto-Terbit Tagihan)</option>
-                  </select>
+              <!-- Notice Status Pemasangan Terhubung Otomatis ke Teknisi -->
+              <div class="bg-blue-50/80 border border-blue-200/80 rounded-xl p-3 flex items-start gap-2.5 text-xs text-blue-900">
+                <i class="fa-solid fa-link text-blue-600 mt-0.5 text-sm"></i>
+                <div class="space-y-0.5">
+                  <span class="font-bold">Status Pemasangan Terhubung Otomatis ke Teknisi Lapangan</span>
+                  <p class="text-blue-700 text-[11px] leading-relaxed">
+                    Admin & Direktur tidak perlu mengisi status pesanan secara manual. Pesanan baru otomatis berstatus <strong>Menunggu Konfirmasi</strong> (atau <strong>Jadwal Teknisi</strong> jika teknisi langsung dipilih). Pembaruan status (Sedang Dipasang, Selesai/Aktif, atau Kendala Lapangan) diperbarui langsung oleh teknisi di lokasi.
+                  </p>
                 </div>
+              </div>
 
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <!-- Status Pembayaran -->
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Status Pembayaran <span class="text-red-500">*</span></label>

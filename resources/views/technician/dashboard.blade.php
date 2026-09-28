@@ -41,6 +41,33 @@
   </div>
 
   <!-- ============================================== -->
+  <!-- BANNER NOTIFIKASI TIKET DITUGASKAN DARI ADMIN  -->
+  <!-- ============================================== -->
+  @if(isset($newAssignedOrders) && $newAssignedOrders->isNotEmpty())
+    <div class="bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-400/40 rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="flex items-start sm:items-center gap-3.5">
+        <div class="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center text-lg font-black shrink-0 shadow-sm animate-bounce">
+          <i class="fa-solid fa-bell"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="bg-amber-500 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded uppercase tracking-wider">Tiket Baru</span>
+            <h4 class="font-extrabold text-sm text-slate-900">Anda Memiliki {{ $newAssignedOrders->count() }} Tugas Pemasangan Baru dari Admin NOC!</h4>
+          </div>
+          <p class="text-xs text-slate-600 mt-0.5">
+            Pelanggan: <strong class="text-slate-800">{{ $newAssignedOrders->first()->customer_name }}</strong> ({{ $newAssignedOrders->first()->order_number }}) • {{ $newAssignedOrders->first()->package_name }}
+          </p>
+        </div>
+      </div>
+      <a href="{{ route('teknisi.pemasangan', ['q' => $newAssignedOrders->first()->order_number, 'scope' => 'my']) }}"
+         class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-xs flex items-center justify-center gap-2 shrink-0">
+        <i class="fa-solid fa-arrow-right text-amber-400"></i>
+        <span>Buka & Kerjakan Tiket</span>
+      </a>
+    </div>
+  @endif
+
+  <!-- ============================================== -->
   <!-- 2. METRIC STATS CARDS                          -->
   <!-- ============================================== -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -125,7 +152,15 @@
             <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition">
               <div class="flex items-start justify-between gap-2">
                 <div>
-                  <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ $order->order_number }}</span>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ $order->order_number }}</span>
+                    @if($order->technician)
+                      <span class="bg-amber-100 text-amber-900 border border-amber-300/80 font-bold px-1.5 py-0.2 rounded-md text-[9px] flex items-center gap-1">
+                        <i class="fa-solid fa-user-check text-[8px] text-amber-600"></i>
+                        <span>{{ ($order->technician_id === auth()->id() || $order->technician === auth()->user()->name || str_contains($order->technician, explode(' ', auth()->user()->name)[0])) ? 'Ditugaskan ke Anda' : $order->technician }}</span>
+                      </span>
+                    @endif
+                  </div>
                   <h4 class="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">{{ $order->customer_name }}</h4>
                   <p class="text-[11px] text-slate-600 mt-0.5 flex items-center gap-1.5">
                     <i class="fa-solid fa-location-dot text-red-500 text-xs shrink-0"></i>

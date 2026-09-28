@@ -82,8 +82,31 @@
   <!-- ============================================== -->
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-      <h2 class="text-xl font-black text-slate-900 tracking-tight">Daftar Tagihan Pelanggan</h2>
-      <p class="text-xs text-slate-500 mt-0.5">Pantau status pembayaran invoice dan verifikasi transfer dari pelanggan.</p>
+      <div class="flex items-center gap-2">
+        <h2 class="text-xl font-black text-slate-900 tracking-tight">
+          @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+            Riwayat & Data Rekap Pembayaran
+          @else
+            Daftar Monitoring Tagihan Pelanggan
+          @endif
+        </h2>
+        @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+          <span class="bg-emerald-100 text-emerald-800 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-300">
+            Terverifikasi Lunas
+          </span>
+        @else
+          <span class="bg-brand/10 text-brand text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-brand/20">
+            Tagihan Aktif
+          </span>
+        @endif
+      </div>
+      <p class="text-xs text-slate-500 mt-0.5">
+        @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+          Rekapitulasi seluruh tagihan yang telah diverifikasi dan lunas per bulannya.
+        @else
+          Pantau status tagihan aktif, konfirmasi transfer pelanggan, dan verifikasi pelunasan invoice.
+        @endif
+      </p>
     </div>
 
     <!-- Export or Action Buttons -->
@@ -103,7 +126,7 @@
       <button type="button" onclick="window.print()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs">
         <i class="fa-solid fa-print"></i> Cetak Laporan
       </button>
-      <a href="{{ route('admin.tagihan') }}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold p-2 rounded-xl transition" title="Refresh">
+      <a href="{{ route('admin.tagihan', ['status' => $statusFilter]) }}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold p-2 rounded-xl transition" title="Refresh">
         <i class="fa-solid fa-rotate-right"></i>
       </a>
     </div>
@@ -142,6 +165,7 @@
     <!-- Status Pills -->
     <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
       <a href="{{ route('admin.tagihan', ['status' => 'all', 'q' => $search]) }}"
+         title="Semua Tagihan Aktif Belum Lunas"
          class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'all' ? 'bg-brand text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
         <span>Semua</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'all' ? 'bg-white/20' : 'bg-slate-200' }}">{{ $counts['all'] }}</span>
@@ -160,24 +184,28 @@
         <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Belum Bayar' ? 'bg-white/20' : 'bg-slate-200' }}">{{ $counts['belum_bayar'] }}</span>
       </a>
 
-      <a href="{{ route('admin.tagihan', ['status' => 'Lunas', 'q' => $search]) }}"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Lunas' ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100' }}">
-        <i class="fa-solid fa-check"></i>
-        <span>Lunas</span>
-        <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Lunas' ? 'bg-white/20' : 'bg-emerald-200' }}">{{ $counts['lunas'] }}</span>
-      </a>
-
       <a href="{{ route('admin.tagihan', ['status' => 'Jatuh Tempo', 'q' => $search]) }}"
          class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Jatuh Tempo' ? 'bg-red-600 text-white font-bold shadow-xs' : 'bg-red-50 text-red-800 border border-red-200 hover:bg-red-100' }}">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span>Jatuh Tempo</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Jatuh Tempo' ? 'bg-white/20' : 'bg-red-200' }}">{{ $counts['jatuh_tempo'] }}</span>
       </a>
+
+      <a href="{{ route('admin.tagihan', ['status' => 'rekap', 'q' => $search]) }}"
+         title="Data Rekapitulasi Tagihan yang Sudah Terverifikasi Lunas"
+         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100' }}">
+        <i class="fa-solid fa-receipt"></i>
+        <span>Riwayat / Rekap Pembayaran</span>
+        <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'bg-white/20' : 'bg-emerald-200' }}">{{ $counts['rekap'] ?? $counts['lunas'] }}</span>
+      </a>
     </div>
 
     <!-- Search Form -->
     <form method="GET" action="{{ route('admin.tagihan') }}" class="flex items-center gap-2">
       <input type="hidden" name="status" value="{{ $statusFilter }}">
+      @if(!empty($monthFilter) && $monthFilter !== 'all')
+        <input type="hidden" name="month" value="{{ $monthFilter }}">
+      @endif
       <div class="relative w-full sm:w-64">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
         <input type="text" name="q" value="{{ $search }}" placeholder="Cari nama, invoice, no hp..."
@@ -186,15 +214,63 @@
       <button type="submit" class="bg-brand text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-brand-700 transition">
         Cari
       </button>
-      @if($search)
+      @if($search || (($monthFilter ?? 'all') !== 'all'))
         <a href="{{ route('admin.tagihan', ['status' => $statusFilter]) }}" class="text-xs text-slate-400 hover:text-red-500 font-bold">Reset</a>
       @endif
     </form>
 
   </div>
 
+  <!-- Banner & Filter Rekap Bulanan (Muncul Khusus di Tab Riwayat/Rekap Pembayaran) -->
+  @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+    <div class="bg-emerald-50/70 border border-emerald-200/90 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shrink-0 shadow-xs">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-emerald-950 uppercase tracking-wider">Rekapitulasi Pembayaran Per Bulan</span>
+            <span class="bg-emerald-200/70 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full">Terverifikasi Lunas</span>
+          </div>
+          <p class="text-xs text-slate-600 mt-0.5">
+            Total Pemasukan: <span class="font-black text-emerald-700 text-sm">Rp{{ number_format($rekapNominal ?? 0, 0, ',', '.') }}</span>
+            &bull; <span class="font-bold text-slate-700">{{ $rekapCount ?? 0 }} Tagihan</span> Telah Terverifikasi
+          </p>
+        </div>
+      </div>
+
+      <!-- Dropdown Pilih Bulan Rekap -->
+      <form method="GET" action="{{ route('admin.tagihan') }}" class="flex items-center gap-2 shrink-0">
+        <input type="hidden" name="status" value="rekap">
+        @if(!empty($search))
+          <input type="hidden" name="q" value="{{ $search }}">
+        @endif
+        <div class="flex items-center gap-1.5 bg-white border border-emerald-300 rounded-xl px-3 py-1.5 shadow-2xs">
+          <i class="fa-regular fa-calendar text-emerald-600 text-xs"></i>
+          <span class="text-xs font-bold text-slate-600">Bulan:</span>
+          <select name="month" onchange="this.form.submit()"
+                  class="text-xs font-bold bg-transparent border-0 p-0 text-slate-800 focus:ring-0 cursor-pointer">
+            <option value="all">Semua Bulan</option>
+            @foreach($availableMonths ?? [] as $m)
+              <option value="{{ $m['key'] }}" {{ ($monthFilter ?? 'all') === $m['key'] ? 'selected' : '' }}>
+                {{ $m['label'] }}
+              </option>
+            @endforeach
+          </select>
+        </div>
+        @if(($monthFilter ?? 'all') !== 'all')
+          <a href="{{ route('admin.tagihan', ['status' => 'rekap', 'q' => $search]) }}"
+             class="text-xs text-slate-500 hover:text-red-600 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition" title="Tampilkan Semua Bulan">
+            <i class="fa-solid fa-xmark"></i>
+          </a>
+        @endif
+      </form>
+    </div>
+  @endif
+
   <!-- ============================================== -->
-  <!-- 2. TABEL PENGINTAIAN TAGIHAN                   -->
+  <!-- 2. TABEL PENGINTAIAN & REKAP TAGIHAN           -->
   <!-- ============================================== -->
   <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
     <div class="overflow-x-auto">
@@ -204,9 +280,16 @@
             <th class="px-5 py-3.5 text-center">Invoice & Tanggal</th>
             <th class="px-4 py-3.5 text-center">Pelanggan</th>
             <th class="px-4 py-3.5 text-center">Paket & ODP</th>
-            <th class="px-4 py-3.5 text-center">Jatuh Tempo</th>
-            <th class="px-4 py-3.5 text-center">Total Tagihan</th>
-            <th class="px-4 py-3.5 text-center">Metode Bayar</th>
+            @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+              <th class="px-4 py-3.5 text-center">Periode Tagihan</th>
+              <th class="px-4 py-3.5 text-center">Waktu Pelunasan / Rekap</th>
+              <th class="px-4 py-3.5 text-center">Total Dibayar</th>
+              <th class="px-4 py-3.5 text-center">Metode & Kuitansi</th>
+            @else
+              <th class="px-4 py-3.5 text-center">Jatuh Tempo</th>
+              <th class="px-4 py-3.5 text-center">Total Tagihan</th>
+              <th class="px-4 py-3.5 text-center">Metode Bayar</th>
+            @endif
             <th class="px-4 py-3.5 text-center">Status</th>
             <th class="px-5 py-3.5 text-center">Aksi</th>
           </tr>
@@ -237,26 +320,50 @@
                 </p>
               </td>
 
-              <!-- Jatuh Tempo -->
-              <td class="px-4 py-4 text-slate-600 text-center">
-                {{ $bill['due_date'] }}
-              </td>
+              @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+                <!-- Periode Tagihan -->
+                <td class="px-4 py-4 text-slate-600 text-center font-medium">
+                  {{ $bill['period'] }}
+                </td>
 
-              <!-- Total Tagihan -->
-              <td class="px-4 py-4 font-black text-slate-900 text-sm text-center">
-                Rp{{ $bill['total'] }}
-              </td>
+                <!-- Waktu Pelunasan / Rekap (Kolom Riwayat Rekap) -->
+                <td class="px-4 py-4 text-center">
+                  <p class="font-bold text-emerald-800">{{ $bill['paid_date'] ?? '-' }}</p>
+                  <p class="text-[10px] text-slate-400 mt-0.5">{{ $bill['paid_at_formatted'] ?? '-' }}</p>
+                </td>
 
-              <!-- Metode Bayar & Bukti -->
-              <td class="px-4 py-4 text-center">
-                <p class="text-slate-700 font-medium">{{ $bill['payment_method'] }}</p>
-                @if($bill['proof_image'])
-                  <button type="button" @click="viewProof('{{ $bill['proof_image'] }}')"
-                          class="inline-flex items-center justify-center gap-1 text-[10px] text-blue-600 hover:underline font-bold mt-1">
-                    <i class="fa-regular fa-image"></i> Lihat Bukti
-                  </button>
-                @endif
-              </td>
+                <!-- Total Dibayar -->
+                <td class="px-4 py-4 font-black text-slate-900 text-sm text-center">
+                  Rp{{ $bill['total'] }}
+                </td>
+
+                <!-- Metode & Kuitansi -->
+                <td class="px-4 py-4 text-center">
+                  <p class="text-slate-700 font-medium">{{ $bill['payment_method'] }}</p>
+                  <span class="text-[10px] font-mono text-slate-400 font-bold">{{ $bill['receipt_number'] ?? '-' }}</span>
+                </td>
+              @else
+                <!-- Jatuh Tempo -->
+                <td class="px-4 py-4 text-slate-600 text-center">
+                  {{ $bill['due_date'] }}
+                </td>
+
+                <!-- Total Tagihan -->
+                <td class="px-4 py-4 font-black text-slate-900 text-sm text-center">
+                  Rp{{ $bill['total'] }}
+                </td>
+
+                <!-- Metode Bayar & Bukti -->
+                <td class="px-4 py-4 text-center">
+                  <p class="text-slate-700 font-medium">{{ $bill['payment_method'] }}</p>
+                  @if($bill['proof_image'])
+                    <button type="button" @click="viewProof('{{ $bill['proof_image'] }}')"
+                            class="inline-flex items-center justify-center gap-1 text-[10px] text-blue-600 hover:underline font-bold mt-1">
+                      <i class="fa-regular fa-image"></i> Lihat Bukti
+                    </button>
+                  @endif
+                </td>
+              @endif
 
               <!-- Status -->
               <td class="px-4 py-4 text-center">
@@ -287,8 +394,8 @@
                     <i class="fa-regular fa-eye"></i> Detail
                   </button>
 
-                  <a href="https://wa.me/{{ preg_replace('/^0/', '62', $bill['customer_phone']) }}?text=Halo%20Bapak/Ibu%20{{ urlencode($bill['customer_name']) }},%20kami%20dari%20Banterpool%20mengingatkan%20tagihan%20internet%20{{ $bill['id'] }}%20sebesar%20Rp{{ $bill['total'] }}%20jatuh%20tempo%20pada%20{{ urlencode($bill['due_date']) }}.%20Terima%20kasih."
-                     target="_blank" title="Kirim Pengingat WhatsApp"
+                  <a href="https://wa.me/{{ preg_replace('/^0/', '62', $bill['customer_phone']) }}?text={{ urlencode(($bill['status'] === 'Lunas' ? 'Halo Bapak/Ibu ' . $bill['customer_name'] . ', terima kasih tagihan internet ' . $bill['id'] . ' sebesar Rp' . $bill['total'] . ' telah lunas terverifikasi.' : 'Halo Bapak/Ibu ' . $bill['customer_name'] . ', kami dari Banterpool mengingatkan tagihan internet ' . $bill['id'] . ' sebesar Rp' . $bill['total'] . ' jatuh tempo pada ' . $bill['due_date'] . '. Terima kasih.')) }}"
+                     target="_blank" title="{{ $bill['status'] === 'Lunas' ? 'Kirim Konfirmasi Lunas WhatsApp' : 'Kirim Pengingat WhatsApp' }}"
                      class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white flex items-center justify-center transition">
                     <i class="fa-brands fa-whatsapp text-sm"></i>
                   </a>
@@ -297,7 +404,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="8" class="text-center py-12 text-slate-400">
+              <td colspan="{{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 9 : 8 }}" class="text-center py-12 text-slate-400">
                 <i class="fa-solid fa-receipt text-3xl mb-2 text-slate-300"></i>
                 <p>Tidak ada tagihan yang cocok dengan filter atau pencarian.</p>
               </td>
@@ -378,6 +485,37 @@
           </div>
         </div>
 
+        <!-- Informasi Riwayat Rekap Pelunasan jika Lunas -->
+        <template x-if="selectedBill?.status === 'Lunas'">
+          <div class="border border-emerald-200 bg-emerald-50/70 rounded-xl p-4 space-y-2.5">
+            <div class="flex items-center justify-between pb-2 border-b border-emerald-200/60">
+              <span class="inline-flex items-center gap-1.5 text-emerald-800 font-bold text-xs">
+                <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i> Pembayaran Terverifikasi Lunas
+              </span>
+              <span class="text-[10px] font-mono font-bold bg-white text-emerald-800 px-2 py-0.5 rounded border border-emerald-300"
+                    x-text="selectedBill?.receipt_number"></span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-slate-600">
+              <div>
+                <span class="text-[10px] text-slate-400 block">Waktu Pelunasan:</span>
+                <span class="font-bold text-slate-800" x-text="selectedBill?.paid_at_formatted || selectedBill?.paid_date || '-'"></span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">Bulan Rekap:</span>
+                <span class="font-bold text-emerald-700" x-text="selectedBill?.month_label"></span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">Diverifikasi Oleh:</span>
+                <span class="font-bold text-slate-800" x-text="selectedBill?.collected_by || 'Admin NOC'"></span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">Catatan:</span>
+                <span class="font-medium text-slate-700 truncate block" x-text="selectedBill?.collector_notes || '-'"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+
         <!-- Bukti Pembayaran Box jika ada -->
         <template x-if="selectedBill?.proof_image">
           <div class="border border-amber-200 bg-amber-50/50 rounded-xl p-3 space-y-2">
@@ -395,14 +533,28 @@
 
       <!-- Action Buttons -->
       <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <form :action="'/admin/tagihan/' + selectedBill?.id + '/status'" method="POST" class="w-full flex items-center gap-2">
-          @csrf
-          <input type="hidden" name="status" value="Lunas">
-          <button type="submit"
-                  class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
-            <i class="fa-solid fa-check"></i> Verifikasi & Tandai Lunas
-          </button>
-        </form>
+        <!-- Tombol Verifikasi jika status belum lunas -->
+        <template x-if="selectedBill?.status !== 'Lunas'">
+          <form :action="'/admin/tagihan/' + selectedBill?.id + '/status'" method="POST" class="w-full sm:flex-1 flex items-center gap-2">
+            @csrf
+            <input type="hidden" name="status" value="Lunas">
+            <button type="submit"
+                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-check"></i> Verifikasi & Pindahkan ke Rekap
+            </button>
+          </form>
+        </template>
+
+        <!-- Aksi jika sudah lunas -->
+        <template x-if="selectedBill?.status === 'Lunas'">
+          <div class="w-full sm:flex-1 flex items-center gap-2">
+            <a :href="'https://wa.me/' + (selectedBill?.customer_phone ? selectedBill.customer_phone.replace(/^0/, '62') : '') + '?text=' + encodeURIComponent('Halo Bapak/Ibu ' + selectedBill?.customer_name + ', terima kasih tagihan internet ' + selectedBill?.id + ' sebesar Rp' + selectedBill?.total + ' telah terverifikasi LUNAS dengan No Kuitansi ' + selectedBill?.receipt_number + '. Terima kasih.')"
+               target="_blank"
+               class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
+              <i class="fa-brands fa-whatsapp text-sm"></i> Kirim Bukti Lunas WA
+            </a>
+          </div>
+        </template>
 
         <button type="button" @click="openModal = false"
                 class="w-full sm:w-auto border border-slate-300 text-slate-700 font-bold text-xs py-2.5 px-4 rounded-xl hover:bg-slate-50 transition">

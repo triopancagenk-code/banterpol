@@ -30,7 +30,7 @@ class CollectorController extends Controller
         // Otomatis sinkronkan pesanan selesai agar tagihan terbit
         BillingService::syncCompletedOrdersWithoutBills();
 
-        $allBills = Bill::all();
+        $allBills = Bill::activeForMonitoring()->get();
         $orders = Order::where('order_number', 'not like', 'PLG-%')->get();
         $tickets = $this->getTroubleTickets();
 
@@ -63,7 +63,7 @@ class CollectorController extends Controller
         ];
 
         // Daftar tagihan prioritas kunjungan penagihan hari ini (Jatuh tempo & belum bayar)
-        $priorityBills = Bill::whereIn('status', ['Jatuh Tempo', 'Belum Bayar'])
+        $priorityBills = Bill::activeForMonitoring()->whereIn('status', ['Jatuh Tempo', 'Belum Bayar'])
             ->orderByRaw("CASE WHEN status = 'Jatuh Tempo' THEN 1 ELSE 2 END")
             ->orderBy('id', 'asc')
             ->take(5)
@@ -89,7 +89,7 @@ class CollectorController extends Controller
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('q', '');
 
-        $query = Bill::query()->latest();
+        $query = Bill::activeForMonitoring()->latest();
 
         if ($statusFilter !== 'all') {
             $query->where('status', $statusFilter);
@@ -107,7 +107,7 @@ class CollectorController extends Controller
         }
 
         $bills = $query->paginate(15)->withQueryString();
-        $allBills = Bill::all();
+        $allBills = Bill::activeForMonitoring()->get();
 
         $counts = [
             'all' => $allBills->count(),
@@ -146,6 +146,9 @@ class CollectorController extends Controller
         $bill->collector_notes = $notes ?: ('Diterima tunai oleh ' . auth()->user()->name . ' pada ' . now()->translatedFormat('d M Y, H:i'));
 
         $bill->save();
+
+        // Otomatis terbitkan tagihan untuk bulan selanjutnya dengan jatuh tempo tanggal 5
+        BillingService::generateNextBillForPaidBill($bill);
 
         return redirect()->route('kolektor.tagihan.kuitansi', $bill->id)
             ->with('success', "Pembayaran tunai sebesar Rp " . number_format($bill->total, 0, ',', '.') . " untuk {$bill->customer_name} berhasil dicatat. Nomor Kuitansi: {$receiptNumber}.");

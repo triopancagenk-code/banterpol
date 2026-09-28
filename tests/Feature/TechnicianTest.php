@@ -136,4 +136,71 @@ class TechnicianTest extends TestCase
             'opm_dbm' => '-18.5 dBm',
         ]);
     }
+
+    public function test_admin_can_assign_technician_and_ticket_appears_on_assigned_technician_account(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $techMamat = User::factory()->create([
+            'name' => 'Mamat (Teknisi Lapangan)',
+            'email' => 'mamat@teknisi.net',
+            'role' => 'technician',
+        ]);
+
+        $techDanu = User::factory()->create([
+            'name' => 'Danu (Teknisi Lapangan)',
+            'email' => 'danu@teknisi.net',
+            'role' => 'technician',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'BTR-202609-0099',
+            'customer_name' => 'Rafi Razani Test',
+            'customer_phone' => '081234567891',
+            'customer_email' => 'rafi@test.com',
+            'address' => 'Kasegeran, Banyumas',
+            'package_name' => 'Paket 50 Mbps',
+            'price' => 220000,
+            'total' => 220000,
+            'status' => 'Menunggu Konfirmasi',
+            'payment_status' => 'Lunas',
+            'technician' => null,
+        ]);
+
+        // 1. Admin kelola pesanan dan menugaskan teknisi Mamat
+        $response = $this->actingAs($admin)->post("/admin/pesanan/{$order->id}/status", [
+            'status' => 'Jadwal Teknisi',
+            'technician' => $techMamat->name,
+            'assigned_odp' => 'ODP-CLK-01',
+            'payment_status' => 'Lunas',
+            'package_name' => 'Paket 50 Mbps',
+        ]);
+
+        $response->assertRedirect();
+        $order->refresh();
+
+        $this->assertEquals($techMamat->name, $order->technician);
+        $this->assertEquals($techMamat->id, $order->technician_id);
+        $this->assertEquals('Jadwal Teknisi', $order->status);
+        $this->assertNotNull($order->assigned_at);
+
+        // 2. Akun teknisi Mamat melihat dashboard & tiket pemasangan
+        $mamatDashResponse = $this->actingAs($techMamat)->get('/teknisi/dashboard');
+        $mamatDashResponse->assertStatus(200);
+        $mamatDashResponse->assertSee('Rafi Razani Test');
+        $mamatDashResponse->assertSee('BTR-202609-0099');
+        $mamatDashResponse->assertSee('Ditugaskan ke Anda');
+
+        $mamatTicketsResponse = $this->actingAs($techMamat)->get('/teknisi/pemasangan?scope=my');
+        $mamatTicketsResponse->assertStatus(200);
+        $mamatTicketsResponse->assertSee('Rafi Razani Test');
+        $mamatTicketsResponse->assertSee('Tugas Anda');
+
+        // 3. Akun teknisi Danu TIDAK memiliki tiket tersebut di 'scope=my'
+        $danuTicketsResponse = $this->actingAs($techDanu)->get('/teknisi/pemasangan?scope=my');
+        $danuTicketsResponse->assertStatus(200);
+        $danuTicketsResponse->assertDontSee('Rafi Razani Test');
+    }
 }
