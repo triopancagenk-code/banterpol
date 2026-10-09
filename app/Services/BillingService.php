@@ -110,7 +110,13 @@ class BillingService
             }
         }
 
+        $userId = $order->user_id;
+        if (!$userId && !empty($order->customer_email) && $order->customer_email !== '-') {
+            $userId = User::where('email', $order->customer_email)->value('id');
+        }
+
         $bill = Bill::create([
+            'user_id' => $userId,
             'bill_number' => $billNumber,
             'order_id' => $order->id,
             'customer_name' => $order->customer_name,
@@ -185,6 +191,7 @@ class BillingService
         $billDateStr = now('Asia/Jakarta')->translatedFormat('d M Y');
 
         $nextBill = Bill::create([
+            'user_id' => $paidBill->user_id,
             'bill_number' => $billNumber,
             'order_id' => $paidBill->order_id,
             'customer_name' => $paidBill->customer_name,
@@ -213,7 +220,7 @@ class BillingService
      */
     public static function syncCustomerBills(User $user): void
     {
-        self::syncCustomerBillsForCustomer($user->email, $user->name, $user->phone);
+        self::syncCustomerBillsForCustomer($user->email, $user->name, $user->phone, null, $user->id);
     }
 
     /**
@@ -221,18 +228,22 @@ class BillingService
      * 1. Jika pelanggan mendaftar langganan (punya Order) tapi belum ada tagihan -> langsung terbitkan tagihan bulan depan.
      * 2. Jika tagihan terakhir sudah 'Lunas' dan belum ada tagihan aktif berikutnya -> otomatis terbitkan tagihan bulan selanjutnya.
      */
-    public static function syncCustomerBillsForCustomer(?string $customerEmail, ?string $customerName = null, ?string $customerPhone = null, ?int $orderId = null): void
+    public static function syncCustomerBillsForCustomer(?string $customerEmail, ?string $customerName = null, ?string $customerPhone = null, ?int $orderId = null, ?int $userId = null): void
     {
-        if (empty($customerEmail) && empty($customerName) && empty($customerPhone) && empty($orderId)) {
+        if (empty($customerEmail) && empty($customerName) && empty($customerPhone) && empty($orderId) && empty($userId)) {
             return;
         }
 
         // 1. Cek pesanan milik pelanggan
         $ordersQuery = Order::where('order_number', 'not like', 'PLG-%');
-        $ordersQuery->where(function ($q) use ($customerEmail, $customerName, $customerPhone, $orderId) {
+        $ordersQuery->where(function ($q) use ($customerEmail, $customerName, $customerPhone, $orderId, $userId) {
             $hasCondition = false;
+            if (!empty($userId)) {
+                $q->where('user_id', $userId);
+                $hasCondition = true;
+            }
             if (!empty($orderId)) {
-                $q->where('id', $orderId);
+                $hasCondition ? $q->orWhere('id', $orderId) : $q->where('id', $orderId);
                 $hasCondition = true;
             }
             if (!empty($customerEmail)) {
@@ -251,19 +262,38 @@ class BillingService
         $orders = $ordersQuery->get();
 
         foreach ($orders as $order) {
-            $hasBill = Bill::where('order_id', $order->id)->exists();
-            if (!$hasBill) {
-                self::generateBillForOrder($order);
+            if ($userId && !$order->user_id) {
+                $order->user_id = $userId;
+                $order->save();
+            }
+
+            $isCompleted = in_array(strtolower(trim((string) $order->status)), ['selesai', 'selesai / aktif', 'aktif']);
+            if ($isCompleted) {
+                $hasBill = Bill::where('order_id', $order->id)->exists();
+                if (!$hasBill) {
+                    self::generateBillForOrder($order);
+                }
+            } else {
+                // Sesuai aturan sistem: jika status pesanan belum 'Selesai', tidak boleh muncul tagihan
+                Bill::where('order_id', $order->id)->whereIn('status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])->delete();
             }
         }
 
         // 2. Cek apakah ada tagihan aktif (Belum Bayar / Jatuh Tempo / Menunggu Verifikasi)
-        $orderIds = $orders->pluck('id');
-        $activeBill = Bill::whereIn('status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])
-            ->where(function ($query) use ($customerEmail, $customerName, $customerPhone, $orderIds) {
+        $completedOrderIds = $orders->filter(function ($o) {
+            return in_array(strtolower(trim((string) $o->status)), ['selesai', 'selesai / aktif', 'aktif']);
+        })->pluck('id');
+
+        $activeBill = Bill::activeForMonitoring()
+            ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])
+            ->where(function ($query) use ($customerEmail, $customerName, $customerPhone, $completedOrderIds, $userId) {
                 $hasCondition = false;
-                if ($orderIds->isNotEmpty()) {
-                    $query->whereIn('order_id', $orderIds);
+                if (!empty($userId)) {
+                    $query->where('user_id', $userId);
+                    $hasCondition = true;
+                }
+                if ($completedOrderIds->isNotEmpty()) {
+                    $hasCondition ? $query->orWhereIn('order_id', $completedOrderIds) : $query->whereIn('order_id', $completedOrderIds);
                     $hasCondition = true;
                 }
                 if (!empty($customerEmail)) {
@@ -284,12 +314,17 @@ class BillingService
 
         // 3. Jika TIDAK ADA tagihan aktif belum bayar, tapi ADA tagihan yang sudah LUNAS:
         // Otomatis terbitkan tagihan untuk bulan selanjutnya!
-        if (!$activeBill) {
-            $latestPaidBill = Bill::where('status', 'Lunas')
-                ->where(function ($query) use ($customerEmail, $customerName, $customerPhone, $orderIds) {
+        if (!$activeBill && $completedOrderIds->isNotEmpty()) {
+            $latestPaidBill = Bill::activeForMonitoring()
+                ->where('status', 'Lunas')
+                ->where(function ($query) use ($customerEmail, $customerName, $customerPhone, $completedOrderIds, $userId) {
                     $hasCondition = false;
-                    if ($orderIds->isNotEmpty()) {
-                        $query->whereIn('order_id', $orderIds);
+                    if (!empty($userId)) {
+                        $query->where('user_id', $userId);
+                        $hasCondition = true;
+                    }
+                    if ($completedOrderIds->isNotEmpty()) {
+                        $query->whereIn('order_id', $completedOrderIds);
                         $hasCondition = true;
                     }
                     if (!empty($customerEmail)) {

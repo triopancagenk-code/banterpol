@@ -106,7 +106,7 @@
   <!-- ============================================== -->
   <!-- 2. CARD RINGKASAN STATUS TAGIHAN UTAMA         -->
   <!-- ============================================== -->
-  @if($activeBill['has_unpaid'] ?? true)
+  @if($activeBill['has_unpaid'] ?? false)
     <div class="bg-[#fff1f1] border border-[#fecaca] rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xs">
       <div class="flex items-center gap-4">
         <!-- Ilustrasi Smartphone & Kartu Pembayaran -->
@@ -150,6 +150,32 @@
           <i class="fa-solid fa-credit-card"></i>
           <span>Bayar Sekarang</span>
         </a>
+      </div>
+    </div>
+  @elseif(!empty($inProgressOrder))
+    <div class="bg-blue-50/70 border border-blue-200 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xs">
+      <div class="flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-screwdriver-wrench text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <p class="text-xs text-blue-800 font-bold uppercase tracking-wider">Proses Pemasangan Berjalan</p>
+            <span class="bg-blue-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+              {{ $inProgressOrder->status }}
+            </span>
+          </div>
+          <h3 class="text-base sm:text-lg font-bold text-slate-800 tracking-tight my-0.5">
+            {{ $inProgressOrder->package_name }} ({{ $inProgressOrder->speed ?? '20 Mbps' }})
+          </h3>
+          <p class="text-xs text-slate-600">
+            Pesanan <span class="font-mono font-semibold text-slate-700">{{ $inProgressOrder->order_number }}</span> sedang diproses. Tagihan bulanan pertama akan otomatis muncul setelah status pesanan selesai dipasang.
+          </p>
+        </div>
+      </div>
+      <div class="text-xs text-blue-700 font-medium bg-white border border-blue-200 px-3.5 py-2 rounded-xl shrink-0">
+        <i class="fa-solid fa-clock-rotate-left text-blue-600 mr-1"></i>
+        Belum ada tagihan aktif untuk pesanan ini.
       </div>
     </div>
   @else
@@ -489,7 +515,7 @@
           </div>
           <div class="flex justify-between text-slate-600">
             <span>Metode Pembayaran</span>
-            <span class="font-bold text-slate-900" x-text="selectedBill?.payment_method || 'Transfer Bank'"></span>
+            <span class="font-bold text-slate-900" x-text="selectedBill?.payment_method || 'BRI Virtual Account'"></span>
           </div>
           <div class="border-t border-slate-100 pt-2.5 flex justify-between font-black text-sm text-slate-900">
             <span>Total Pembayaran:</span>
@@ -569,7 +595,7 @@
         </div>
         <div class="flex justify-between">
           <span class="text-slate-500">Metode Pembayaran:</span>
-          <span class="font-semibold text-slate-900" x-text="selectedReceipt?.payment_method || 'Transfer Bank'"></span>
+          <span class="font-semibold text-slate-900" x-text="selectedReceipt?.payment_method || 'BRI Virtual Account'"></span>
         </div>
         <div class="flex justify-between text-sm font-black pt-3 border-t border-dashed border-slate-200">
           <span>Jumlah Dibayar:</span>

@@ -47,6 +47,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/pesanan/export', [AdminController::class, 'exportPesanan'])->name('pesanan.export');
     Route::get('/pesanan/{id}/formulir', [AdminController::class, 'formulirPesanan'])->name('pesanan.formulir');
     Route::post('/pesanan/{id}/status', [AdminController::class, 'updatePesananStatus'])->name('pesanan.status');
+    Route::post('/pesanan/bulk-delete', [AdminController::class, 'bulkDeletePesanan'])->name('pesanan.bulk-delete');
     Route::delete('/pesanan/{id}', [AdminController::class, 'deletePesanan'])->name('pesanan.delete');
 
     // Data Pelanggan Terdaftar (KTP, Lahir, HP, Email, Layanan & Harga, Alamat)

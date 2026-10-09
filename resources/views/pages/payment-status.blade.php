@@ -111,7 +111,7 @@
 
           <div class="flex justify-between items-center">
             <span class="text-gray-500">Metode Pembayaran</span>
-            <span class="font-bold text-black">{{ request()->get('payment_method', 'Transfer Bank (BCA)') }}</span>
+            <span class="font-bold text-black">{{ request()->get('payment_method', 'BRI Virtual Account') }}</span>
           </div>
 
           <div class="flex justify-between items-center">

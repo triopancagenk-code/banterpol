@@ -8,7 +8,37 @@
      x-data="{
         openModal: false,
         openCreateModal: false,
+        openDeleteModal: false,
+        openBulkDeleteModal: false,
         selectedOrder: null,
+        selectedIds: [],
+        pageOrderIds: {{ Js::from($orders->pluck('id')->toArray()) }},
+
+        toggleSelectAll() {
+            if (this.isPageAllSelected()) {
+                this.selectedIds = this.selectedIds.filter(id => !this.pageOrderIds.includes(id));
+            } else {
+                this.selectedIds = Array.from(new Set([...this.selectedIds, ...this.pageOrderIds]));
+            }
+        },
+
+        isPageAllSelected() {
+            return this.pageOrderIds.length > 0 && this.pageOrderIds.every(id => this.selectedIds.includes(id));
+        },
+
+        clearSelection() {
+            this.selectedIds = [];
+        },
+
+        confirmDelete(order) {
+            this.selectedOrder = order;
+            this.openDeleteModal = true;
+        },
+
+        confirmBulkDelete() {
+            if (this.selectedIds.length === 0) return;
+            this.openBulkDeleteModal = true;
+        },
 
         // Form Create Pesanan Manual
         createForm: {
@@ -238,6 +268,37 @@
 
   </div>
 
+  <!-- Floating Bulk Action Bar -->
+  <div x-show="selectedIds.length > 0"
+       x-transition
+       class="bg-slate-900 text-white px-5 py-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl border border-slate-800">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-xl bg-brand/30 border border-brand/50 text-brand flex items-center justify-center font-black text-xs shrink-0">
+        <span x-text="selectedIds.length"></span>
+      </div>
+      <div class="text-xs">
+        <p class="font-extrabold text-white">
+          <span x-text="selectedIds.length"></span> data pesanan dipilih
+        </p>
+        <p class="text-[11px] text-slate-400 mt-0.5">
+          Data pesanan terpilih dapat dihapus sekaligus dari sistem.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 shrink-0">
+      <button type="button" @click="clearSelection()"
+              class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition">
+        Batal Pilihan
+      </button>
+      <button type="button" @click="confirmBulkDelete()"
+              class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+        <i class="fa-solid fa-trash-can"></i>
+        <span>Hapus Terpilih (<span x-text="selectedIds.length"></span>)</span>
+      </button>
+    </div>
+  </div>
+
   <!-- ============================================== -->
   <!-- 4. TABEL MONITORING PESANAN                     -->
   <!-- ============================================== -->
@@ -246,6 +307,15 @@
       <table class="w-full text-center text-xs">
         <thead class="bg-slate-50 text-slate-500 font-extrabold uppercase text-[10px] border-b border-slate-200 tracking-wider">
           <tr>
+            <th class="py-3.5 px-3 text-center w-12">
+              <div class="flex items-center justify-center">
+                <input type="checkbox"
+                       :checked="isPageAllSelected()"
+                       @change="toggleSelectAll()"
+                       class="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer"
+                       title="Pilih Semua Pesanan di Halaman Ini">
+              </div>
+            </th>
             <th class="py-3.5 px-4 text-center">No. Order & Tanggal</th>
             <th class="py-3.5 px-4 text-center">Pelanggan</th>
             <th class="py-3.5 px-4 text-center">Paket & Biaya</th>
@@ -258,8 +328,19 @@
         </thead>
         <tbody class="divide-y divide-slate-100 font-medium">
           @forelse($orders as $order)
-            <tr class="hover:bg-slate-50/80 transition duration-150">
+            <tr class="hover:bg-slate-50/80 transition duration-150"
+                :class="selectedIds.includes({{ $order->id }}) ? 'bg-red-50/40' : ''">
               
+              <!-- Checkbox Select Row -->
+              <td class="py-3.5 px-3 text-center w-12">
+                <div class="flex items-center justify-center">
+                  <input type="checkbox"
+                         :value="{{ $order->id }}"
+                         x-model.number="selectedIds"
+                         class="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer">
+                </div>
+              </td>
+
               <!-- 1. Order Number & Date -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 <span class="font-mono font-bold text-slate-900 text-xs block">{{ $order->order_number }}</span>
@@ -329,25 +410,45 @@
                   <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold px-2.5 py-1 rounded-full inline-flex items-center gap-1 animate-pulse">
                     <i class="fa-solid fa-bell text-xs"></i> Menunggu Konfirmasi
                   </span>
+                  <span class="text-[9px] text-slate-400 block mt-1">
+                    <i class="fa-solid fa-clock"></i> Belum Masuk Data Pelanggan
+                  </span>
                 @elseif($order->status === 'Jadwal Teknisi')
                   <span class="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
                     <i class="fa-solid fa-calendar-check text-xs"></i> Jadwal Teknisi
+                  </span>
+                  <span class="text-[9px] text-slate-400 block mt-1">
+                    <i class="fa-solid fa-clock"></i> Belum Masuk Data Pelanggan
                   </span>
                 @elseif($order->status === 'Sedang Dipasang')
                   <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 animate-pulse">
                     <i class="fa-solid fa-screwdriver-wrench text-xs"></i> Sedang Dipasang
                   </span>
+                  <span class="text-[9px] text-slate-400 block mt-1">
+                    <i class="fa-solid fa-clock"></i> Belum Masuk Data Pelanggan
+                  </span>
                 @elseif($order->status === 'Selesai')
                   <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
                     <i class="fa-solid fa-wifi text-xs"></i> Selesai / Aktif
                   </span>
+                  <a href="{{ route('admin.pelanggan', ['q' => $order->customer_name]) }}" 
+                     class="text-[9px] text-emerald-600 hover:text-emerald-800 font-bold block mt-1 hover:underline"
+                     title="Klik untuk membuka data pelanggan ini di menu Data Pelanggan">
+                    <i class="fa-solid fa-circle-check"></i> Masuk Data Pelanggan &rarr;
+                  </a>
                 @elseif($order->status === 'Kendala Lapangan')
                   <span class="bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
                     <i class="fa-solid fa-triangle-exclamation text-xs"></i> Kendala Lapangan
                   </span>
+                  <span class="text-[9px] text-slate-400 block mt-1">
+                    <i class="fa-solid fa-clock"></i> Belum Masuk Data Pelanggan
+                  </span>
                 @elseif($order->status === 'Dibatalkan')
                   <span class="bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
                     <i class="fa-solid fa-ban text-xs"></i> Dibatalkan
+                  </span>
+                  <span class="text-[9px] text-slate-400 block mt-1">
+                    <i class="fa-solid fa-xmark"></i> Tidak Masuk Data Pelanggan
                   </span>
                 @else
                   <span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
@@ -385,13 +486,19 @@
                     <i class="fa-solid fa-pen-to-square text-[10px]"></i>
                     <span>Kelola</span>
                   </button>
+                  <button type="button" @click="confirmDelete({{ Js::from($order) }})"
+                          title="Hapus Data Pesanan"
+                          class="bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 font-bold text-xs px-2.5 py-1.5 rounded-xl transition inline-flex items-center gap-1 shadow-2xs">
+                    <i class="fa-solid fa-trash-can text-red-500 text-xs"></i>
+                    <span>Hapus</span>
+                  </button>
                 </div>
               </td>
 
             </tr>
           @empty
             <tr>
-              <td colspan="8" class="text-center py-16 text-slate-400">
+              <td colspan="9" class="text-center py-16 text-slate-400">
                 <i class="fa-solid fa-box-open text-4xl mb-3 text-slate-300"></i>
                 <p class="font-bold text-sm text-slate-600">Tidak ada pesanan yang ditemukan</p>
                 <p class="text-xs text-slate-400 mt-1">{{ $search ? 'Coba sesuaikan kata kunci pencarian Anda.' : 'Belum ada antrean pemesanan baru dari pelanggan saat ini.' }}</p>
@@ -588,8 +695,55 @@
             <form :action="'{{ url('admin/pesanan') }}/' + selectedOrder.id + '/status'" method="POST" class="space-y-4 text-xs">
               @csrf
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Info Status Integrasi Data Pelanggan -->
+              <div class="p-3 rounded-2xl border transition"
+                   :class="selectedOrder.status === 'Selesai' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'">
+                <template x-if="selectedOrder.status === 'Selesai'">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span class="flex items-center gap-1.5 font-bold text-xs">
+                      <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
+                      <span>Pesanan ini berstatus <strong>Selesai</strong> dan <strong>resmi masuk ke Data Pelanggan</strong>.</span>
+                    </span>
+                    <a :href="'{{ route('admin.pelanggan') }}?q=' + encodeURIComponent(selectedOrder.customer_name)"
+                       target="_blank"
+                       class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-1 shrink-0">
+                      <span>Buka di Data Pelanggan</span>
+                      <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    </a>
+                  </div>
+                </template>
+                <template x-if="selectedOrder.status !== 'Selesai'">
+                  <span class="flex items-center gap-1.5 text-xs">
+                    <i class="fa-solid fa-circle-info text-amber-600 text-sm shrink-0"></i>
+                    <span>Pesanan ini berstatus <strong><span x-text="selectedOrder.status"></span></strong> (<strong>belum masuk</strong> ke Data Pelanggan). Ubah status ke <strong>Selesai</strong> saat pemasangan tuntas untuk memasukkannya ke Data Pelanggan.</span>
+                  </span>
+                </template>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 
+                <!-- Status Pesanan (Alur Pemasangan) -->
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Status Pesanan</span>
+                    <span class="text-[10px] text-emerald-600 font-bold" x-show="selectedOrder.status === 'Selesai'">
+                      <i class="fa-solid fa-circle-check"></i> Masuk
+                    </span>
+                    <span class="text-[10px] text-amber-600 font-bold" x-show="selectedOrder.status !== 'Selesai'">
+                      <i class="fa-solid fa-clock"></i> Belum Masuk
+                    </span>
+                  </label>
+                  <select name="status" x-model="selectedOrder.status"
+                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold text-slate-800">
+                    <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
+                    <option value="Jadwal Teknisi">Jadwal Teknisi</option>
+                    <option value="Sedang Dipasang">Sedang Dipasang</option>
+                    <option value="Selesai">Selesai (Masuk Data Pelanggan)</option>
+                    <option value="Kendala Lapangan">Kendala Lapangan</option>
+                    <option value="Dibatalkan">Dibatalkan</option>
+                  </select>
+                </div>
+
                 <!-- Paket Berlangganan (Sinkron POV Pelanggan) -->
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Paket Berlangganan</label>
@@ -662,10 +816,17 @@
 
               <!-- Buttons -->
               <div class="pt-2 flex items-center justify-between gap-3">
-                <button type="button" @click="openModal = false"
-                        class="px-4 py-2.5 border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition">
-                  Tutup
-                </button>
+                <div class="flex items-center gap-2">
+                  <button type="button" @click="openModal = false"
+                          class="px-4 py-2.5 border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition">
+                    Tutup
+                  </button>
+                  <button type="button" @click="openModal = false; confirmDelete(selectedOrder)"
+                          class="px-3.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-xl transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                    <span>Hapus Pesanan</span>
+                  </button>
+                </div>
 
                 <div class="flex items-center gap-2">
                   <button type="submit"
@@ -978,6 +1139,127 @@
 
           </form>
 
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 8. MODAL HAPUS PESANAN SINGLE                  -->
+  <!-- ============================================== -->
+  <div x-show="openDeleteModal" style="display: none;" class="relative z-50" role="dialog" aria-modal="true">
+    <div x-show="openDeleteModal"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+         @click="openDeleteModal = false"></div>
+
+    <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+      <div x-show="openDeleteModal"
+           x-transition:enter="ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="bg-white rounded-3xl max-w-md w-full p-6 relative shadow-2xl"
+           @click.stop>
+
+        <template x-if="selectedOrder">
+          <div class="text-center space-y-4">
+            <div class="w-14 h-14 mx-auto rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-slate-900">Hapus Data Pesanan?</h3>
+              <p class="text-xs text-slate-500 mt-1">
+                Apakah Anda yakin ingin menghapus data pesanan <strong class="text-slate-900 font-mono" x-text="selectedOrder.order_number"></strong> atas nama <strong class="text-slate-900" x-text="selectedOrder.customer_name"></strong>?
+              </p>
+              <p class="text-[11px] text-red-500 mt-1.5 font-medium">
+                <i class="fa-solid fa-circle-exclamation mr-1"></i> Data tagihan atau instalasi terkait juga akan dibersihkan. Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+
+            <form :action="'{{ url('admin/pesanan') }}/' + (selectedOrder ? selectedOrder.id : '')" method="POST" class="pt-2 flex items-center justify-center gap-2">
+              @csrf
+              @method('DELETE')
+
+              <button type="button" @click="openDeleteModal = false"
+                      class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl transition">
+                Batal
+              </button>
+              <button type="submit"
+                      class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+                <span>Ya, Hapus</span>
+              </button>
+            </form>
+          </div>
+        </template>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 9. MODAL HAPUS MASSAL PESANAN                  -->
+  <!-- ============================================== -->
+  <div x-show="openBulkDeleteModal" style="display: none;" class="relative z-50" role="dialog" aria-modal="true">
+    <div x-show="openBulkDeleteModal"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+         @click="openBulkDeleteModal = false"></div>
+
+    <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+      <div x-show="openBulkDeleteModal"
+           x-transition:enter="ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="bg-white rounded-3xl max-w-md w-full p-6 relative shadow-2xl"
+           @click.stop>
+
+        <div class="text-center space-y-4">
+          <div class="w-14 h-14 mx-auto rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl">
+            <i class="fa-solid fa-trash-can"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-black text-slate-900">
+              Hapus <span x-text="selectedIds.length"></span> Pesanan Terpilih?
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">
+              Apakah Anda yakin ingin menghapus <strong class="text-slate-900"><span x-text="selectedIds.length"></span> data pesanan</strong> yang dipilih? Seluruh data pesanan terpilih beserta tagihannya akan dihapus permanen.
+            </p>
+          </div>
+
+          <form action="{{ route('admin.pesanan.bulk-delete') }}" method="POST" class="pt-2 flex items-center justify-center gap-2">
+            @csrf
+            <template x-for="id in selectedIds" :key="id">
+              <input type="hidden" name="ids[]" :value="id">
+            </template>
+
+            <button type="button" @click="openBulkDeleteModal = false"
+                    class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl transition">
+              Batal
+            </button>
+            <button type="submit"
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1.5">
+              <i class="fa-solid fa-trash-can text-xs"></i>
+              <span>Ya, Hapus Sekarang</span>
+            </button>
+          </form>
         </div>
 
       </div>

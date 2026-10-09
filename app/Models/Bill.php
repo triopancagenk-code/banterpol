@@ -10,6 +10,7 @@ class Bill extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'bill_number',
         'order_id',
         'customer_name',
@@ -40,6 +41,11 @@ class Bill extends Model
             'total' => 'decimal:2',
             'paid_at' => 'datetime',
         ];
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function order()

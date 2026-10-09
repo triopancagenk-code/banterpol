@@ -337,7 +337,7 @@
                     class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:ring-amber-500 focus:border-amber-500">
               <option value="Jadwal Teknisi">Jadwal Teknisi (Menunggu Dikerjakan)</option>
               <option value="Sedang Dipasang">Sedang Dipasang (Teknisi di Lokasi)</option>
-              <option value="Selesai">Selesai (Aktivasi Berhasil & Sinyal Normal)</option>
+              <option value="Selesai">Selesai (Aktivasi Berhasil - Resmi Masuk Data Pelanggan)</option>
               <option value="Kendala Lapangan">Kendala Lapangan (ODP Penuh / Jalur Terhalang)</option>
             </select>
           </div>

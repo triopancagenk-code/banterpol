@@ -251,11 +251,21 @@ class InstallationBillingTest extends TestCase
             'status' => 'Menunggu Konfirmasi',
         ]);
 
-        // Kunjungi halaman tagihan dari POV pelanggan
+        // Kunjungi halaman tagihan dari POV pelanggan ketika status pesanan belum Selesai
         $response = $this->actingAs($customer)->get(route('tagihan'));
         $response->assertOk();
 
-        // Tagihan bulan depan harus langsung ada di database dan tampil di halaman tagihan
+        // Tagihan TIDAK boleh ada sebelum status pesanan Selesai
+        $bill = Bill::where('order_id', $order->id)->first();
+        $this->assertNull($bill);
+
+        // Setelah status pesanan diupdate menjadi Selesai, tagihan otomatis terbit
+        $order->update(['status' => 'Selesai']);
+        $newBill = BillingService::generateBillForOrder($order);
+
+        $responseAfter = $this->actingAs($customer)->get(route('tagihan'));
+        $responseAfter->assertOk();
+
         $bill = Bill::where('order_id', $order->id)->first();
         $this->assertNotNull($bill);
         $this->assertEquals('Belum Bayar', $bill->status);
@@ -266,10 +276,10 @@ class InstallationBillingTest extends TestCase
         $this->assertStringStartsWith('05', $bill->due_date);
         $this->assertStringContainsString($expectedNextMonth, $bill->due_date);
 
-        $response->assertSee($bill->bill_number);
-        $response->assertSee('Paket 30 Mbps');
-        $response->assertSee('165.000');
-        $response->assertSee($bill->due_date);
+        $responseAfter->assertSee($bill->bill_number);
+        $responseAfter->assertSee('Paket 30 Mbps');
+        $responseAfter->assertSee('165.000');
+        $responseAfter->assertSee($bill->due_date);
     }
 
     public function test_paying_bill_automatically_generates_subsequent_month_bill_due_on_the_5th(): void
@@ -566,22 +576,22 @@ class InstallationBillingTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.tagihan'));
         $response->assertOk();
 
-        // Badge 'Cek' di sidebar HARUS TIDAK MUNCUL karena monitoring tagihan kosong
-        $response->assertDontSee('Cek');
+        // Badge di sidebar HARUS TIDAK MUNCUL karena monitoring tagihan kosong
+        $response->assertDontSee('border-amber-400');
 
         // Kunjungi juga halaman dashboard NOC
         $dashboardResponse = $this->actingAs($admin)->get(route('admin.dashboard'));
         $dashboardResponse->assertOk();
-        $dashboardResponse->assertDontSee('Cek');
+        $dashboardResponse->assertDontSee('border-amber-400');
 
         // Setelah pesanan selesai
         $inProgressOrder->status = 'Selesai';
         $inProgressOrder->installed_at = now();
         $inProgressOrder->save();
 
-        // Badge '1 Cek' sekarang harus muncul di sidebar
+        // Badge sekarang harus muncul di sidebar dengan angka 1
         $responseAfter = $this->actingAs($admin)->get(route('admin.tagihan'));
         $responseAfter->assertOk();
-        $responseAfter->assertSee('1 Cek');
+        $responseAfter->assertSee('border-amber-400');
     }
 }

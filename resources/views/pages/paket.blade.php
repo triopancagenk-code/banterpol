@@ -444,19 +444,19 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label class="text-[10px] font-bold text-gray-600 block mb-1">Nama Lengkap</label>
-                                        <input type="text" name="name" placeholder="Masukan nama lengkap" required
+                                        <input type="text" name="name" value="{{ auth()->check() ? auth()->user()->name : '' }}" placeholder="Masukan nama lengkap" required
                                             class="w-full px-3 py-2 border border-gray-400 rounded-lg text-xs focus:ring-brand focus:border-brand">
                                     </div>
                                     <div>
                                         <label class="text-[10px] font-bold text-gray-600 block mb-1">Nomor HP</label>
-                                        <input type="tel" name="phone" placeholder="08xxxxxxxxxx" required
+                                        <input type="tel" name="phone" value="{{ auth()->check() ? (auth()->user()->phone ?? '') : '' }}" placeholder="08xxxxxxxxxx" required
                                             class="w-full px-3 py-2 border border-gray-400 rounded-lg text-xs focus:ring-brand focus:border-brand">
                                     </div>
                                 </div>
 
                                 <div class="mt-3">
                                     <label class="text-[10px] font-bold text-gray-600 block mb-1">Email</label>
-                                    <input type="email" name="email" placeholder="emailanda@gmail.com" required
+                                    <input type="email" name="email" value="{{ auth()->check() ? auth()->user()->email : '' }}" placeholder="emailanda@gmail.com" required
                                         class="w-full px-3 py-2 border border-gray-400 rounded-lg text-xs focus:ring-brand focus:border-brand">
                                 </div>
 
@@ -466,7 +466,7 @@
                                         <label class="text-[10px] font-bold text-gray-600 block mb-1">
                                             <i class="fa-regular fa-id-card text-brand mr-1"></i>No. KTP (NIK)
                                         </label>
-                                        <input type="text" name="id_card_number" maxlength="16"
+                                        <input type="text" name="id_card_number" maxlength="16" value="{{ auth()->check() ? (auth()->user()->id_card_number ?? '') : '' }}"
                                             placeholder="Masukan 16 digit No. KTP" required
                                             class="w-full px-3 py-2 border border-gray-400 rounded-lg text-xs focus:ring-brand focus:border-brand">
                                     </div>
@@ -475,9 +475,9 @@
                                             <i class="fa-regular fa-calendar text-brand mr-1"></i>Tempat, Tanggal Lahir
                                         </label>
                                         <div class="grid grid-cols-2 gap-2">
-                                            <input type="text" name="birth_place" placeholder="Tempat Lahir (Kota)" required
+                                            <input type="text" name="birth_place" value="{{ auth()->check() ? (auth()->user()->birth_place ?? '') : '' }}" placeholder="Tempat Lahir (Kota)" required
                                                 class="w-full px-2.5 py-2 border border-gray-400 rounded-lg text-xs focus:ring-brand focus:border-brand">
-                                            <input type="date" name="birth_date" required
+                                            <input type="date" name="birth_date" value="{{ auth()->check() ? (auth()->user()->birth_date ?? '') : '' }}" required
                                                 class="w-full px-2 py-2 border border-gray-400 rounded-lg text-xs text-gray-600 focus:ring-brand focus:border-brand">
                                         </div>
                                     </div>
@@ -742,7 +742,7 @@
                         'Support Prioritas'
                     ]
                 },
-                address: '',
+                address: @json(auth()->check() && auth()->user()->address ? auth()->user()->address : ''),
                 latitude: '-7.413200',
                 longitude: '109.138800',
                 searchQuery: '',

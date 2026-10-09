@@ -379,7 +379,7 @@
                  @keydown="onKeyDown($event)"
                  @focus="if (suggestions.length > 0) showDropdown = true"
                  autocomplete="off"
-                 placeholder="Cari NIK, Nama, No. HP, Email, Alamat..."
+                 placeholder="Cari NIK, PPOE, Nama, No. HP, Email, Alamat..."
                  class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand transition">
 
           <!-- Spinner Loading -->
@@ -417,6 +417,7 @@
                   </div>
                 </div>
                 <div class="text-right shrink-0 ml-2">
+                  <span class="text-[10px] text-brand font-mono font-bold block" x-text="item.pppoe ? 'PPOE: ' + item.pppoe : ''"></span>
                   <span class="text-[10px] text-slate-400 font-mono block" x-text="item.customer_phone || item.id_card_number || ''"></span>
                 </div>
               </div>
@@ -455,11 +456,10 @@
         <div class="flex-1 min-w-0">
           <label class="block text-[11px] font-bold text-slate-700 mb-1">Status</label>
           <select name="status" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
-            <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status</option>
-            <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Aktif</option>
-            <option value="Sedang Dipasang" {{ $statusFilter === 'Sedang Dipasang' ? 'selected' : '' }}>Sedang Dipasang</option>
-            <option value="Jadwal Teknisi" {{ $statusFilter === 'Jadwal Teknisi' ? 'selected' : '' }}>Jadwal Teknisi</option>
-            <option value="Menunggu Konfirmasi" {{ $statusFilter === 'Menunggu Konfirmasi' ? 'selected' : '' }}>Menunggu Konfirmasi</option>
+            <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status Pelanggan</option>
+            <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Aktif (Online)</option>
+            <option value="Non-Aktif" {{ $statusFilter === 'Non-Aktif' ? 'selected' : '' }}>Non-Aktif / Isolir</option>
+            <option value="Dibatalkan" {{ $statusFilter === 'Dibatalkan' ? 'selected' : '' }}>Dibatalkan</option>
           </select>
         </div>
         @if($search || $wilayahFilter !== 'all' || $layananFilter !== 'all' || $statusFilter !== 'all')
@@ -570,7 +570,20 @@
 
               <!-- Nama Pemohon -->
               <td class="py-3.5 px-4 text-center">
-                <div class="font-bold text-slate-900 text-xs">{{ $customer->customer_name }}</div>
+                <div class="font-bold text-slate-900 text-xs leading-snug">{{ $customer->customer_name }}</div>
+                <div class="mt-1 flex items-center justify-center gap-1">
+                  <span class="inline-flex items-center gap-1 font-mono text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+                    <span class="text-[9px] font-extrabold text-brand uppercase tracking-wider">PPOE:</span>
+                    <span>{{ $customer->pppoe }}</span>
+                  </span>
+                  <button type="button"
+                          @click="copyToClipboard('{{ $customer->pppoe }}', 'ppoe-{{ $customer->id }}')"
+                          class="text-slate-400 hover:text-brand text-xs p-0.5 transition"
+                          title="Salin PPOE">
+                    <i class="fa-regular fa-copy text-[11px]" x-show="copiedText !== 'ppoe-{{ $customer->id }}'"></i>
+                    <i class="fa-solid fa-check text-[11px] text-emerald-600" x-show="copiedText === 'ppoe-{{ $customer->id }}'"></i>
+                  </button>
+                </div>
               </td>
 
               <!-- 3. No KTP -->
@@ -750,8 +763,19 @@
             
             <!-- Modal Header -->
             <div class="border-b border-slate-100 pb-4">
-              <div class="flex items-center gap-2 mb-1">
+              <div class="flex flex-wrap items-center gap-2 mb-1">
                 <span class="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg" x-text="selectedCustomer.order_number"></span>
+                <span class="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg border border-slate-200 inline-flex items-center gap-1">
+                  <span class="text-[9px] font-extrabold text-brand uppercase">PPOE:</span>
+                  <span x-text="selectedCustomer.pppoe"></span>
+                  <button type="button"
+                          @click="copyToClipboard(selectedCustomer.pppoe, 'modal-ppoe')"
+                          class="text-slate-400 hover:text-brand ml-0.5 p-0.5"
+                          title="Salin PPOE">
+                    <i class="fa-regular fa-copy text-[10px]" x-show="copiedText !== 'modal-ppoe'"></i>
+                    <i class="fa-solid fa-check text-[10px] text-emerald-600" x-show="copiedText === 'modal-ppoe'"></i>
+                  </button>
+                </span>
                 <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200" x-text="(selectedCustomer.status === 'Selesai' || selectedCustomer.status === 'Aktif') ? 'Aktif' : selectedCustomer.status"></span>
               </div>
               <h3 class="text-xl font-black text-slate-900" x-text="selectedCustomer.customer_name"></h3>
@@ -822,7 +846,8 @@
                     Rp<span x-text="Number(selectedCustomer.price || 110000).toLocaleString('id-ID')"></span>
                   </p>
                 </div>
-                <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-200">
+                <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-200 space-y-0.5">
+                  <p>Akun PPOE Internet: <strong class="text-slate-900 font-mono font-bold" x-text="selectedCustomer.pppoe"></strong></p>
                   <p>Status Pembayaran: <strong class="text-emerald-700 font-bold" x-text="selectedCustomer.payment_status || 'Lunas'"></strong></p>
                   <p>Metode Pembayaran: <span x-text="selectedCustomer.payment_method || 'Tunai / Transfer'"></span></p>
                 </div>
@@ -928,6 +953,16 @@
                      class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
             </div>
 
+            <!-- Akun PPOE -->
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-700 mb-1">
+                <i class="fa-solid fa-network-wired text-brand mr-1"></i> Akun PPOE (PPPoE Secret / Username)
+                <span class="text-slate-400 font-normal text-[11px]">(Opsional - otomatis dibuat dari nama jika kosong)</span>
+              </label>
+              <input type="text" name="pppoe" placeholder="Contoh: achmadsefuloh"
+                     class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono font-semibold">
+            </div>
+
             <!-- No KTP / NIK -->
             <div>
               <label class="block font-bold text-slate-700 mb-1">No. KTP / NIK (16 Digit)</label>
@@ -1022,9 +1057,7 @@
               <label class="block font-bold text-slate-700 mb-1">Status Aktivasi</label>
               <select name="status" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
                 <option value="Selesai" selected>Selesai / Aktif (Online)</option>
-                <option value="Sedang Dipasang">Sedang Dipasang</option>
-                <option value="Jadwal Teknisi">Jadwal Teknisi</option>
-                <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
+                <option value="Non-Aktif">Non-Aktif / Isolir</option>
               </select>
             </div>
 
@@ -1098,6 +1131,16 @@
                 <label class="block font-bold text-slate-700 mb-1">Nama Lengkap Pelanggan <span class="text-red-500">*</span></label>
                 <input type="text" name="customer_name" x-model="selectedCustomer.customer_name" required
                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-semibold">
+              </div>
+
+              <!-- Akun PPOE -->
+              <div class="sm:col-span-2">
+                <label class="block font-bold text-slate-700 mb-1">
+                  <i class="fa-solid fa-network-wired text-brand mr-1"></i> Akun PPOE (PPPoE Secret / Username)
+                </label>
+                <input type="text" name="pppoe" x-model="selectedCustomer.pppoe" placeholder="contoh: sriwindiastuti"
+                       class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono font-bold text-slate-900">
+                <p class="text-[11px] text-slate-400 mt-1">Username login PPPoE untuk autentikasi koneksi pelanggan di router/ONT.</p>
               </div>
 
               <!-- No KTP / NIK -->
@@ -1193,9 +1236,7 @@
                 <select name="status" x-model="selectedCustomer.status"
                         class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
                   <option value="Selesai">Selesai / Aktif (Online)</option>
-                  <option value="Sedang Dipasang">Sedang Dipasang</option>
-                  <option value="Jadwal Teknisi">Jadwal Teknisi</option>
-                  <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
+                  <option value="Non-Aktif">Non-Aktif / Isolir</option>
                   <option value="Dibatalkan">Dibatalkan</option>
                 </select>
               </div>

@@ -10,6 +10,7 @@ class Order extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'order_number',
         'customer_name',
         'customer_phone',
@@ -41,6 +42,7 @@ class Order extends Model
         'opm_dbm',
         'technician_notes',
         'installed_at',
+        'pppoe',
     ];
 
     protected $casts = [
@@ -55,6 +57,38 @@ class Order extends Model
     ];
 
     /**
+     * Generate standard PPPoE username dari nama pelanggan
+     */
+    public static function generatePppoeUsername(?string $name, ?string $orderNumber = null, int $id = 0): string
+    {
+        $clean = trim((string) $name);
+        $clean = preg_replace('/\s*[\(\/\-].*$/', '', $clean);
+        $clean = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $clean));
+
+        if (empty($clean)) {
+            if (!empty($orderNumber)) {
+                $clean = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $orderNumber));
+            } else {
+                $clean = 'user' . ($id ?: rand(100, 999));
+            }
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Accessor untuk atribut pppoe
+     */
+    public function getPppoeAttribute(?string $value): string
+    {
+        if (!empty($value)) {
+            return $value;
+        }
+
+        return static::generatePppoeUsername($this->customer_name, $this->order_number, (int) $this->id);
+    }
+
+    /**
      * Helper formatting rupiah
      */
     public function getFormattedTotalAttribute(): string
@@ -65,6 +99,11 @@ class Order extends Model
     public function getFormattedPriceAttribute(): string
     {
         return 'Rp' . number_format($this->price, 0, ',', '.');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function technicianUser()
@@ -99,5 +138,40 @@ class Order extends Model
     public function bills()
     {
         return $this->hasMany(Bill::class);
+    }
+
+    /**
+     * Scope query untuk Data Pelanggan.
+     * Alur bisnis:
+     * - Pesanan baru masuk ke Monitoring Pesanan.
+     * - Ketika status pesanan belum 'Selesai', pesanan BELUM masuk ke Data Pelanggan.
+     * - Ketika status pesanan sudah 'Selesai', pesanan MASUK ke Data Pelanggan.
+     */
+    public function scopeForCustomerData($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif'])
+              ->orWhere(function ($sub) {
+                  $sub->where('order_number', 'like', 'PLG-%')
+                      ->whereNotIn('status', ['Menunggu Konfirmasi', 'Jadwal Teknisi', 'Sedang Dipasang', 'Kendala Lapangan', 'Dibatalkan']);
+              });
+        });
+    }
+
+    /**
+     * Cek apakah pesanan ini sudah berstatus selesai dan masuk data pelanggan
+     */
+    public function isCompletedCustomer(): bool
+    {
+        $st = strtolower(trim((string) $this->status));
+        if (in_array($st, ['selesai', 'selesai / aktif', 'aktif'])) {
+            return true;
+        }
+
+        if (str_starts_with((string) $this->order_number, 'PLG-')) {
+            return !in_array($this->status, ['Menunggu Konfirmasi', 'Jadwal Teknisi', 'Sedang Dipasang', 'Kendala Lapangan', 'Dibatalkan']);
+        }
+
+        return false;
     }
 }

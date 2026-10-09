@@ -175,6 +175,9 @@ class TechnicianController extends Controller
                 $order->technician = auth()->user()->name;
                 $order->technician_id = auth()->id();
             }
+            if (empty($order->village) && !empty($order->address)) {
+                $order->village = \App\Services\CustomerImportService::resolveVillage(null, null, $order->address);
+            }
         } elseif ($status === 'Sedang Dipasang') {
             if (empty($order->technician)) {
                 $order->technician = auth()->user()->name;
@@ -188,7 +191,11 @@ class TechnicianController extends Controller
             BillingService::generateBillForOrder($order);
         }
 
-        return redirect()->back()->with('success', "Status pemasangan order {$order->order_number} berhasil diperbarui menjadi {$status}.");
+        $msg = ($status === 'Selesai')
+            ? "Status pemasangan order {$order->order_number} berhasil diselesaikan dan resmi masuk ke Data Pelanggan."
+            : "Status pemasangan order {$order->order_number} berhasil diperbarui menjadi {$status}.";
+
+        return redirect()->back()->with('success', $msg);
     }
 
     /**

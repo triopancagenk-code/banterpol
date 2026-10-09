@@ -107,7 +107,7 @@
           </div>
           <div>
             <p class="text-gray-400 text-[10px]">Metode Pembayaran</p>
-            <p class="font-bold text-black">Transfer Bank (BCA)</p>
+            <p class="font-bold text-black">{{ $customerData['payment_method'] ?? 'BRI Virtual Account' }}</p>
           </div>
           <div>
             <p class="text-gray-400 text-[10px]">Jadwal Teknisi</p>

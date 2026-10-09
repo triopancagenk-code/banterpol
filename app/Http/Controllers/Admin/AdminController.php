@@ -1153,8 +1153,8 @@ class AdminController extends Controller
         } catch (\Exception $e) {}
 
         $stats = [
-            'total_customers' => Order::count(),
-            'active_customers' => Order::where('status', 'Selesai')->count(),
+            'total_customers' => Order::forCustomerData()->count(),
+            'active_customers' => Order::forCustomerData()->whereIn('status', ['Selesai', 'Aktif', 'Selesai / Aktif', 'selesai', 'aktif'])->count(),
             'total_orders' => $totalOrdersCount,
             'pending_orders_count' => $pendingOrdersCount,
             'pending_bills_count' => collect($bills)->where('status', 'Menunggu Verifikasi')->count(),
@@ -1415,8 +1415,13 @@ class AdminController extends Controller
             }
         }
 
-        if ($order->status === 'Selesai' && !$order->installed_at) {
-            $order->installed_at = now();
+        if ($order->status === 'Selesai') {
+            if (!$order->installed_at) {
+                $order->installed_at = now();
+            }
+            if (empty($order->village) && !empty($order->address)) {
+                $order->village = \App\Services\CustomerImportService::resolveVillage(null, null, $order->address);
+            }
         }
 
         $order->save();
@@ -1435,7 +1440,11 @@ class AdminController extends Controller
             $linkedBill->save();
         }
 
-        return redirect()->back()->with('success', "Pesanan {$order->order_number} berhasil diperbarui! Status: {$order->status}");
+        $successMessage = ($order->status === 'Selesai')
+            ? "Pesanan {$order->order_number} berhasil diselesaikan dan resmi masuk ke Data Pelanggan!"
+            : "Pesanan {$order->order_number} berhasil diperbarui! Status: {$order->status}";
+
+        return redirect()->back()->with('success', $successMessage);
     }
 
     /**
@@ -1445,9 +1454,31 @@ class AdminController extends Controller
     {
         $order = Order::findOrFail($id);
         $orderNumber = $order->order_number;
+        $customerName = $order->customer_name;
+
+        // Hapus tagihan terkait jika ada
+        Bill::where('order_id', $order->id)->delete();
         $order->delete();
 
-        return redirect()->back()->with('success', "Pesanan {$orderNumber} berhasil dihapus dari sistem.");
+        return redirect()->back()->with('success', "Pesanan {$orderNumber} ({$customerName}) berhasil dihapus dari sistem.");
+    }
+
+    /**
+     * Hapus Massal Data Pesanan Terpilih
+     */
+    public function bulkDeletePesanan(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids) || !is_array($ids)) {
+            return redirect()->back()->with('error', 'Silakan pilih minimal satu data pesanan untuk dihapus.');
+        }
+
+        $count = count($ids);
+        Bill::whereIn('order_id', $ids)->delete();
+        Order::whereIn('id', $ids)->delete();
+
+        return redirect()->back()->with('success', "Sebanyak {$count} data pesanan berhasil dihapus dari sistem.");
     }
 
     /**
@@ -1522,23 +1553,25 @@ class AdminController extends Controller
             $lowerSearch = strtolower($search);
             $upperSearch = strtoupper($search);
 
-            $results = Order::where(function ($q) use ($search, $lowerSearch, $upperSearch) {
+            $results = Order::forCustomerData()->where(function ($q) use ($search, $lowerSearch, $upperSearch) {
                 $q->where('customer_name', 'like', "{$search}%")
                   ->orWhere('customer_name', 'like', "{$lowerSearch}%")
                   ->orWhere('customer_name', 'like', "{$upperSearch}%")
                   ->orWhere('customer_name', 'like', " {$search}%")
+                  ->orWhere('pppoe', 'like', "{$lowerSearch}%")
                   ->orWhere('id_card_number', 'like', "{$search}%")
                   ->orWhere('customer_phone', 'like', "{$search}%")
                   ->orWhere('order_number', 'like', "{$search}%");
             })
             ->orderBy('customer_name', 'asc')
             ->limit(10)
-            ->get(['id', 'customer_name', 'id_card_number', 'customer_phone', 'village', 'address', 'package_name']);
+            ->get(['id', 'customer_name', 'pppoe', 'id_card_number', 'customer_phone', 'village', 'address', 'package_name']);
 
             return response()->json($results);
         }
 
-        $query = Order::query();
+        // Alur sistem: HANYA pesanan yang sudah berstatus 'Selesai' / aktif yang masuk ke Data Pelanggan
+        $query = Order::forCustomerData();
 
         if (!empty($search)) {
             $trimmedSearch = trim($search);
@@ -1553,6 +1586,7 @@ class AdminController extends Controller
                   ->orWhere('customer_name', 'like', " {$trimmedSearch}%")
                   ->orWhere('customer_name', 'like', " {$lowerSearch}%")
                   ->orWhere('customer_name', 'like', " {$upperSearch}%")
+                  ->orWhere('pppoe', 'like', "{$lowerSearch}%")
                   ->orWhere('id_card_number', 'like', "{$trimmedSearch}%")
                   ->orWhere('customer_phone', 'like', "{$trimmedSearch}%")
                   ->orWhere('order_number', 'like', "{$trimmedSearch}%");
@@ -1618,11 +1652,7 @@ class AdminController extends Controller
 
         if ($statusFilter !== 'all') {
             if ($statusFilter === 'Selesai' || strtolower($statusFilter) === 'aktif') {
-                $query->where(function ($q) {
-                    $q->where('status', 'Selesai')
-                      ->orWhere('status', 'Aktif')
-                      ->orWhere('status', 'aktif');
-                });
+                $query->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif']);
             } else {
                 $query->where('status', $statusFilter);
             }
@@ -1630,15 +1660,21 @@ class AdminController extends Controller
 
         $customers = $query->paginate(20)->withQueryString();
 
-        // Data KPI
-        $allCustomers = Order::all();
+        // Data KPI: hanya hitung pelanggan terdaftar (status selesai / aktif)
+        $allCustomers = Order::forCustomerData()->get();
         $totalCustomers = $allCustomers->count();
-        $activeCustomers = $allCustomers->where('status', '!=', 'Dibatalkan')->count();
-        $verifiedKtp = $allCustomers->whereNotNull('id_card_number')->where('id_card_number', '!=', '')->count();
+        $activeCustomers = $allCustomers->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif'])->count();
+        if ($activeCustomers === 0 && $totalCustomers > 0) {
+            $activeCustomers = $totalCustomers;
+        }
+        $verifiedKtp = $allCustomers->filter(function ($c) {
+            return !empty($c->id_card_number) && $c->id_card_number !== '-';
+        })->count();
         $totalMrr = $allCustomers->where('status', '!=', 'Dibatalkan')->sum('price');
 
-        // Daftar Wilayah Dinamis (Hanya desa yang benar-benar ada di database / berkas Excel)
-        $rawVillages = Order::whereNotNull('village')
+        // Daftar Wilayah Dinamis (Hanya dari data pelanggan terdaftar)
+        $rawVillages = Order::forCustomerData()
+            ->whereNotNull('village')
             ->where('village', '!=', '')
             ->where('village', '!=', '-')
             ->where('village', 'not like', '%template%')
@@ -1694,6 +1730,7 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
+            'pppoe' => 'nullable|string|max:100',
             'id_card_number' => 'nullable|string|max:30',
             'birth_date' => 'nullable|date',
             'birth_place' => 'nullable|string|max:100',
@@ -1729,9 +1766,12 @@ class AdminController extends Controller
 
         $price = isset($validated['price']) && is_numeric($validated['price']) ? (float) $validated['price'] : 110000;
 
+        $pppoe = !empty($validated['pppoe']) ? trim($validated['pppoe']) : Order::generatePppoeUsername($validated['customer_name']);
+
         $order = Order::create([
             'order_number' => $orderNumber,
             'customer_name' => $validated['customer_name'],
+            'pppoe' => $pppoe,
             'id_card_number' => !empty($validated['id_card_number']) ? $validated['id_card_number'] : '-',
             'birth_date' => $validated['birth_date'] ?? null,
             'birth_place' => $validated['birth_place'] ?? 'Banyumas',
@@ -1765,6 +1805,7 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
+            'pppoe' => 'nullable|string|max:100',
             'id_card_number' => 'nullable|string|max:30',
             'birth_date' => 'nullable|date',
             'birth_place' => 'nullable|string|max:100',
@@ -1797,6 +1838,7 @@ class AdminController extends Controller
         $price = isset($validated['price']) && is_numeric($validated['price']) ? (float) $validated['price'] : ($order->price ?: 110000);
 
         $order->customer_name = $validated['customer_name'];
+        $order->pppoe = !empty($validated['pppoe']) ? trim($validated['pppoe']) : ($order->pppoe ?: Order::generatePppoeUsername($order->customer_name));
         $order->id_card_number = !empty($validated['id_card_number']) ? $validated['id_card_number'] : ($order->id_card_number ?: '-');
         $order->birth_date = !empty($validated['birth_date']) ? $validated['birth_date'] : $order->birth_date;
         $order->birth_place = !empty($validated['birth_place']) ? $validated['birth_place'] : ($order->birth_place ?: '-');
@@ -1854,9 +1896,11 @@ class AdminController extends Controller
         $deleteAll = $request->boolean('delete_all', false);
 
         if ($deleteAll) {
-            $count = Order::count();
-            Bill::whereNotNull('order_id')->delete();
-            Order::query()->delete();
+            $customerOrders = Order::forCustomerData()->get();
+            $count = $customerOrders->count();
+            $customerIds = $customerOrders->pluck('id')->toArray();
+            Bill::whereIn('order_id', $customerIds)->delete();
+            Order::whereIn('id', $customerIds)->delete();
             return redirect()->back()->with('success', "Seluruh data pelanggan ({$count} data) berhasil dihapus dari sistem.");
         }
 
@@ -1881,7 +1925,7 @@ class AdminController extends Controller
         $layananFilter = $request->input('layanan', 'all');
         $statusFilter = $request->input('status', 'all');
 
-        $query = Order::query();
+        $query = Order::forCustomerData();
 
         if (!empty($search)) {
             $trimmedSearch = trim($search);
@@ -1926,7 +1970,11 @@ class AdminController extends Controller
         }
 
         if ($statusFilter !== 'all') {
-            $query->where('status', $statusFilter);
+            if ($statusFilter === 'Selesai' || strtolower($statusFilter) === 'aktif') {
+                $query->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif']);
+            } else {
+                $query->where('status', $statusFilter);
+            }
         }
 
         $customers = $query->get();

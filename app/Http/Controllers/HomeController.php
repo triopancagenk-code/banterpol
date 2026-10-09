@@ -79,6 +79,7 @@ class HomeController extends Controller
         $targetName = null;
         $targetPhone = null;
         $targetOrderId = null;
+        $targetUserId = null;
 
         // 1. Cek parameter eksplisit di URL query
         if ($request->has('customer_email')) {
@@ -90,7 +91,7 @@ class HomeController extends Controller
 
         // 2. Tentukan target pelanggan yang tagihannya sedang dilihat
         if ($user && ($user->isAdmin() || $user->role === 'admin' || $user->role === 'direktur')) {
-            $hasOwnBills = Bill::where('customer_email', $user->email)->exists();
+            $hasOwnBills = Bill::where('user_id', $user->id)->orWhere('customer_email', $user->email)->exists();
             if (!$hasOwnBills) {
                 // Admin sedang meninjau POV Pelanggan (Mode Pratinjau Admin)
                 $isAdminPreview = true;
@@ -129,48 +130,26 @@ class HomeController extends Controller
                     ];
                 }
             } else {
+                $targetUserId = $user->id;
                 $targetEmail = $user->email;
                 $targetName = $user->name;
                 $targetPhone = $user->phone;
             }
         } elseif ($user) {
             // User adalah Pelanggan (Customer)
+            $targetUserId = $user->id;
             $targetEmail = $user->email;
             $targetName = $user->name;
             $targetPhone = $user->phone;
 
-            // Cari apakah ada order atau bill langsung dengan email/nama/phone ini
-            $hasDirect = Order::where('customer_email', $user->email)->orWhere('customer_name', $user->name)->exists()
-                || Bill::where('customer_email', $user->email)->orWhere('customer_name', $user->name)->exists();
-
-            if (!$hasDirect) {
-                // Cek dari session order jika baru selesai checkout
-                if (session()->has('customer_order_id')) {
-                    $sessOrder = Order::find(session('customer_order_id'));
-                    if ($sessOrder) {
-                        $targetEmail = $sessOrder->customer_email;
-                        $targetName = $sessOrder->customer_name;
-                        $targetPhone = $sessOrder->customer_phone;
-                        $targetOrderId = $sessOrder->id;
-                    }
-                }
-
-                // Cek pencocokan nama depan / prefix email
-                if (empty($targetOrderId)) {
-                    $firstWord = explode(' ', trim($user->name))[0];
-                    $emailPrefix = explode('@', $user->email)[0];
-                    
-                    $matchedBill = Bill::where('customer_name', 'like', "%{$firstWord}%")
-                        ->orWhere('customer_email', 'like', "%{$emailPrefix}%")
-                        ->latest('id')
-                        ->first();
-
-                    if ($matchedBill) {
-                        $targetEmail = $matchedBill->customer_email;
-                        $targetName = $matchedBill->customer_name;
-                        $targetPhone = $matchedBill->customer_phone;
-                        $targetOrderId = $matchedBill->order_id;
-                    }
+            // Cek dari session order jika baru selesai checkout
+            if (session()->has('customer_order_id')) {
+                $sessOrder = Order::find(session('customer_order_id'));
+                if ($sessOrder) {
+                    $targetOrderId = $sessOrder->id;
+                    if ($sessOrder->customer_email) $targetEmail = $sessOrder->customer_email;
+                    if ($sessOrder->customer_name) $targetName = $sessOrder->customer_name;
+                    if ($sessOrder->customer_phone) $targetPhone = $sessOrder->customer_phone;
                 }
             }
         } else {
@@ -202,38 +181,70 @@ class HomeController extends Controller
         }
 
         // 3. Otomatis sinkronkan tagihan pelanggan (tagihan pendaftaran awal & tagihan bulan selanjutnya setelah lunas)
-        if (!empty($targetEmail) || !empty($targetName) || !empty($targetPhone) || !empty($targetOrderId)) {
-            BillingService::syncCustomerBillsForCustomer($targetEmail, $targetName, $targetPhone, $targetOrderId);
+        if (!empty($targetEmail) || !empty($targetName) || !empty($targetPhone) || !empty($targetOrderId) || !empty($targetUserId)) {
+            BillingService::syncCustomerBillsForCustomer($targetEmail, $targetName, $targetPhone, $targetOrderId, $targetUserId);
         } elseif ($user) {
             BillingService::syncCustomerBills($user);
         }
 
-        // 4. Ambil seluruh tagihan milik pelanggan ini dari database
-        $userAllBills = Bill::where(function ($query) use ($targetEmail, $targetName, $targetPhone, $targetOrderId, $user) {
-                $matched = false;
-                if (!empty($targetOrderId)) {
-                    $query->where('order_id', $targetOrderId);
-                    $matched = true;
-                }
-                if (!empty($targetEmail)) {
-                    $matched ? $query->orWhere('customer_email', $targetEmail) : $query->where('customer_email', $targetEmail);
-                    $matched = true;
-                }
-                if (!empty($targetName)) {
-                    $matched ? $query->orWhere('customer_name', $targetName) : $query->where('customer_name', $targetName);
-                    $matched = true;
-                }
-                if (!empty($targetPhone)) {
-                    $matched ? $query->orWhere('customer_phone', $targetPhone) : $query->where('customer_phone', $targetPhone);
-                    $matched = true;
-                }
-                if ($user && !$matched) {
-                    $query->where('customer_email', $user->email)
-                          ->orWhere('customer_name', $user->name);
+        // 4. Ambil seluruh tagihan milik pelanggan ini dari database (HANYA jika pesanan terkait sudah 'Selesai' / aktif)
+        $userAllBills = Bill::activeForMonitoring()
+            ->where(function ($query) use ($targetEmail, $targetName, $targetPhone, $targetOrderId, $targetUserId, $user, $isAdminPreview) {
+                if ($user && !$isAdminPreview) {
+                    $query->where('user_id', $user->id)
+                          ->orWhereHas('order', function ($oq) use ($user) {
+                              $oq->where('user_id', $user->id);
+                          });
+                    if (!empty($targetOrderId)) {
+                        $query->orWhere('order_id', $targetOrderId);
+                    }
+                    if (!empty($targetEmail)) {
+                        $query->orWhere('customer_email', $targetEmail);
+                    }
+                    if (!empty($targetName)) {
+                        $query->orWhere('customer_name', $targetName);
+                    }
+                    if (!empty($targetPhone)) {
+                        $query->orWhere('customer_phone', $targetPhone);
+                    }
+                } else {
+                    $matched = false;
+                    if (!empty($targetOrderId)) {
+                        $query->where('order_id', $targetOrderId);
+                        $matched = true;
+                    }
+                    if (!empty($targetEmail)) {
+                        $matched ? $query->orWhere('customer_email', $targetEmail) : $query->where('customer_email', $targetEmail);
+                        $matched = true;
+                    }
+                    if (!empty($targetName)) {
+                        $matched ? $query->orWhere('customer_name', $targetName) : $query->where('customer_name', $targetName);
+                        $matched = true;
+                    }
+                    if (!empty($targetPhone)) {
+                        $matched ? $query->orWhere('customer_phone', $targetPhone) : $query->where('customer_phone', $targetPhone);
+                        $matched = true;
+                    }
+                    if (!$matched) {
+                        $query->whereRaw('1 = 0');
+                    }
                 }
             })
             ->latest('id')
-            ->get();
+            ->get()
+            ->filter(fn($b) => $b->isOrderCompleted())
+            ->values();
+
+        // Cek apakah pelanggan memiliki pesanan yang masih dalam proses pemasangan (belum selesai)
+        $inProgressOrder = null;
+        if ($user && !$isAdminPreview) {
+            $inProgressOrder = Order::where(function ($q) use ($user, $targetOrderId, $targetEmail, $targetPhone) {
+                $q->where('user_id', $user->id);
+                if (!empty($targetOrderId)) $q->orWhere('id', $targetOrderId);
+                if (!empty($targetEmail)) $q->orWhere('customer_email', $targetEmail);
+                if (!empty($targetPhone)) $q->orWhere('customer_phone', $targetPhone);
+            })->whereNotIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'Dibatalkan'])->latest('id')->first();
+        }
 
         // Tagihan belum bayar / jatuh tempo aktif pengguna (tagihan bulan selanjutnya jika sebelumnya sudah lunas)
         $activeBillModel = $userAllBills->whereIn('status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])->first();
@@ -288,7 +299,7 @@ class HomeController extends Controller
                 'total' => number_format((float) $b->total, 0, ',', '.'),
                 'total_raw' => (float) $b->total,
                 'status' => $b->status,
-                'payment_method' => $b->payment_method ?? 'Transfer Bank',
+                'payment_method' => $b->payment_method ?? 'BRI Virtual Account',
                 'proof_image' => null,
                 'created_at' => $b->created_at ? $b->created_at->format('Y-m-d H:i') : '-',
                 'paid_date' => $b->paid_at ? \Carbon\Carbon::parse($b->paid_at)->translatedFormat('d M Y') : '-',
@@ -329,14 +340,14 @@ class HomeController extends Controller
                 'due_date' => $b->due_date,
                 'paid_date' => $b->paid_at ? \Carbon\Carbon::parse($b->paid_at)->translatedFormat('d M Y') : '-',
                 'total' => 'Rp' . number_format((float) $b->total, 0, ',', '.'),
-                'payment_method' => $b->payment_method ?? 'Transfer Bank',
+                'payment_method' => $b->payment_method ?? 'BRI Virtual Account',
                 'status' => $b->status,
             ];
         })->values()->toArray();
 
         return view('pages.tagihan', compact(
             'activeBill', 'historyBills', 'bills', 'statusFilter', 'search', 'counts',
-            'isAdminPreview', 'adminPreviewCustomer', 'availablePreviewCustomers'
+            'isAdminPreview', 'adminPreviewCustomer', 'availablePreviewCustomers', 'inProgressOrder'
         ));
     }
 
@@ -345,16 +356,17 @@ class HomeController extends Controller
         $invoice = $request->input('invoice');
         $dbBill = null;
         if ($invoice) {
-            $dbBill = Bill::where('bill_number', $invoice)->first();
+            $dbBill = Bill::activeForMonitoring()->where('bill_number', $invoice)->first();
         } elseif (auth()->check()) {
             $user = auth()->user();
-            $orderIds = Order::where('customer_email', $user->email)->orWhere('customer_name', $user->name)->pluck('id');
-            $dbBill = Bill::where(function ($q) use ($user, $orderIds) {
-                $q->where('customer_email', $user->email)->orWhere('customer_name', $user->name);
-                if ($orderIds->isNotEmpty()) {
-                    $q->orWhereIn('order_id', $orderIds);
-                }
-            })->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])->latest('id')->first();
+            $dbBill = Bill::activeForMonitoring()->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('order', function ($oq) use ($user) {
+                      $oq->where('user_id', $user->id);
+                  })
+                  ->orWhere('customer_email', $user->email)
+                  ->orWhere('customer_name', $user->name);
+            })->whereIn('status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])->latest('id')->first();
             if ($dbBill) {
                 $invoice = $dbBill->bill_number;
             }
@@ -388,21 +400,22 @@ class HomeController extends Controller
     public function confirmPaymentTagihan(Request $request)
     {
         $invoice = $request->input('invoice');
-        $paymentMethod = $request->input('payment_method', 'Transfer Bank');
+        $paymentMethod = $request->input('payment_method', 'BRI Virtual Account');
 
         $bill = null;
         if ($invoice) {
-            $bill = Bill::where('bill_number', $invoice)->first();
+            $bill = Bill::activeForMonitoring()->where('bill_number', $invoice)->first();
         }
 
         if (!$bill && auth()->check()) {
             $user = auth()->user();
-            $orderIds = Order::where('customer_email', $user->email)->orWhere('customer_name', $user->name)->pluck('id');
-            $bill = Bill::where(function ($q) use ($user, $orderIds) {
-                $q->where('customer_email', $user->email)->orWhere('customer_name', $user->name);
-                if ($orderIds->isNotEmpty()) {
-                    $q->orWhereIn('order_id', $orderIds);
-                }
+            $bill = Bill::activeForMonitoring()->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('order', function ($oq) use ($user) {
+                      $oq->where('user_id', $user->id);
+                  })
+                  ->orWhere('customer_email', $user->email)
+                  ->orWhere('customer_name', $user->name);
             })->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])->latest('id')->first();
         }
 
@@ -491,6 +504,9 @@ class HomeController extends Controller
             $orderNumber = 'ORD-' . date('Ymd') . '-' . rand(100, 999);
             
             try {
+                $address = $request->input('address', (auth()->user() && auth()->user()->address) ? auth()->user()->address : 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas');
+                $village = \App\Services\CustomerImportService::resolveVillage(null, null, $address);
+
                 $order = Order::updateOrCreate(
                     ['order_number' => $orderNumber],
                     [
@@ -501,7 +517,8 @@ class HomeController extends Controller
                         'id_card_number' => $request->input('id_card_number'),
                         'birth_place' => $request->input('birth_place'),
                         'birth_date' => $request->input('birth_date'),
-                        'address' => $request->input('address', (auth()->user() && auth()->user()->address) ? auth()->user()->address : 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas'),
+                        'address' => $address,
+                        'village' => $village,
                         'latitude' => $request->input('latitude', '-7.413200'),
                         'longitude' => $request->input('longitude', '109.138800'),
                         'package_name' => $packageName,
@@ -512,15 +529,17 @@ class HomeController extends Controller
                         'total' => $total,
                         'installation_date' => $request->input('installation_date', now()->addDay()->format('Y-m-d')),
                         'installation_time' => $request->input('installation_time', 'pagi'),
-                        'payment_method' => $request->input('payment_method', 'Transfer Bank (BCA)'),
+                        'payment_method' => $request->input('payment_method', 'BRI Virtual Account'),
                         'payment_status' => 'Lunas',
                         'status' => 'Menunggu Konfirmasi',
                         'admin_notes' => 'Pesanan baru masuk dari website pelanggan.',
                     ]
                 );
 
-                // Langsung terbitkan tagihan bulan depan untuk pesanan pendaftaran baru
-                BillingService::generateBillForOrder($order);
+                // Catatan alur: Tagihan terbit saat status pesanan sudah 'Selesai'
+                if ($order->status === 'Selesai') {
+                    BillingService::generateBillForOrder($order);
+                }
 
                 session([
                     'customer_order_id' => $order->id,
@@ -607,7 +626,7 @@ class HomeController extends Controller
             'total' => $order ? number_format($order->total, 0, ',', '.') : $request->input('package_price', '110.000'),
             'status' => $order ? $order->status : 'Menunggu Konfirmasi',
             'payment_status' => $order ? $order->payment_status : 'Lunas',
-            'payment_method' => $order ? $order->payment_method : 'Transfer Bank (BCA)',
+            'payment_method' => $order ? $order->payment_method : 'BRI Virtual Account',
             'technician' => $order ? $order->technician : null,
         ];
 

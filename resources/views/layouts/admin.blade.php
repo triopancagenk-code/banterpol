@@ -95,9 +95,13 @@
 
         <!-- 2. Monitoring Pesanan Pelanggan -->
         @php
-          $pendingOrdersCount = 0;
+          $ordersCount = 0;
           try {
-              $pendingOrdersCount = \App\Models\Order::where('order_number', 'not like', 'PLG-%')->where('status', 'Menunggu Konfirmasi')->count();
+              if (isset($counts['all']) && request()->routeIs('admin.pesanan*')) {
+                  $ordersCount = $counts['all'];
+              } else {
+                  $ordersCount = \App\Models\Order::where('order_number', 'not like', 'PLG-%')->count();
+              }
           } catch (\Exception $e) {}
         @endphp
         <a href="{{ route('admin.pesanan') }}"
@@ -106,8 +110,8 @@
             <i class="fa-solid fa-cart-shopping text-base w-5 text-center {{ request()->routeIs('admin.pesanan*') ? 'text-white' : 'text-slate-400' }}"></i>
             <span>Monitoring Pesanan</span>
           </div>
-          @if($pendingOrdersCount > 0)
-            <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">{{ $pendingOrdersCount }} Baru</span>
+          @if($ordersCount > 0)
+            <span class="bg-slate-700/80 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-600">{{ $ordersCount }}</span>
           @endif
         </a>
 
@@ -115,7 +119,7 @@
         @php
           $totalCustomersCount = 0;
           try {
-              $totalCustomersCount = \App\Models\Order::whereNotNull('id_card_number')->count() ?: \App\Models\Order::count();
+              $totalCustomersCount = \App\Models\Order::forCustomerData()->count();
           } catch (\Exception $e) {}
         @endphp
         <a href="{{ route('admin.pelanggan') }}"
@@ -133,7 +137,7 @@
         @php
           $pendingBillsCount = 0;
           try {
-              if (isset($counts['all'])) {
+              if (isset($counts['all']) && request()->routeIs('admin.tagihan*') && request('status') !== 'rekap' && request('status') !== 'Lunas') {
                   $pendingBillsCount = $counts['all'];
               } else {
                   $pendingBillsCount = \App\Models\Bill::activeForMonitoring()->whereIn('status', ['Menunggu Verifikasi', 'Belum Bayar', 'Jatuh Tempo'])->count();
@@ -147,7 +151,7 @@
             <span>Monitoring Tagihan</span>
           </div>
           @if($pendingBillsCount > 0)
-            <span class="bg-amber-400/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400/30">{{ $pendingBillsCount }} Cek</span>
+            <span class="bg-amber-400/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400/30">{{ $pendingBillsCount }}</span>
           @endif
         </a>
 
@@ -155,7 +159,7 @@
         @php
           $verifiedBillsCount = 0;
           try {
-              if (isset($counts['lunas'])) {
+              if (isset($counts['lunas']) && request()->routeIs('admin.tagihan*')) {
                   $verifiedBillsCount = $counts['lunas'];
               } else {
                   $verifiedBillsCount = \App\Models\Bill::activeForMonitoring()->where('status', 'Lunas')->count();
@@ -169,7 +173,7 @@
             <span>Rekap Pembayaran</span>
           </div>
           @if($verifiedBillsCount > 0)
-            <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">{{ $verifiedBillsCount }} Lunas</span>
+            <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">{{ $verifiedBillsCount }}</span>
           @endif
         </a>
 
@@ -188,7 +192,7 @@
             <span>Laporan Masalah</span>
           </div>
           @if($activeTicketsCount > 0)
-            <span class="bg-red-500/20 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-500/30">{{ $activeTicketsCount }} Aktif</span>
+            <span class="bg-red-500/20 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-500/30">{{ $activeTicketsCount }}</span>
           @endif
         </a>
 

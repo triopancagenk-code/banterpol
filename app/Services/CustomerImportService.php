@@ -441,6 +441,9 @@ class CustomerImportService
                     $latitude = (!empty($latRaw) && $latRaw !== '-') ? $latRaw : null;
                     $longitude = (!empty($lngRaw) && $lngRaw !== '-') ? $lngRaw : null;
 
+                    $pppoeRaw = self::getValue($row, $fieldMap, 'pppoe');
+                    $pppoe = (!empty($pppoeRaw) && $pppoeRaw !== '-') ? trim((string)$pppoeRaw) : Order::generatePppoeUsername($name, $orderNumber);
+
                     // Tangani status: JANGAN diisi asal jika kosong di berkas Excel
                     $statusRaw = self::getValue($row, $fieldMap, 'status');
                     if (!empty($statusRaw) && $statusRaw !== '-') {
@@ -580,6 +583,11 @@ class CustomerImportService
                                 if ($registrationDate !== null) {
                                     $existingOrder->created_at = $createdAt;
                                 }
+                                if (!empty($pppoeRaw) && $pppoeRaw !== '-') {
+                                    $existingOrder->pppoe = trim((string)$pppoeRaw);
+                                } elseif (empty($existingOrder->pppoe)) {
+                                    $existingOrder->pppoe = Order::generatePppoeUsername($name, $existingOrder->order_number);
+                                }
 
                                 $existingOrder->save();
 
@@ -612,6 +620,7 @@ class CustomerImportService
                         $newOrder = Order::create([
                             'order_number' => $orderNumber,
                             'customer_name' => $name,
+                            'pppoe' => $pppoe,
                             'id_card_number' => $nik,
                             'birth_place' => $birthPlace,
                             'birth_date' => $birthDate,
@@ -1440,6 +1449,10 @@ class CustomerImportService
                 'nama_lengkap_pelanggan', 'nama_lengkap', 'nama_pelanggan', 'nama_konsumen',
                 'nama_pemohon', 'nama_user', 'nama_client', 'atas_nama', 'a_n', 'an',
                 'pelanggan', 'customer_name', 'customer', 'client', 'nama', 'name',
+            ],
+            'pppoe' => [
+                'pppoe', 'ppoe', 'username_pppoe', 'user_pppoe', 'akun_pppoe', 'pppoe_username',
+                'pppoe_user', 'secret_pppoe', 'akun_internet', 'user_internet', 'pppoe_login', 'login_pppoe',
             ],
             'birth_place' => [
                 'tempat_lahir', 'kota_lahir', 'tmp_lahir', 'tmpt_lahir', 'tempat_kelahiran',
