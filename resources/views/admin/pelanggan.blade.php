@@ -170,7 +170,7 @@
   <!-- ============================================== -->
   <!-- 2. HEADER & ACTION BUTTONS                     -->
   <!-- ============================================== -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
     <div>
       <div class="flex items-center gap-2">
         <h2 class="text-xl font-black text-slate-900 tracking-tight">Master Data Pelanggan</h2>
@@ -180,36 +180,37 @@
       </p>
     </div>
 
-    <div class="grid grid-cols-2 gap-2 shrink-0">
+    <!-- 4 Tombol Aksi: 2 Susun (2x2 Grid) dengan Ukuran Sama & Container Menyesuaikan Lebar Isi -->
+    <div class="grid grid-cols-2 gap-2 sm:gap-2.5 w-fit shrink-0" style="width: fit-content;">
       <!-- 1. Tambah Pelanggan -->
       <button type="button" @click="openCreateModal = true"
-              class="w-full sm:w-48 h-10 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
-        <i class="fa-solid fa-user-plus"></i>
+              class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+        <i class="fa-solid fa-user-plus text-xs"></i>
         <span>Tambah Pelanggan</span>
       </button>
 
       <!-- 2. Import Excel -->
       <button type="button" @click="openImportModal = true"
-              class="w-full sm:w-48 h-10 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
-        <i class="fa-solid fa-file-import"></i>
+              class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+        <i class="fa-solid fa-file-import text-xs"></i>
         <span>Import Excel</span>
       </button>
 
       <!-- 3. Export Excel -->
       <a href="{{ route('admin.pelanggan.export', request()->query()) }}"
-         class="w-full sm:w-48 h-10 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
-        <i class="fa-solid fa-file-excel"></i>
+         class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+        <i class="fa-solid fa-file-excel text-xs"></i>
         <span>Export Excel (.xls)</span>
       </a>
 
       <!-- 4. Hapus Semua / Hapus Terpilih -->
-      <div>
+      <div class="w-44 sm:w-52 h-10">
         <button type="button"
                 x-show="selectedIds.length > 0"
                 style="display: none;"
                 @click="confirmBulkDelete(false)"
-                class="w-full sm:w-48 h-10 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
-          <i class="fa-solid fa-trash-can"></i>
+                class="w-full h-full px-2.5 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+          <i class="fa-solid fa-trash-can text-xs"></i>
           <span>Hapus (<span x-text="selectedIds.length"></span>)</span>
         </button>
 
@@ -217,9 +218,9 @@
                 x-show="selectedIds.length === 0"
                 @click="confirmBulkDelete(true)"
                 @if($stats['total'] == 0) disabled @endif
-                class="w-full sm:w-48 h-10 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full h-full px-2.5 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                 title="Hapus Semua Data Pelanggan Sekaligus">
-          <i class="fa-solid fa-trash-arrow-up text-white"></i>
+          <i class="fa-solid fa-trash-arrow-up text-xs"></i>
           <span>Hapus Semua</span>
         </button>
       </div>
