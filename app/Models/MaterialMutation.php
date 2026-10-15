@@ -1,0 +1,48 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class MaterialMutation extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'material_id',
+        'user_id',
+        'type', // 'in', 'out', 'adjustment'
+        'amount',
+        'stock_before',
+        'stock_after',
+        'notes',
+    ];
+
+    protected $casts = [
+        'amount' => 'integer',
+        'stock_before' => 'integer',
+        'stock_after' => 'integer',
+    ];
+
+    public function material(): BelongsTo
+    {
+        return $this->belongsTo(Material::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function getTypeLabelAttribute(): string
+    {
+        return match ($this->type) {
+            'in' => 'Masuk / Tambah',
+            'out' => 'Keluar / Kurang',
+            'adjustment' => 'Penyesuaian Manual',
+            default => ucfirst($this->type),
+        };
+    }
+}

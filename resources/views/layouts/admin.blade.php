@@ -177,7 +177,25 @@
           @endif
         </a>
 
-        <!-- 4. Laporan Masalah / Trouble Ticket -->
+        <!-- 5. Stok Barang (Inventaris & Logistik ISP) -->
+        @php
+          $lowStockCount = 0;
+          try {
+              $lowStockCount = \App\Models\Material::whereColumn('stock', '<=', 'min_stock')->count();
+          } catch (\Exception $e) {}
+        @endphp
+        <a href="{{ route('admin.material.index') }}"
+           class="flex items-center justify-between px-3.5 py-3 rounded-xl transition duration-150 {{ request()->routeIs('admin.material*') ? 'bg-brand text-white shadow-md shadow-red-950/40 font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-boxes-stacked text-base w-5 text-center {{ request()->routeIs('admin.material*') ? 'text-white' : 'text-slate-400' }}"></i>
+            <span>Stok Barang</span>
+          </div>
+          @if($lowStockCount > 0)
+            <span class="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30" title="{{ $lowStockCount }} stok barang menipis">{{ $lowStockCount }} Menipis</span>
+          @endif
+        </a>
+
+        <!-- 6. Laporan Masalah / Trouble Ticket -->
         @php
           $activeTicketsCount = 0;
           try {
@@ -306,7 +324,7 @@
           
           <div>
             <div class="flex items-center gap-2 text-xs text-slate-500 font-medium">
-              <a href="{{ route('admin.dashboard') }}" class="hover:text-brand">Admin</a>
+              <a href="{{ route('admin.dashboard') }}" class="hover:text-brand">{{ Auth::user() && Auth::user()->isDirektur() ? 'Direktur' : 'Admin' }}</a>
               <i class="fa-solid fa-chevron-right text-[9px] text-slate-400"></i>
               <span class="text-slate-900 font-bold">@yield('page-title', 'Dashboard')</span>
             </div>

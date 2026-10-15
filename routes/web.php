@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\MaterialController;
 use App\Http\Controllers\Admin\WhatsappGatewayController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Collector\CollectorController;
@@ -80,6 +81,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('/whatsapp-gateway/logs/{id}', [WhatsappGatewayController::class, 'deleteLog'])->name('whatsapp.logs.delete');
     Route::post('/whatsapp-gateway/logs/clear', [WhatsappGatewayController::class, 'clearLogs'])->name('whatsapp.logs.clear');
     Route::get('/whatsapp-gateway/logs/export', [WhatsappGatewayController::class, 'exportLogs'])->name('whatsapp.logs.export');
+
+    // Manajemen Stok Material (POV Admin & Direktur)
+    Route::get('/stok-material', [MaterialController::class, 'index'])->name('material.index');
+    Route::post('/stok-material', [MaterialController::class, 'store'])->name('material.store');
+    Route::put('/stok-material/{id}', [MaterialController::class, 'update'])->name('material.update');
+    Route::delete('/stok-material/{id}', [MaterialController::class, 'destroy'])->name('material.destroy');
+    Route::post('/stok-material/bulk-delete', [MaterialController::class, 'bulkDelete'])->name('material.bulk-delete');
+    Route::post('/stok-material/{id}/tambah', [MaterialController::class, 'addStock'])->name('material.add-stock');
+    Route::post('/stok-material/{id}/kurang', [MaterialController::class, 'reduceStock'])->name('material.reduce-stock');
+    Route::post('/stok-material/{id}/sesuaikan', [MaterialController::class, 'adjustStock'])->name('material.adjust-stock');
+    Route::get('/stok-material/export', [MaterialController::class, 'export'])->name('material.export');
+    Route::get('/stok-material/mutasi', [MaterialController::class, 'mutations'])->name('material.mutations');
 });
 
 // ==========================================
