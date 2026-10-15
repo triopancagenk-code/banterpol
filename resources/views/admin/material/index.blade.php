@@ -135,7 +135,7 @@
   <!-- ============================================== -->
   <!-- 2. HEADER & ACTION BUTTONS                     -->
   <!-- ============================================== -->
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
     <div>
       <div class="flex items-center gap-2.5">
         <div class="w-9 h-9 rounded-xl bg-red-100 text-brand flex items-center justify-center text-lg shadow-xs">
@@ -151,36 +151,36 @@
       </p>
     </div>
 
-    <!-- 4 Tombol Aksi: 2 Susun (2x2 Grid) dengan Ukuran Container Sama -->
-    <div class="grid grid-cols-2 gap-2.5 w-full sm:w-[430px] shrink-0">
+    <!-- 4 Tombol Aksi: 2 Susun (2x2 Grid) dengan Ukuran Sama & Container Menyesuaikan Lebar Isi -->
+    <div class="grid grid-cols-2 gap-2 sm:gap-2.5 w-fit shrink-0" style="width: fit-content;">
       <!-- 1. Tambah Barang Baru -->
       <button type="button" @click="openCreateModal = true"
-              class="h-10 px-3 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm whitespace-nowrap w-full">
+              class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
         <i class="fa-solid fa-plus text-xs"></i>
         <span>Tambah Barang Baru</span>
       </button>
 
       <!-- 2. Barang Keluar & Masuk -->
       <a href="{{ route('admin.material.mutations') }}"
-         class="h-10 px-3 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm whitespace-nowrap w-full">
+         class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
         <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i>
         <span>Barang Keluar & Masuk</span>
       </a>
 
       <!-- 3. Export Excel -->
       <a href="{{ route('admin.material.export', request()->query()) }}"
-         class="h-10 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm whitespace-nowrap w-full">
+         class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
         <i class="fa-solid fa-file-excel text-xs"></i>
         <span>Export Excel</span>
       </a>
 
       <!-- 4. Tombol Hapus Terpilih / Hapus Semua -->
-      <div class="w-full">
+      <div class="w-44 sm:w-52 h-10">
         <button type="button"
                 x-show="selectedIds.length > 0"
                 style="display: none;"
                 @click="confirmBulkDelete(false)"
-                class="w-full h-10 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm whitespace-nowrap">
+                class="w-full h-full px-2.5 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
           <i class="fa-solid fa-trash-can text-xs"></i>
           <span>Hapus (<span x-text="selectedIds.length"></span>)</span>
         </button>
@@ -189,7 +189,7 @@
                 x-show="selectedIds.length === 0"
                 @click="confirmBulkDelete(true)"
                 @if($stats['total_items'] == 0) disabled @endif
-                class="w-full h-10 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                class="w-full h-full px-2.5 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                 title="Hapus / Kosongkan Seluruh Data Stok Barang">
           <i class="fa-solid fa-trash-arrow-up text-xs"></i>
           <span>Hapus Semua</span>
