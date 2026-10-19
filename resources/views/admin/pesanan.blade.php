@@ -136,63 +136,7 @@
   @endif
 
   <!-- ============================================== -->
-  <!-- 2. STATISTIC METRIC CARDS                      -->
-  <!-- ============================================== -->
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
-    
-    <!-- Total Pesanan -->
-    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Pesanan</p>
-      <h3 class="text-2xl font-black text-slate-900 mt-1">{{ $counts['all'] }}</h3>
-      <span class="text-[10px] text-slate-500 font-medium">Semua transaksi</span>
-    </div>
-
-    <!-- Menunggu Konfirmasi -->
-    <div class="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/70 shadow-2xs">
-      <p class="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Menunggu</p>
-      <h3 class="text-2xl font-black text-amber-900 mt-1">{{ $counts['menunggu'] }}</h3>
-      <span class="text-[10px] text-amber-700 font-medium">Perlu verifikasi</span>
-    </div>
-
-    <!-- Jadwal Teknisi -->
-    <div class="bg-blue-50/60 p-4 rounded-2xl border border-blue-200/70 shadow-2xs">
-      <p class="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Jadwal Teknisi</p>
-      <h3 class="text-2xl font-black text-blue-900 mt-1">{{ $counts['jadwal'] }}</h3>
-      <span class="text-[10px] text-blue-700 font-medium">Siap pasang</span>
-    </div>
-
-    <!-- Sedang Dipasang -->
-    <div class="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-200/70 shadow-2xs">
-      <p class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Dipasang</p>
-      <h3 class="text-2xl font-black text-indigo-900 mt-1">{{ $counts['proses'] }}</h3>
-      <span class="text-[10px] text-indigo-700 font-medium">Tim di lokasi</span>
-    </div>
-
-    <!-- Selesai / Aktif -->
-    <div class="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200/70 shadow-2xs">
-      <p class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Selesai / Aktif</p>
-      <h3 class="text-2xl font-black text-emerald-900 mt-1">{{ $counts['selesai'] }}</h3>
-      <span class="text-[10px] text-emerald-700 font-medium">Online</span>
-    </div>
-
-    <!-- Kendala Lapangan -->
-    <div class="bg-rose-50/60 p-4 rounded-2xl border border-rose-200/70 shadow-2xs">
-      <p class="text-[10px] font-bold text-rose-700 uppercase tracking-wider">Kendala</p>
-      <h3 class="text-2xl font-black text-rose-900 mt-1">{{ $counts['kendala'] ?? 0 }}</h3>
-      <span class="text-[10px] text-rose-700 font-medium">Laporan teknisi</span>
-    </div>
-
-    <!-- Dibatalkan -->
-    <div class="bg-red-50/60 p-4 rounded-2xl border border-red-200/70 shadow-2xs">
-      <p class="text-[10px] font-bold text-red-700 uppercase tracking-wider">Dibatalkan</p>
-      <h3 class="text-2xl font-black text-red-900 mt-1">{{ $counts['batal'] }}</h3>
-      <span class="text-[10px] text-red-700 font-medium">Gagal / batal</span>
-    </div>
-
-  </div>
-
-  <!-- ============================================== -->
-  <!-- 3. FILTER TABS & SEARCH BAR                    -->
+  <!-- 2. FILTER TABS & SEARCH BAR                    -->
   <!-- ============================================== -->
   <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
     

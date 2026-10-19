@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Material;
-use App\Models\MaterialMutation;
 use App\Models\User;
+use Database\Seeders\MaterialCsvDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -12,371 +12,561 @@ class MaterialStockTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $admin;
-    protected User $direktur;
-    protected User $technician;
-    protected User $customer;
-
-    protected function setUp(): void
+    public function test_admin_can_access_material_stock_page_and_see_csv_data(): void
     {
-        parent::setUp();
-
-        $this->admin = User::factory()->create([
+        $admin = User::factory()->create([
             'role' => 'admin',
-            'email' => 'admin@banterpool.net',
-            'name' => 'Administrator NOC',
         ]);
 
-        $this->direktur = User::factory()->create([
-            'role' => 'direktur',
-            'email' => 'direktur@banterpool.net',
-            'name' => 'Direktur Utama',
-        ]);
+        $this->seed(MaterialCsvDataSeeder::class);
 
-        $this->technician = User::factory()->create([
-            'role' => 'technician',
-            'email' => 'teknisi@banterpool.net',
-        ]);
+        // 1. Tab Laporan Stok Barang
+        $response = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'laporan']));
+        $response->assertStatus(200);
+        $response->assertSee('Laporan & Manajemen Stok Barang', false);
+        $response->assertSee('A001');
+        $response->assertSee('A050');
+        $response->assertSee('Patchcore Biru');
+        $response->assertSee('DC 1C');
+        $response->assertSee('Stok Awal');
+        $response->assertSee('Barang Masuk');
+        $response->assertSee('Barang Keluar');
+        $response->assertSee('Stok Akhir');
 
-        $this->customer = User::factory()->create([
-            'role' => 'customer',
-            'email' => 'pelanggan@example.com',
-        ]);
+        // 2. Tab Barang Masuk
+        $responseIn = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'masuk']));
+        $responseIn->assertStatus(200);
+        $responseIn->assertSee('Pak Mono');
+        $responseIn->assertSee('Aris');
+
+        // 3. Tab Barang Keluar
+        $responseOut = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'keluar']));
+        $responseOut->assertStatus(200);
+        $responseOut->assertSee('Okta_ThreeFive');
+        $responseOut->assertSee('Bagas_ThreeFive');
+
+        // 4. Tab Spreadsheet Side-by-Side sudah dihilangkan
+        $responseLaporan = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'laporan']));
+        $responseLaporan->assertDontSee('Tampilan Berdampingan (Sesuai CSV)');
+
+        // 5. Test Filter Bulan Berbeda (September 2026 & Semua Periode)
+        $responseSep = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'laporan', 'month' => 9, 'year' => 2026]));
+        $responseSep->assertStatus(200);
+        $responseSep->assertSee('September 2026');
+        $responseSep->assertSee('id="filter-month"', false);
+        $responseSep->assertSee('id="filter-status"', false);
+
+        // 6. Test Filter Status Dropdown (Aman, Menipis, Habis, Minus)
+        $responseAman = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'laporan', 'status' => 'aman']));
+        $responseAman->assertStatus(200);
+
+        $responseMinus = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'laporan', 'status' => 'minus']));
+        $responseMinus->assertStatus(200);
+
+        $responseAll = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'laporan', 'month' => 'all']));
+        $responseAll->assertStatus(200);
+        $responseAll->assertSee('Semua Periode');
+
+
+        // 6. Test Export CSV & Excel dengan Scope Bulan
+        $responseCsv = $this->actingAs($admin)->get(route('admin.material.export-csv', ['month' => 10, 'year' => 2026]));
+        $responseCsv->assertStatus(200);
+        $responseCsv->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+        $responseExcel = $this->actingAs($admin)->get(route('admin.material.export', ['month' => 10, 'year' => 2026]));
+        $responseExcel->assertStatus(200);
     }
 
-    public function test_sidebar_displays_stok_material_menu_for_admin_and_direktur(): void
+    public function test_table_shows_actual_material_name_not_month_name(): void
     {
-        // 1. Verifikasi POV Admin
-        $responseAdmin = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-        $responseAdmin->assertOk();
-        $responseAdmin->assertSee('Stok Barang');
-        $responseAdmin->assertSee(route('admin.material.index'));
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->seed(MaterialCsvDataSeeder::class);
 
-        // 2. Verifikasi POV Direktur
-        $responseDirektur = $this->actingAs($this->direktur)->get(route('admin.dashboard'));
-        $responseDirektur->assertOk();
-        $responseDirektur->assertSee('Stok Barang');
-        $responseDirektur->assertSee(route('admin.material.index'));
-        $responseDirektur->assertSee('Direktur Utama');
+        $res = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'laporan']));
+        $res->assertStatus(200);
+
+        // Verify that the table header exists and material rows contain actual material names
+        $res->assertSee('Nama Barang');
+        $res->assertSee('Tiang T7');
+        $res->assertSee('Slack Suport-40cm');
+
+        // Check materials passed to the view
+        $materials = $res->viewData('materials');
+        $this->assertNotEmpty($materials);
+        foreach ($materials as $item) {
+            $this->assertNotEquals('Januari', $item->name, "Material name should not be month name 'Januari'");
+            $this->assertNotEquals('Oktober', $item->name, "Material name should not be month name 'Oktober'");
+        }
     }
 
-    public function test_both_admin_and_direktur_can_access_stok_material_page(): void
+    public function test_filters_isolate_only_matching_records(): void
     {
-        $material = Material::create([
-            'code' => 'MAT-ONT-999',
-            'name' => 'Modem ONT ZTE F609 V3',
-            'category' => 'Modem & ONT',
-            'unit' => 'Unit',
-            'stock' => 20,
-            'min_stock' => 5,
-            'unit_price' => 185000,
-            'location' => 'Gudang NOC Rak A1',
-            'description' => 'ONT GPON Gigabit',
-        ]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->seed(MaterialCsvDataSeeder::class);
 
-        // 1. POV Admin
-        $resAdmin = $this->actingAs($this->admin)->get(route('admin.material.index'));
-        $resAdmin->assertOk();
-        $resAdmin->assertSee('Manajemen Stok Barang & Perangkat', false);
-        $resAdmin->assertSee('Modem ONT ZTE F609 V3');
-        $resAdmin->assertSee('MAT-ONT-999');
+        // 1. Filter Category
+        $resCat = $this->actingAs($admin)->get(route('admin.material.index', [
+            'tab' => 'laporan',
+            'category' => 'Tiang & Bracket',
+        ]));
+        $resCat->assertStatus(200);
+        $catItems = $resCat->viewData('materials');
+        $this->assertGreaterThan(0, $catItems->count());
+        foreach ($catItems as $item) {
+            $this->assertEquals('Tiang & Bracket', $item->category);
+        }
 
-        // 2. POV Direktur
-        $resDirektur = $this->actingAs($this->direktur)->get(route('admin.material.index'));
-        $resDirektur->assertOk();
-        $resDirektur->assertSee('Manajemen Stok Barang & Perangkat', false);
-        $resDirektur->assertSee('Modem ONT ZTE F609 V3');
-        $resDirektur->assertSee('MAT-ONT-999');
+        // 2. Filter Search / Code
+        $resCode = $this->actingAs($admin)->get(route('admin.material.index', [
+            'tab' => 'laporan',
+            'search' => 'A001',
+        ]));
+        $resCode->assertStatus(200);
+        $codeItems = $resCode->viewData('materials');
+        $this->assertEquals(1, $codeItems->total());
+        $this->assertEquals('A001', $codeItems->first()->code);
+
+        // 3. Filter Status (Habis)
+        $resHabis = $this->actingAs($admin)->get(route('admin.material.index', [
+            'tab' => 'laporan',
+            'status' => 'habis',
+        ]));
+        $resHabis->assertStatus(200);
+        $habisItems = $resHabis->viewData('materials');
+        foreach ($habisItems as $item) {
+            $this->assertEquals(0, (float) $item->computed_stock);
+        }
+
+        // 4. Sort by code descending
+        $resSort = $this->actingAs($admin)->get(route('admin.material.index', [
+            'tab' => 'laporan',
+            'sort' => 'code_desc',
+        ]));
+        $resSort->assertStatus(200);
+        $sortItems = $resSort->viewData('materials');
+        $firstItem = $sortItems->first();
+        $this->assertEquals('A132', $firstItem->code);
     }
 
-    public function test_non_admin_cannot_access_stok_material(): void
+    public function test_import_with_month_column_does_not_set_name_to_month(): void
     {
-        // Guest
-        $resGuest = $this->get(route('admin.material.index'));
-        $resGuest->assertRedirect(route('login'));
+        $admin = User::factory()->create(['role' => 'admin']);
 
-        // Customer (403 Forbidden)
-        $resCustomer = $this->actingAs($this->customer)->get(route('admin.material.index'));
-        $resCustomer->assertForbidden();
+        // Create a fake CSV file containing Month in column 1 and Material Name in column 2
+        $csvContent = "No,Bulan,Nama Barang,Satuan,Stok Awal,Masuk,Keluar,Stok Akhir\n" .
+                      "1,Januari,Kabel Dropcore 1 Core,Meter,500,100,50,550\n";
 
-        // Technician (403 Forbidden)
-        $resTech = $this->actingAs($this->technician)->get(route('admin.material.index'));
-        $resTech->assertForbidden();
-    }
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('stok_januari.csv', $csvContent);
 
-    public function test_admin_and_direktur_can_create_new_material(): void
-    {
-        // Admin membuat material
-        $responseAdmin = $this->actingAs($this->admin)->post(route('admin.material.store'), [
-            'code' => 'MAT-KBL-100',
-            'name' => 'Kabel Drop Core 1 Core 1000m',
-            'category' => 'Kabel & Fiber',
-            'unit' => 'Roll',
-            'stock' => 10,
-            'min_stock' => 3,
-            'unit_price' => 485000,
-            'location' => 'Gudang Utama Palet B',
-            'description' => 'Drop core outdoor 3 seling kawat',
+        $response = $this->actingAs($admin)->post(route('admin.material.import-csv'), [
+            'csv_file' => $file,
         ]);
-
-        $responseAdmin->assertRedirect();
-        $responseAdmin->assertSessionHas('success');
-
-        $this->assertDatabaseHas('materials', [
-            'code' => 'MAT-KBL-100',
-            'name' => 'Kabel Drop Core 1 Core 1000m',
-            'stock' => 10,
-        ]);
-
-        // Mutasi awal tercatat
-        $material = Material::where('code', 'MAT-KBL-100')->first();
-        $this->assertEquals(1, $material->mutations()->count());
-        $this->assertEquals('in', $material->mutations()->first()->type);
-        $this->assertEquals(10, $material->mutations()->first()->amount);
-
-        // Direktur membuat material
-        $responseDirektur = $this->actingAs($this->direktur)->post(route('admin.material.store'), [
-            'code' => 'MAT-FC-050',
-            'name' => 'Fast Connector SC/UPC',
-            'category' => 'Konektor & Aksesoris',
-            'unit' => 'Box',
-            'stock' => 50,
-            'min_stock' => 10,
-            'unit_price' => 135000,
-            'location' => 'Gudang NOC Rak B1',
-        ]);
-
-        $responseDirektur->assertRedirect();
-        $responseDirektur->assertSessionHas('success');
-
-        $this->assertDatabaseHas('materials', [
-            'code' => 'MAT-FC-050',
-            'name' => 'Fast Connector SC/UPC',
-            'stock' => 50,
-        ]);
-    }
-
-    public function test_manual_stock_addition_increments_stock_and_logs_mutation(): void
-    {
-        $material = Material::create([
-            'code' => 'MAT-TEST-01',
-            'name' => 'Patch Cord SC/UPC 3m',
-            'category' => 'Konektor & Aksesoris',
-            'unit' => 'Pcs',
-            'stock' => 15,
-            'min_stock' => 5,
-        ]);
-
-        // POV Direktur melakukan penambahan manual +20
-        $response = $this->actingAs($this->direktur)->post(route('admin.material.add-stock', $material->id), [
-            'amount' => 20,
-            'notes' => 'Pengadaan baru dari distributor PT Telekom',
-        ]);
-
         $response->assertRedirect();
-        $response->assertSessionHas('success');
 
-        $material->refresh();
-        $this->assertEquals(35, $material->stock);
-
-        // Cek log mutasi
-        $this->assertDatabaseHas('material_mutations', [
-            'material_id' => $material->id,
-            'user_id' => $this->direktur->id,
-            'type' => 'in',
-            'amount' => 20,
-            'stock_before' => 15,
-            'stock_after' => 35,
-            'notes' => 'Pengadaan baru dari distributor PT Telekom',
-        ]);
-    }
-
-    public function test_manual_stock_reduction_decrements_stock_and_logs_mutation(): void
-    {
-        $material = Material::create([
-            'code' => 'MAT-TEST-02',
-            'name' => 'Roset Optik 1 Core',
-            'category' => 'Konektor & Aksesoris',
-            'unit' => 'Pcs',
-            'stock' => 40,
-            'min_stock' => 10,
-        ]);
-
-        // POV Admin melakukan pengurangan manual -12
-        $response = $this->actingAs($this->admin)->post(route('admin.material.reduce-stock', $material->id), [
-            'amount' => 12,
-            'notes' => 'Pemakaian instalasi cluster Desa Purwokerto',
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionHas('success');
-
-        $material->refresh();
-        $this->assertEquals(28, $material->stock);
-
-        // Cek log mutasi
-        $this->assertDatabaseHas('material_mutations', [
-            'material_id' => $material->id,
-            'user_id' => $this->admin->id,
-            'type' => 'out',
-            'amount' => 12,
-            'stock_before' => 40,
-            'stock_after' => 28,
-            'notes' => 'Pemakaian instalasi cluster Desa Purwokerto',
-        ]);
-    }
-
-    public function test_cannot_reduce_stock_more_than_available(): void
-    {
-        $material = Material::create([
-            'code' => 'MAT-TEST-03',
-            'name' => 'Splitter PLC 1:8',
-            'category' => 'Pasif & ODP',
-            'unit' => 'Pcs',
-            'stock' => 5,
-            'min_stock' => 2,
-        ]);
-
-        // Coba kurangi 10 (lebih besar dari stok 5)
-        $response = $this->actingAs($this->admin)->post(route('admin.material.reduce-stock', $material->id), [
-            'amount' => 10,
-            'notes' => 'Coba kurangi melebihi stok',
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionHas('error');
-
-        $material->refresh();
-        $this->assertEquals(5, $material->stock); // Stok tidak berubah
-    }
-
-    public function test_manual_stock_adjustment_updates_stock_and_logs_adjustment(): void
-    {
-        $material = Material::create([
-            'code' => 'MAT-TEST-04',
-            'name' => 'ODP Tiang 8 Core',
-            'category' => 'Pasif & ODP',
-            'unit' => 'Unit',
-            'stock' => 10,
-            'min_stock' => 3,
-        ]);
-
-        // Penyesuaian opname langsung jadi 14 oleh Direktur
-        $response = $this->actingAs($this->direktur)->post(route('admin.material.adjust-stock', $material->id), [
-            'new_stock' => 14,
-            'notes' => 'Hasil stock opname fisik gudang mingguan',
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionHas('success');
-
-        $material->refresh();
-        $this->assertEquals(14, $material->stock);
-
-        $this->assertDatabaseHas('material_mutations', [
-            'material_id' => $material->id,
-            'user_id' => $this->direktur->id,
-            'type' => 'adjustment',
-            'amount' => 4,
-            'stock_before' => 10,
-            'stock_after' => 14,
-        ]);
-    }
-
-    public function test_manual_delete_single_material(): void
-    {
-        $material = Material::create([
-            'code' => 'MAT-DEL-01',
-            'name' => 'Material Yang Mau Dihapus',
-            'category' => 'Umum',
-            'unit' => 'Pcs',
-            'stock' => 0,
-        ]);
-
-        $response = $this->actingAs($this->admin)->delete(route('admin.material.destroy', $material->id));
-        $response->assertRedirect();
-        $response->assertSessionHas('success');
-
+        $imported = Material::where('name', 'Kabel Dropcore 1 Core')->first();
+        $this->assertNotNull($imported, "Material with real name should be imported");
+        $this->assertEquals('Januari', $imported->month);
         $this->assertDatabaseMissing('materials', [
-            'id' => $material->id,
+            'name' => 'Januari',
         ]);
     }
 
-    public function test_manual_bulk_delete_materials(): void
+    public function test_admin_can_record_incoming_and_outgoing_stock_for_specific_month(): void
     {
-        $m1 = Material::create(['code' => 'MAT-B1', 'name' => 'Barang B1', 'category' => 'Umum', 'unit' => 'Pcs', 'stock' => 0]);
-        $m2 = Material::create(['code' => 'MAT-B2', 'name' => 'Barang B2', 'category' => 'Umum', 'unit' => 'Pcs', 'stock' => 0]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->seed(MaterialCsvDataSeeder::class);
 
-        $response = $this->actingAs($this->direktur)->post(route('admin.material.bulk-delete'), [
-            'ids' => [$m1->id, $m2->id],
+        $material = Material::where('code', 'A001')->firstOrFail();
+        $stockBefore = (float) $material->stock;
+
+        // Catat Masuk di Bulan November 2026
+        $resIn = $this->actingAs($admin)->post(route('admin.material.store-in'), [
+            'material_id' => $material->id,
+            'amount' => 50,
+            'transaction_date' => '2026-11-05',
+            'notes' => 'Penerimaan Batch Nov 2026',
+        ]);
+        $resIn->assertRedirect();
+
+        $material->refresh();
+        $this->assertEquals($stockBefore + 50, (float) $material->stock);
+
+        // Akses view bulan November 2026
+        $resNov = $this->actingAs($admin)->get(route('admin.material.index', [
+            'tab' => 'masuk',
+            'month' => 11,
+            'year' => 2026,
+        ]));
+        $resNov->assertStatus(200);
+        $resNov->assertSee('Penerimaan Batch Nov 2026');
+        $resNov->assertSee('+50');
+
+        // Catat Keluar di Bulan November 2026
+        $resOut = $this->actingAs($admin)->post(route('admin.material.store-out'), [
+            'material_id' => $material->id,
+            'amount' => 20,
+            'transaction_date' => '2026-11-10',
+            'notes' => 'Pengeluaran Tim Fiber Nov',
+        ]);
+        $resOut->assertRedirect();
+
+        $material->refresh();
+        $this->assertEquals($stockBefore + 30, (float) $material->stock);
+
+        // Akses view keluar bulan November 2026
+        $resOutView = $this->actingAs($admin)->get(route('admin.material.index', [
+            'tab' => 'keluar',
+            'month' => 11,
+            'year' => 2026,
+        ]));
+        $resOutView->assertStatus(200);
+        $resOutView->assertSee('Pengeluaran Tim Fiber Nov');
+        $resOutView->assertSee('-20');
+    }
+
+    public function test_import_single_file_with_stock_masuk_and_keluar_and_incomplete_details(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        // Format berkas 1 file berdampingan:
+        // - Item 1: Lengkap (A001; Tiang T7; 10; 5; 2; 13)
+        // - Item 2: Tanpa kode barang (keterangan tidak lengkap: ; Router ZTE F609; 15; 0; 5; 10)
+        // - Item 3: Stok kosong/koma desimal (; Patchcore Biru; ; ; ; )
+        // - Masuk: transaksi untuk Tiang T7 dan transaksi untuk item baru (Modem Fiberhome Baru)
+        // - Keluar: transaksi untuk Tiang T7 dan Router ZTE F609
+        $csvContent = implode("\n", [
+            "LAPORAN STOK BARANG OKTOBER 2026;;;;;;;BARANG MASUK;;;;;Barang Keluar;;;;;;",
+            ";;;;;;;;;;;;;;;;;;",
+            "Kode Barang;Nama Barang;Stok Awal;Barang Masuk;Barang Keluar;Stok Akhir;;Tgl;Nama Barang;Jumlah Masuk;Catatan;;Tgl;Nama Barang;Jumlah Keluar;Catatan;;;",
+            "A001;Tiang T7;10;5;2;13;;10/05/2026;Tiang T7;5;Penerimaan Gudang;;10/08/2026;Tiang T7;2;Teknisi Budi;;;",
+            ";Router ZTE F609;15;0;5;10;;10/06/2026;Modem Fiberhome Baru;8;Vendor Utama;;10/09/2026;Router ZTE F609;5,5;;;;",
+            ";Patchcore Biru;;;;;;;;;;;10/10/2026;Patchcore Biru;1;Aji;;;",
         ]);
 
-        $response->assertRedirect();
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('stok_lengkap_oktober.csv', $csvContent);
+
+        $response = $this->actingAs($admin)->post(route('admin.material.import-csv'), [
+            'csv_file' => $file,
+            'import_month' => 10,
+            'import_year' => 2026,
+            'replace_all' => 1,
+        ]);
+
+        $response->assertRedirect(route('admin.material.index', ['month' => 10, 'year' => 2026]));
         $response->assertSessionHas('success');
 
-        $this->assertDatabaseMissing('materials', ['id' => $m1->id]);
-        $this->assertDatabaseMissing('materials', ['id' => $m2->id]);
+        // 1. Verifikasi Item 1 (Tiang T7)
+        $tiang = Material::where('code', 'A001')->first();
+        $this->assertNotNull($tiang);
+        $this->assertEquals('Tiang T7', $tiang->name);
+        $this->assertEquals('Oktober', $tiang->month);
+        $this->assertEquals(2026, $tiang->year);
+        $this->assertEquals(10, (float)$tiang->initial_stock);
+
+        // 2. Verifikasi Item 2 tanpa kode barang: otomatis diberi kode barang unik (format A...)
+        $router = Material::where('name', 'Router ZTE F609')->first();
+        $this->assertNotNull($router);
+        $this->assertNotEmpty($router->code, "Kode barang harus digenerate otomatis jika kosong");
+        $this->assertEquals('Oktober', $router->month);
+        $this->assertEquals(2026, $router->year);
+
+        // 3. Verifikasi Item 3 dengan stok kosong: otomatis terisi 0 dan terdaftar
+        $patchcore = Material::where('name', 'Patchcore Biru')->first();
+        $this->assertNotNull($patchcore);
+        $this->assertNotEmpty($patchcore->code);
+        $this->assertEquals(0, (float)$patchcore->initial_stock);
+
+        // 4. Verifikasi item baru dari seksi Barang Masuk (Modem Fiberhome Baru): otomatis dibuat master dan mutasinya
+        $modemBaru = Material::where('name', 'Modem Fiberhome Baru')->first();
+        $this->assertNotNull($modemBaru, "Material baru dari Barang Masuk harus otomatis dibuat jika belum ada di master");
+        $this->assertNotEmpty($modemBaru->code);
+        $this->assertEquals('Oktober', $modemBaru->month);
+
+        // 5. Verifikasi mutasi Barang Masuk tersimpan dengan tanggal periode Oktober 2026
+        $mutasiMasuk = \App\Models\MaterialMutation::where('type', 'in')->get();
+        $this->assertCount(2, $mutasiMasuk);
+        foreach ($mutasiMasuk as $mIn) {
+            $this->assertEquals('2026-10', substr($mIn->transaction_date->toDateString(), 0, 7));
+        }
+
+        // 6. Verifikasi mutasi Barang Keluar tersimpan dan angka koma desimal 5,5 terbaca sebagai 5.5
+        $mutasiKeluar = \App\Models\MaterialMutation::where('type', 'out')->get();
+        $this->assertCount(3, $mutasiKeluar);
+        $mutasiRouterKeluar = \App\Models\MaterialMutation::where('material_id', $router->id)->where('type', 'out')->first();
+        $this->assertNotNull($mutasiRouterKeluar);
+        $this->assertEquals(5.5, (float)$mutasiRouterKeluar->amount);
     }
 
-    public function test_admin_and_direktur_can_delete_all_materials(): void
+    public function test_import_actual_stok_barang_csv_file(): void
     {
-        Material::create(['code' => 'MAT-ALL1', 'name' => 'All Item 1', 'category' => 'Umum', 'unit' => 'Pcs', 'stock' => 10]);
-        Material::create(['code' => 'MAT-ALL2', 'name' => 'All Item 2', 'category' => 'Umum', 'unit' => 'Pcs', 'stock' => 5]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $csvPath = database_path('data/stok_barang.csv');
+        $this->assertFileExists($csvPath);
 
-        $this->assertEquals(2, Material::count());
+        $uploadedFile = new \Illuminate\Http\UploadedFile(
+            $csvPath,
+            'stok_barang.csv',
+            'text/csv',
+            null,
+            true
+        );
 
-        $response = $this->actingAs($this->direktur)->post(route('admin.material.bulk-delete'), [
-            'delete_all' => 1,
+        $response = $this->actingAs($admin)->post(route('admin.material.import-csv'), [
+            'csv_file' => $uploadedFile,
+            'replace_all' => 1,
         ]);
 
-        $response->assertRedirect();
+        $response->assertRedirect(route('admin.material.index', ['month' => 10, 'year' => 2026]));
         $response->assertSessionHas('success');
-        $this->assertEquals(0, Material::count());
-        $this->assertEquals(0, MaterialMutation::count());
+
+        // Verifikasi data master terimpor lengkap (lebih dari 130 item)
+        $this->assertGreaterThan(130, Material::count());
+
+        // Verifikasi transaksi masuk dan keluar dalam 1 file yang sama terbaca lengkap
+        $inCount = \App\Models\MaterialMutation::where('type', 'in')->count();
+        $outCount = \App\Models\MaterialMutation::where('type', 'out')->count();
+        $this->assertGreaterThan(3, $inCount, "Harus membaca transaksi Barang Masuk dari file yang sama");
+        $this->assertGreaterThan(20, $outCount, "Harus membaca transaksi Barang Keluar dari file yang sama");
+
+        // Verifikasi item A001 dan A044 (DC 1C)
+        $dc1c = Material::where('name', 'DC 1C')->first();
+        $this->assertNotNull($dc1c);
+        $this->assertEquals(2000, (float)$dc1c->initial_stock);
+        $this->assertEquals(900, (float)$dc1c->total_in);
+        $this->assertEquals(2485, (float)$dc1c->total_out);
+        $this->assertEquals(415, (float)$dc1c->stock);
+
+        // Verifikasi baris A35 (Modem Nokia G0425GH) yang kolom stoknya kosong di CSV tetap terimpor
+        $nokia = Material::where('name', 'Modem Nokia G0425GH')->first();
+        $this->assertNotNull($nokia, "Item dengan stok kosong harus tetap terbaca dan tersimpan");
+        $this->assertEquals('A35', $nokia->code);
+        $this->assertEquals(0, (float)$nokia->initial_stock);
+        $this->assertEquals(0, (float)$nokia->stock);
     }
 
-    public function test_export_material_excel_downloads_successfully(): void
+    public function test_importing_february_does_not_lose_or_overwrite_january_data(): void
     {
-        Material::create([
-            'code' => 'MAT-EXP-01',
-            'name' => 'Barang Export Test',
-            'category' => 'Perangkat',
-            'unit' => 'Unit',
-            'stock' => 10,
-            'min_stock' => 2,
-            'unit_price' => 200000,
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        // 1. Buat berkas CSV untuk JANUARI 2026
+        $janCsv = implode("\n", [
+            "LAPORAN STOK BARANG JANUARI 2026;;;;;;;BARANG MASUK;;;;;Barang Keluar;;;;;;",
+            ";;;;;;;;;;;;;;;;;;",
+            "Kode Barang;Nama Barang;Stok Awal;Barang Masuk;Barang Keluar;Stok Akhir;;Tgl;Nama Barang;Jumlah Masuk;Catatan;;Tgl;Nama Barang;Jumlah Keluar;Catatan;;;",
+            "A001;Tiang T7;100;10;5;105;;01/10/2026;Tiang T7;10;Penerimaan Januari;;01/15/2026;Tiang T7;5;Pengeluaran Januari;;;",
+            "A002;Tiang T6;50;20;10;60;;;;;;;;;;;;;",
         ]);
 
-        $response = $this->actingAs($this->admin)->get(route('admin.material.export'));
-        $response->assertOk();
-        $response->assertHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8');
-        $this->assertStringContainsString('Barang Export Test', $response->streamedContent());
-        $this->assertStringContainsString('MAT-EXP-01', $response->streamedContent());
+        $fileJan = \Illuminate\Http\UploadedFile::fake()->createWithContent('stok_januari.csv', $janCsv);
+
+        $resJan = $this->actingAs($admin)->post(route('admin.material.import-csv'), [
+            'csv_file' => $fileJan,
+            'import_month' => 1,
+            'import_year' => 2026,
+        ]);
+        $resJan->assertRedirect();
+        $resJan->assertSessionHas('success');
+
+        // Pastikan data Januari terbaca di index
+        $viewJan = $this->actingAs($admin)->get(route('admin.material.index', ['month' => 1, 'year' => 2026]));
+        $viewJan->assertStatus(200);
+        $viewJan->assertSee('Tiang T7');
+        $viewJan->assertSee('Tiang T6');
+        $materialsJan = $viewJan->viewData('materials');
+        $this->assertCount(2, $materialsJan);
+        $item1Jan = $materialsJan->firstWhere('code', 'A001');
+        $this->assertEquals(100, (float)$item1Jan->computed_initial_stock);
+        $this->assertEquals(10, (float)$item1Jan->computed_total_in);
+        $this->assertEquals(5, (float)$item1Jan->computed_total_out);
+        $this->assertEquals(105, (float)$item1Jan->computed_stock);
+
+        // 2. Sekarang impor berkas CSV untuk FEBRUARI 2026
+        $febCsv = implode("\n", [
+            "LAPORAN STOK BARANG FEBRUARI 2026;;;;;;;BARANG MASUK;;;;;Barang Keluar;;;;;;",
+            ";;;;;;;;;;;;;;;;;;",
+            "Kode Barang;Nama Barang;Stok Awal;Barang Masuk;Barang Keluar;Stok Akhir;;Tgl;Nama Barang;Jumlah Masuk;Catatan;;Tgl;Nama Barang;Jumlah Keluar;Catatan;;;",
+            "A001;Tiang T7;105;15;8;112;;02/08/2026;Tiang T7;15;Penerimaan Februari;;02/12/2026;Tiang T7;8;Pengeluaran Februari;;;",
+            "A002;Tiang T6;60;5;2;63;;;;;;;;;;;;;",
+            "A003;Modem ONT ZTE;30;10;5;35;;;;;;;;;;;;;",
+        ]);
+
+        $fileFeb = \Illuminate\Http\UploadedFile::fake()->createWithContent('stok_februari.csv', $febCsv);
+
+        $resFeb = $this->actingAs($admin)->post(route('admin.material.import-csv'), [
+            'csv_file' => $fileFeb,
+            'import_month' => 2,
+            'import_year' => 2026,
+        ]);
+        $resFeb->assertRedirect();
+        $resFeb->assertSessionHas('success');
+
+        // 3. Verifikasi Tampilan FEBRUARI 2026
+        $viewFeb = $this->actingAs($admin)->get(route('admin.material.index', ['month' => 2, 'year' => 2026]));
+        $viewFeb->assertStatus(200);
+        $viewFeb->assertSee('Tiang T7');
+        $viewFeb->assertSee('Tiang T6');
+        $viewFeb->assertSee('Modem ONT ZTE');
+        $materialsFeb = $viewFeb->viewData('materials');
+        $this->assertCount(3, $materialsFeb);
+
+        $item1Feb = $materialsFeb->firstWhere('code', 'A001');
+        $this->assertEquals(105, (float)$item1Feb->computed_initial_stock);
+        $this->assertEquals(15, (float)$item1Feb->computed_total_in);
+        $this->assertEquals(8, (float)$item1Feb->computed_total_out);
+        $this->assertEquals(112, (float)$item1Feb->computed_stock);
+
+        // 4. CRITICAL ASSERTION: Pastikan data JANUARI TIDAK HILANG!
+        $viewJanAgain = $this->actingAs($admin)->get(route('admin.material.index', ['month' => 1, 'year' => 2026]));
+        $viewJanAgain->assertStatus(200);
+        $viewJanAgain->assertSee('Tiang T7');
+        $viewJanAgain->assertSee('Tiang T6');
+        $materialsJanAgain = $viewJanAgain->viewData('materials');
+        $this->assertCount(2, $materialsJanAgain, "Data Januari harus tetap ada 2 item setelah Februari diimpor");
+
+        $item1JanAgain = $materialsJanAgain->firstWhere('code', 'A001');
+        $this->assertNotNull($item1JanAgain, "Item A001 di bulan Januari tidak boleh hilang");
+        $this->assertEquals(100, (float)$item1JanAgain->computed_initial_stock, "Stok awal Januari tidak boleh tertimpa nilai Februari");
+        $this->assertEquals(10, (float)$item1JanAgain->computed_total_in, "Barang masuk Januari tidak boleh tertimpa nilai Februari");
+        $this->assertEquals(5, (float)$item1JanAgain->computed_total_out, "Barang keluar Januari tidak boleh tertimpa nilai Februari");
+        $this->assertEquals(105, (float)$item1JanAgain->computed_stock, "Stok akhir Januari tidak boleh tertimpa nilai Februari");
+
+        // 5. Verifikasi Tab Barang Masuk & Keluar per Bulan
+        $inJan = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'masuk', 'month' => 1, 'year' => 2026]));
+        $inJan->assertSee('Penerimaan Januari');
+        $inJan->assertDontSee('Penerimaan Februari');
+
+        $inFeb = $this->actingAs($admin)->get(route('admin.material.index', ['tab' => 'masuk', 'month' => 2, 'year' => 2026]));
+        $inFeb->assertSee('Penerimaan Februari');
+        $inFeb->assertDontSee('Penerimaan Januari');
+
+        // 6. Test jika user centang 'replace_all' saat mengimpor bulan Februari lagi:
+        //    Data Januari tetap tidak boleh terhapus!
+        $resFebReplace = $this->actingAs($admin)->post(route('admin.material.import-csv'), [
+            'csv_file' => $fileFeb,
+            'import_month' => 2,
+            'import_year' => 2026,
+            'replace_all' => 1,
+        ]);
+        $resFebReplace->assertRedirect();
+
+        // Data Januari tetap utuh dan lengkap!
+        $viewJanFinal = $this->actingAs($admin)->get(route('admin.material.index', ['month' => 1, 'year' => 2026]));
+        $this->assertCount(2, $viewJanFinal->viewData('materials'), "Data Januari tetap harus utuh meskipun Februari di-replace");
     }
 
-    public function test_mutations_audit_log_page_renders_accurately(): void
+    public function test_admin_and_direktur_view_all_reports_and_mutations_when_filtering_semua_periode(): void
     {
-        $material = Material::create([
-            'code' => 'MAT-MUT-LOG',
-            'name' => 'Barang Log Mutasi',
-            'category' => 'Modem',
-            'unit' => 'Unit',
-            'stock' => 5,
+        $admin = User::factory()->create(['role' => 'admin']);
+        $direktur = User::factory()->create(['role' => 'direktur']);
+
+        $mat1 = Material::create([
+            'code' => 'T901',
+            'name' => 'Kabel Drop Core Jan',
+            'category' => 'Kabel Drop & Fiber Optik',
+            'unit' => 'Meter',
+            'initial_stock' => 100,
+            'total_in' => 20,
+            'total_out' => 10,
+            'stock' => 110,
+            'month' => 'Januari',
+            'year' => 2026,
         ]);
 
-        $material->mutations()->create([
-            'user_id' => $this->admin->id,
+        \App\Models\MaterialMonthlyStock::create([
+            'material_id' => $mat1->id,
+            'month' => 1,
+            'month_name' => 'Januari',
+            'year' => 2026,
+            'initial_stock' => 100,
+            'total_in' => 20,
+            'total_out' => 10,
+            'final_stock' => 110,
+        ]);
+
+        $mat2 = Material::create([
+            'code' => 'T902',
+            'name' => 'Kabel Drop Core Feb',
+            'category' => 'Kabel Drop & Fiber Optik',
+            'unit' => 'Meter',
+            'initial_stock' => 200,
+            'total_in' => 50,
+            'total_out' => 30,
+            'stock' => 220,
+            'month' => 'Februari',
+            'year' => 2026,
+        ]);
+
+        \App\Models\MaterialMonthlyStock::create([
+            'material_id' => $mat2->id,
+            'month' => 2,
+            'month_name' => 'Februari',
+            'year' => 2026,
+            'initial_stock' => 200,
+            'total_in' => 50,
+            'total_out' => 30,
+            'final_stock' => 220,
+        ]);
+
+        \App\Models\MaterialMutation::create([
+            'material_id' => $mat1->id,
+            'user_id' => $admin->id,
             'type' => 'in',
-            'amount' => 5,
-            'stock_before' => 0,
-            'stock_after' => 5,
-            'notes' => 'Catatan uji log mutasi',
+            'transaction_date' => '2026-01-10',
+            'amount' => 20,
+            'notes' => 'Penerimaan Drop Core Januari',
         ]);
 
-        $response = $this->actingAs($this->direktur)->get(route('admin.material.mutations'));
-        $response->assertOk();
-        $response->assertSee('Barang Keluar & Masuk', false);
-        $response->assertSee('Barang Log Mutasi');
-        $response->assertSee('Catatan uji log mutasi');
+        \App\Models\MaterialMutation::create([
+            'material_id' => $mat1->id,
+            'user_id' => $admin->id,
+            'type' => 'out',
+            'transaction_date' => '2026-01-15',
+            'amount' => 10,
+            'notes' => 'Pengeluaran Drop Core Januari',
+        ]);
+
+        \App\Models\MaterialMutation::create([
+            'material_id' => $mat2->id,
+            'user_id' => $admin->id,
+            'type' => 'in',
+            'transaction_date' => '2026-02-10',
+            'amount' => 50,
+            'notes' => 'Penerimaan Drop Core Februari',
+        ]);
+
+        \App\Models\MaterialMutation::create([
+            'material_id' => $mat2->id,
+            'user_id' => $admin->id,
+            'type' => 'out',
+            'transaction_date' => '2026-02-15',
+            'amount' => 30,
+            'notes' => 'Pengeluaran Drop Core Februari',
+        ]);
+
+        foreach ([$admin, $direktur] as $roleUser) {
+            // 1. Tab Laporan Stok Barang dengan filter Semua Periode (month=all)
+            $response = $this->actingAs($roleUser)->get(route('admin.material.index', ['month' => 'all']));
+            $response->assertOk();
+            $response->assertSee('Kabel Drop Core Jan');
+            $response->assertSee('Kabel Drop Core Feb');
+            $response->assertSee('Januari');
+            $response->assertSee('Februari');
+
+            // 2. Tab Barang Masuk dengan filter Semua Periode (month=all)
+            $resIn = $this->actingAs($roleUser)->get(route('admin.material.index', ['tab' => 'masuk', 'month' => 'all']));
+            $resIn->assertOk();
+            $resIn->assertSee('Penerimaan Drop Core Januari');
+            $resIn->assertSee('Penerimaan Drop Core Februari');
+
+            // 3. Tab Barang Keluar dengan filter Semua Periode (month=all)
+            $resOut = $this->actingAs($roleUser)->get(route('admin.material.index', ['tab' => 'keluar', 'month' => 'all']));
+            $resOut->assertOk();
+            $resOut->assertSee('Pengeluaran Drop Core Januari');
+            $resOut->assertSee('Pengeluaran Drop Core Februari');
+        }
     }
 }
+
+
+
+

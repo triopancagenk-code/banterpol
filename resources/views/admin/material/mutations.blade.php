@@ -14,9 +14,6 @@
           <i class="fa-solid fa-arrow-right-arrow-left"></i>
         </div>
         <h2 class="text-xl font-black text-slate-900 tracking-tight">Barang Keluar & Masuk</h2>
-        <span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
-          POV {{ Auth::user() && Auth::user()->isDirektur() ? 'Direktur Utama' : 'Admin NOC' }}
-        </span>
       </div>
       <p class="text-xs text-slate-500 mt-1">
         Log audit pergerakan barang keluar & masuk, penambahan restock manual, pemakaian lapangan, dan penyesuaian opname stok barang.
@@ -100,8 +97,12 @@
 
               <!-- Tanggal & Jam -->
               <td class="py-3.5 px-4">
-                <span class="font-bold text-slate-900 block">{{ $mut->created_at->translatedFormat('d M Y') }}</span>
-                <span class="text-[10px] font-mono text-slate-400">{{ $mut->created_at->format('H:i:s') }} WIB</span>
+                <span class="font-bold text-slate-900 block">
+                  {{ $mut->transaction_date ? $mut->transaction_date->translatedFormat('d M Y') : $mut->created_at->translatedFormat('d M Y') }}
+                </span>
+                <span class="text-[10px] font-mono text-slate-400">
+                  {{ $mut->transaction_date ? $mut->transaction_date->format('d/m/Y') : $mut->created_at->format('H:i:s') . ' WIB' }}
+                </span>
               </td>
 
               <!-- Material -->
@@ -139,16 +140,16 @@
               <!-- Jumlah -->
               <td class="py-3.5 px-4 text-right">
                 <span class="font-black text-sm {{ $mut->type === 'in' ? 'text-emerald-600' : ($mut->type === 'out' ? 'text-rose-600' : 'text-blue-600') }}">
-                  {{ $mut->type === 'in' ? '+' : ($mut->type === 'out' ? '-' : '') }}{{ number_format($mut->amount, 0, ',', '.') }}
+                  {{ $mut->type === 'in' ? '+' : ($mut->type === 'out' ? '-' : '') }}{{ \App\Models\Material::formatQty($mut->amount) }}
                 </span>
                 <span class="text-[10px] text-slate-400 font-semibold">{{ $mut->material->unit ?? 'Unit' }}</span>
               </td>
 
               <!-- Perubahan Stok -->
               <td class="py-3.5 px-4 text-center font-mono text-slate-600 text-xs">
-                <span>{{ $mut->stock_before }}</span>
+                <span>{{ \App\Models\Material::formatQty($mut->stock_before) }}</span>
                 <span class="text-slate-400 mx-1">&rarr;</span>
-                <strong class="text-slate-900">{{ $mut->stock_after }}</strong>
+                <strong class="text-slate-900">{{ \App\Models\Material::formatQty($mut->stock_after) }}</strong>
               </td>
 
               <!-- Keterangan -->

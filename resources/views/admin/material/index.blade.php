@@ -6,6 +6,7 @@
 @section('content')
 <div class="space-y-6"
      x-data="{
+        tab: '{{ $tab }}',
         openCreateModal: false,
         openEditModal: false,
         openAddStockModal: false,
@@ -14,10 +15,14 @@
         openDeleteModal: false,
         openBulkDeleteModal: false,
         openHistoryModal: false,
+        openImportModal: false,
+        openIncomingModal: false,
+        openOutgoingModal: false,
         
         selectedMaterial: null,
         stockAmount: 1,
         stockNotes: '',
+        transactionDate: '{{ date('Y-m-d') }}',
         newStockTarget: 0,
         
         selectedIds: [],
@@ -54,6 +59,7 @@
             this.selectedMaterial = m;
             this.stockAmount = 1;
             this.stockNotes = '';
+            this.transactionDate = '{{ date('Y-m-d') }}';
             this.openAddStockModal = true;
         },
 
@@ -61,12 +67,13 @@
             this.selectedMaterial = m;
             this.stockAmount = 1;
             this.stockNotes = '';
+            this.transactionDate = '{{ date('Y-m-d') }}';
             this.openReduceStockModal = true;
         },
 
         openAdjustStock(m) {
             this.selectedMaterial = m;
-            this.newStockTarget = m.stock;
+            this.newStockTarget = m.computed_stock ?? m.stock;
             this.stockNotes = '';
             this.openAdjustStockModal = true;
         },
@@ -84,6 +91,13 @@
         openHistory(m) {
             this.selectedMaterial = m;
             this.openHistoryModal = true;
+        },
+
+        formatQty(num) {
+            if (num === null || num === undefined) return '0';
+            return (Math.round(num) === Number(num)) 
+                ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(num)
+                : new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(num);
         },
 
         formatRupiah(number) {
@@ -135,52 +149,90 @@
   <!-- ============================================== -->
   <!-- 2. HEADER & ACTION BUTTONS                     -->
   <!-- ============================================== -->
-  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+  <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
     <div>
-      <div class="flex items-center gap-2.5">
+      <div class="flex flex-wrap items-center gap-2.5">
         <div class="w-9 h-9 rounded-xl bg-red-100 text-brand flex items-center justify-center text-lg shadow-xs">
           <i class="fa-solid fa-boxes-stacked"></i>
         </div>
-        <h2 class="text-xl font-black text-slate-900 tracking-tight">Manajemen Stok Barang & Perangkat</h2>
-        <span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
-          POV {{ Auth::user() && Auth::user()->isDirektur() ? 'Direktur Utama' : 'Admin NOC' }}
-        </span>
+        <h2 class="text-xl font-black text-slate-900 tracking-tight">Laporan & Manajemen Stok Barang</h2>
       </div>
       <p class="text-xs text-slate-500 mt-1">
-        Kendali inventaris fiber optik, perangkat modem ONT, splitter, konektor, drop core, dan pencatatan mutasi tambah/kurang stok manual.
+        Sinkronisasi inventaris fiber optik, perangkat modem ONT, splitter, drop core, serta rekonsiliasi barang masuk & keluar bulanan sesuai berkas CSV Banterpool.
       </p>
     </div>
 
-    <!-- 4 Tombol Aksi: 2 Susun (2x2 Grid) dengan Ukuran Sama & Container Menyesuaikan Lebar Isi -->
-    <div class="grid grid-cols-2 gap-2 sm:gap-2.5 w-fit shrink-0" style="width: fit-content;">
+    <!-- Tombol Aksi Toolbar -->
+    <div class="flex flex-wrap items-center gap-2 shrink-0">
+      
       <!-- 1. Tambah Barang Baru -->
       <button type="button" @click="openCreateModal = true"
-              class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+              class="h-9 px-3 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
         <i class="fa-solid fa-plus text-xs"></i>
-        <span>Tambah Barang Baru</span>
+        <span>Tambah Barang</span>
       </button>
 
-      <!-- 2. Barang Keluar & Masuk -->
-      <a href="{{ route('admin.material.mutations') }}"
-         class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
-        <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i>
-        <span>Barang Keluar & Masuk</span>
-      </a>
+      <!-- 2. Catat Barang Masuk -->
+      <button type="button" @click="openIncomingModal = true"
+              class="h-9 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+        <i class="fa-solid fa-arrow-down text-xs"></i>
+        <span>Catat Masuk</span>
+      </button>
 
-      <!-- 3. Export Excel -->
-      <a href="{{ route('admin.material.export', request()->query()) }}"
-         class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
-        <i class="fa-solid fa-file-excel text-xs"></i>
-        <span>Export Excel</span>
-      </a>
+      <!-- 3. Catat Barang Keluar -->
+      <button type="button" @click="openOutgoingModal = true"
+              class="h-9 px-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+        <i class="fa-solid fa-arrow-up text-xs"></i>
+        <span>Catat Keluar</span>
+      </button>
 
-      <!-- 4. Tombol Hapus Terpilih / Hapus Semua -->
-      <div class="w-44 sm:w-52 h-10">
+      <!-- 4. Import File Excel & CSV -->
+      <button type="button" @click="openImportModal = true"
+              class="h-9 px-3 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+        <i class="fa-solid fa-file-import text-xs"></i>
+        <span>Import Excel / CSV</span>
+      </button>
+
+      <!-- 5. Export Dropdown Menu (Excel & CSV) -->
+      <div class="relative" x-data="{ openExport: false }">
+        <button type="button" @click="openExport = !openExport" @click.away="openExport = false"
+                class="h-9 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-slate-200 whitespace-nowrap">
+          <i class="fa-solid fa-file-export text-xs text-slate-500"></i>
+          <span>Export ({{ $monthName }})</span>
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-0.5"></i>
+        </button>
+
+        <div x-show="openExport"
+             style="display: none;"
+             x-transition:enter="transition ease-out duration-100"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             class="absolute right-0 mt-1 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 p-1.5 z-30 text-xs">
+          <a href="{{ route('admin.material.export', array_merge(request()->query(), ['month' => $selectedMonth, 'year' => $selectedYear])) }}"
+             class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 font-bold transition">
+            <i class="fa-solid fa-file-excel text-emerald-600"></i>
+            <span>Export Excel (.xls) - {{ $monthName }}</span>
+          </a>
+          <a href="{{ route('admin.material.export-csv', array_merge(request()->query(), ['month' => $selectedMonth, 'year' => $selectedYear])) }}"
+             class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-bold transition">
+            <i class="fa-solid fa-file-csv text-blue-600"></i>
+            <span>Export CSV (.csv) - {{ $monthName }}</span>
+          </a>
+          <a href="{{ route('admin.material.mutations') }}"
+             class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 font-bold transition border-t border-slate-100 mt-1">
+            <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+            <span>Log Audit Mutasi Lengkap</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 6. Hapus Terpilih / Kosongkan -->
+      <div>
         <button type="button"
                 x-show="selectedIds.length > 0"
                 style="display: none;"
                 @click="confirmBulkDelete(false)"
-                class="w-full h-full px-2.5 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+                class="h-9 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
           <i class="fa-solid fa-trash-can text-xs"></i>
           <span>Hapus (<span x-text="selectedIds.length"></span>)</span>
         </button>
@@ -189,377 +241,696 @@
                 x-show="selectedIds.length === 0"
                 @click="confirmBulkDelete(true)"
                 @if($stats['total_items'] == 0) disabled @endif
-                class="w-full h-full px-2.5 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-                title="Hapus / Kosongkan Seluruh Data Stok Barang">
+                class="h-9 px-3 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                title="Kosongkan Data Stok">
           <i class="fa-solid fa-trash-arrow-up text-xs"></i>
-          <span>Hapus Semua</span>
+          <span class="hidden sm:inline">Kosongkan</span>
         </button>
       </div>
+
     </div>
   </div>
 
-  <!-- ============================================== -->
-  <!-- 3. STATISTIC KPI CARDS                         -->
-  <!-- ============================================== -->
-  <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-    
-    <!-- Total Jenis Barang -->
-    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-      <div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jenis Barang</p>
-        <h3 class="text-2xl font-black text-slate-900 mt-1">{{ number_format($stats['total_items'], 0, ',', '.') }}</h3>
-        <span class="text-[10px] text-slate-500 font-medium">SKU Terdaftar</span>
-      </div>
-      <div class="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shrink-0">
-        <i class="fa-solid fa-cubes"></i>
-      </div>
-    </div>
-
-    <!-- Total Fisik Unit Stok -->
-    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-      <div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Fisik Stok</p>
-        <h3 class="text-2xl font-black text-emerald-600 mt-1">{{ number_format($stats['total_units'], 0, ',', '.') }}</h3>
-        <span class="text-[10px] text-slate-500 font-medium">Unit / Roll / Pcs</span>
-      </div>
-      <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg shrink-0">
-        <i class="fa-solid fa-warehouse"></i>
-      </div>
-    </div>
-
-    <!-- Stok Menipis (Kritis) -->
-    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-      <div>
-        <p class="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Stok Menipis</p>
-        <h3 class="text-2xl font-black text-amber-500 mt-1">{{ number_format($stats['low_stock_count'], 0, ',', '.') }}</h3>
-        <span class="text-[10px] text-slate-500 font-medium">&le; Batas Minimum</span>
-      </div>
-      <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center text-lg shrink-0">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-      </div>
-    </div>
-
-    <!-- Stok Habis -->
-    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-      <div>
-        <p class="text-[10px] font-bold text-red-500 uppercase tracking-wider">Stok Habis</p>
-        <h3 class="text-2xl font-black text-red-600 mt-1">{{ number_format($stats['out_of_stock_count'], 0, ',', '.') }}</h3>
-        <span class="text-[10px] text-slate-500 font-medium">0 Unit di Gudang</span>
-      </div>
-      <div class="w-11 h-11 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center text-lg shrink-0">
-        <i class="fa-solid fa-circle-xmark"></i>
-      </div>
-    </div>
-
-    <!-- Total Nilai Aset Barang -->
-    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between col-span-2 sm:col-span-1">
-      <div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nilai Aset Barang</p>
-        <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-1 truncate" title="Rp {{ number_format($stats['total_asset_value'], 0, ',', '.') }}">
-          Rp {{ number_format($stats['total_asset_value'] / 1000000, 1, ',', '.') }}Jt
-        </h3>
-        <span class="text-[10px] text-slate-500 font-medium">{{ $stats['mutations_today'] }} Mutasi Hari Ini</span>
-      </div>
-      <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg shrink-0">
-        <i class="fa-solid fa-coins"></i>
-      </div>
-    </div>
-
-  </div>
 
   <!-- ============================================== -->
-  <!-- 4. FILTER & PENCARIAN                          -->
+  <!-- 5. NAVIGATION TABS (SESUAI STRUKTUR CSV)       -->
   <!-- ============================================== -->
-  <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-    
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+  <div class="border-b border-slate-200">
+    <div class="flex items-center gap-2 overflow-x-auto pb-px">
       
-      <!-- Tab Status Filter -->
-      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-        <a href="{{ route('admin.material.index', array_merge(request()->query(), ['status' => 'all'])) }}"
-           class="px-3 py-1.5 rounded-xl font-bold transition shrink-0 {{ $statusFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
-          Semua ({{ $stats['total_items'] }})
-        </a>
-        <a href="{{ route('admin.material.index', array_merge(request()->query(), ['status' => 'aman'])) }}"
-           class="px-3 py-1.5 rounded-xl font-bold transition shrink-0 {{ $statusFilter === 'aman' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
-          <i class="fa-solid fa-circle-check text-[10px] mr-1 text-emerald-400"></i> Aman ({{ $stats['safe_stock_count'] }})
-        </a>
-        <a href="{{ route('admin.material.index', array_merge(request()->query(), ['status' => 'menipis'])) }}"
-           class="px-3 py-1.5 rounded-xl font-bold transition shrink-0 {{ $statusFilter === 'menipis' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
-          <i class="fa-solid fa-triangle-exclamation text-[10px] mr-1 text-amber-300"></i> Menipis ({{ $stats['low_stock_count'] }})
-        </a>
-        <a href="{{ route('admin.material.index', array_merge(request()->query(), ['status' => 'habis'])) }}"
-           class="px-3 py-1.5 rounded-xl font-bold transition shrink-0 {{ $statusFilter === 'habis' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
-          <i class="fa-solid fa-circle-xmark text-[10px] mr-1 text-red-300"></i> Habis ({{ $stats['out_of_stock_count'] }})
-        </a>
-      </div>
+      <!-- Tab 1: Laporan Stok Barang (Format Master CSV) -->
+      <a href="{{ route('admin.material.index', array_merge(request()->query(), ['tab' => 'laporan'])) }}"
+         class="px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 border-b-2 transition whitespace-nowrap {{ $tab === 'laporan' ? 'border-brand text-brand bg-white' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50' }}">
+        <i class="fa-solid fa-table-list"></i>
+        <span>Laporan Stok Barang</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] {{ $tab === 'laporan' ? 'bg-red-100 text-brand' : 'bg-slate-100 text-slate-600' }}">
+          {{ $stats['total_items'] }}
+        </span>
+      </a>
 
-      <!-- Form Search & Category Filter -->
-      <form method="GET" action="{{ route('admin.material.index') }}" class="flex flex-wrap sm:flex-nowrap items-center gap-2">
-        <input type="hidden" name="status" value="{{ $statusFilter }}">
+      <!-- Tab 2: Barang Masuk (Sesuai Kolom CSV) -->
+      <a href="{{ route('admin.material.index', array_merge(request()->query(), ['tab' => 'masuk'])) }}"
+         class="px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 border-b-2 transition whitespace-nowrap {{ $tab === 'masuk' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50' }}">
+        <i class="fa-solid fa-arrow-down"></i>
+        <span>Barang Masuk ({{ $monthName }})</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] {{ $tab === 'masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600' }}">
+          {{ $stats['incoming_count'] }}
+        </span>
+      </a>
 
-        <!-- Filter Kategori Dropdown -->
-        <select name="category" onchange="this.form.submit()"
-                class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium">
-          <option value="all" {{ $categoryFilter === 'all' ? 'selected' : '' }}>Semua Kategori</option>
-          @foreach($categories as $cat)
-            <option value="{{ $cat }}" {{ $categoryFilter === $cat ? 'selected' : '' }}>{{ $cat }}</option>
-          @endforeach
-        </select>
+      <!-- Tab 3: Barang Keluar (Sesuai Kolom CSV) -->
+      <a href="{{ route('admin.material.index', array_merge(request()->query(), ['tab' => 'keluar'])) }}"
+         class="px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 border-b-2 transition whitespace-nowrap {{ $tab === 'keluar' ? 'border-rose-600 text-rose-700 bg-white' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50' }}">
+        <i class="fa-solid fa-arrow-up"></i>
+        <span>Barang Keluar ({{ $monthName }})</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] {{ $tab === 'keluar' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600' }}">
+          {{ $stats['outgoing_count'] }}
+        </span>
+      </a>
 
-        <!-- Filter Urutan (Sort) -->
-        <select name="sort" onchange="this.form.submit()"
-                class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium">
-          <option value="latest" {{ $sort === 'latest' ? 'selected' : '' }}>Terbaru</option>
-          <option value="name_asc" {{ $sort === 'name_asc' ? 'selected' : '' }}>Nama (A &rarr; Z)</option>
-          <option value="name_desc" {{ $sort === 'name_desc' ? 'selected' : '' }}>Nama (Z &rarr; A)</option>
-          <option value="stock_desc" {{ $sort === 'stock_desc' ? 'selected' : '' }}>Stok Terbanyak</option>
-          <option value="stock_asc" {{ $sort === 'stock_asc' ? 'selected' : '' }}>Stok Paling Sedikit</option>
-          <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>Harga Tertinggi</option>
-        </select>
 
-        <!-- Input Search -->
-        <div class="relative flex-1 sm:w-60">
-          <input type="text" name="q" value="{{ $search }}"
-                 placeholder="Cari nama atau kode barang..."
-                 class="h-9 w-full text-xs rounded-xl border-slate-200 bg-slate-50 pl-8 pr-3 focus:border-brand focus:ring-brand font-medium">
-          <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
-        </div>
-
-        <button type="submit" class="h-9 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition">
-          Cari
-        </button>
-
-        @if(!empty($search) || $categoryFilter !== 'all' || $statusFilter !== 'all' || $sort !== 'latest')
-          <a href="{{ route('admin.material.index') }}" title="Reset Filter"
-             class="h-9 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs flex items-center justify-center transition">
-            <i class="fa-solid fa-rotate-left"></i>
-          </a>
-        @endif
-      </form>
 
     </div>
-
   </div>
 
-  <!-- ============================================== -->
-  <!-- 5. TABEL MASTER STOK BARANG                    -->
-  <!-- ============================================== -->
-  <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-    
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse text-xs">
-        
-        <thead>
-          <tr class="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200/80">
-            <th class="py-3.5 px-4 w-10 text-center">
-              <input type="checkbox"
-                     @click="toggleSelectAll(pageMaterialIds)"
-                     :checked="isPageAllSelected(pageMaterialIds)"
-                     class="rounded border-slate-300 text-brand focus:ring-brand">
-            </th>
-            <th class="py-3.5 px-4">Barang / Perangkat</th>
-            <th class="py-3.5 px-4">Kategori</th>
-            <th class="py-3.5 px-4 text-center">Satuan</th>
-            <th class="py-3.5 px-4 text-center">Stok Fisik</th>
-            <th class="py-3.5 px-4 text-right">Harga Satuan</th>
-            <th class="py-3.5 px-4 text-right">Nilai Aset</th>
-            <th class="py-3.5 px-4 text-center">Aksi Cepat Mutasi & Kelola</th>
-          </tr>
-        </thead>
 
-        <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
-          @forelse($materials as $material)
-            @php
-              $isOutOfStock = $material->stock <= 0;
-              $isLowStock = $material->stock > 0 && $material->stock <= $material->min_stock;
-              $isSafe = $material->stock > $material->min_stock;
-            @endphp
-            <tr class="hover:bg-slate-50/70 transition" :class="selectedIds.includes({{ $material->id }}) ? 'bg-red-50/30' : ''">
-              
-              <!-- Checkbox -->
-              <td class="py-3.5 px-4 text-center">
-                <input type="checkbox"
-                       value="{{ $material->id }}"
-                       @click="toggleSingle({{ $material->id }})"
-                       :checked="selectedIds.includes({{ $material->id }})"
-                       class="rounded border-slate-300 text-brand focus:ring-brand">
-              </td>
+  <!-- ============================================== -->
+  <!-- 6. KONTEN TAB 1: LAPORAN STOK BARANG           -->
+  <!-- ============================================== -->
+  @if($tab === 'laporan')
+    <div class="space-y-4">
+      
+      <!-- Filter Toolbar -->
+      <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <form method="GET" action="{{ route('admin.material.index') }}" class="flex flex-wrap items-center gap-2.5">
+          <input type="hidden" name="tab" value="laporan">
 
-              <!-- Nama & Kode Barang -->
-              <td class="py-3.5 px-4">
-                <div class="flex items-start gap-3">
-                  <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm mt-0.5
-                              {{ $isOutOfStock ? 'bg-red-100 text-red-600' : ($isLowStock ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600') }}">
-                    @if(str_contains(strtolower($material->category), 'modem') || str_contains(strtolower($material->category), 'ont'))
-                      <i class="fa-solid fa-wifi"></i>
-                    @elseif(str_contains(strtolower($material->category), 'kabel') || str_contains(strtolower($material->category), 'fiber'))
-                      <i class="fa-solid fa-bezier-curve"></i>
-                    @elseif(str_contains(strtolower($material->category), 'konektor') || str_contains(strtolower($material->category), 'pasif'))
-                      <i class="fa-solid fa-plug"></i>
-                    @elseif(str_contains(strtolower($material->category), 'tool'))
-                      <i class="fa-solid fa-screwdriver-wrench"></i>
-                    @else
-                      <i class="fa-solid fa-box"></i>
-                    @endif
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <span class="font-extrabold text-slate-900 hover:text-brand transition cursor-pointer"
-                            @click="openHistory({{ Js::from($material) }})">
-                        {{ $material->name }}
+          <!-- 1. Dropdown Bulan (Januari - Desember) -->
+          <select id="filter-month" name="month" onchange="this.form.submit()"
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 pr-8">
+            <option value="all" {{ $selectedMonth === 'all' ? 'selected' : '' }}>Semua Periode</option>
+            @foreach(\App\Http\Controllers\Admin\MaterialController::MONTHS as $mNum => $mTxt)
+              <option value="{{ $mNum }}" {{ (string)$selectedMonth === (string)$mNum ? 'selected' : '' }}>
+                {{ $mTxt }}
+              </option>
+            @endforeach
+          </select>
+
+          <!-- 2. Dropdown Tahun -->
+          <select id="filter-year" name="year" onchange="this.form.submit()"
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 pr-8">
+            <option value="all" {{ (string)$selectedYear === 'all' ? 'selected' : '' }}>Semua Tahun</option>
+            @foreach([2025, 2026, 2027, 2028] as $yVal)
+              <option value="{{ $yVal }}" {{ (string)$selectedYear === (string)$yVal ? 'selected' : '' }}>{{ $yVal }}</option>
+            @endforeach
+          </select>
+
+          <!-- 3. Dropdown Status Stok -->
+          <select id="filter-status" name="status" onchange="this.form.submit()"
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 pr-8">
+            <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status ({{ $stats['total_items'] }})</option>
+            <option value="aman" {{ $statusFilter === 'aman' ? 'selected' : '' }}>🟢 Aman ({{ $stats['safe_stock_count'] }})</option>
+            <option value="menipis" {{ $statusFilter === 'menipis' ? 'selected' : '' }}>🟡 Menipis ({{ $stats['low_stock_count'] }})</option>
+            <option value="habis" {{ $statusFilter === 'habis' ? 'selected' : '' }}>🔴 Habis ({{ $stats['out_of_stock_count'] }})</option>
+            <option value="minus" {{ $statusFilter === 'minus' ? 'selected' : '' }}>🟣 Minus ({{ $stats['negative_stock_count'] }})</option>
+          </select>
+
+          <!-- 4. Filter Kategori Dropdown -->
+          <select name="category" onchange="this.form.submit()"
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium pr-8">
+            <option value="all" {{ $categoryFilter === 'all' ? 'selected' : '' }}>Semua Kategori</option>
+            @foreach($categories as $cat)
+              <option value="{{ $cat }}" {{ $categoryFilter === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+            @endforeach
+          </select>
+
+          <!-- 5. Filter Urutan (Sort) -->
+          <select name="sort" onchange="this.form.submit()"
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium pr-8">
+            <option value="code_asc" {{ $sort === 'code_asc' ? 'selected' : '' }}>Kode (A001 &rarr; A135)</option>
+            <option value="code_desc" {{ $sort === 'code_desc' ? 'selected' : '' }}>Kode (A135 &rarr; A001)</option>
+            <option value="name_asc" {{ $sort === 'name_asc' ? 'selected' : '' }}>Nama Barang (A &rarr; Z)</option>
+            <option value="name_desc" {{ $sort === 'name_desc' ? 'selected' : '' }}>Nama Barang (Z &rarr; A)</option>
+            <option value="month_asc" {{ $sort === 'month_asc' ? 'selected' : '' }}>Bulan (Jan &rarr; Des)</option>
+            <option value="month_desc" {{ $sort === 'month_desc' ? 'selected' : '' }}>Bulan (Des &rarr; Jan)</option>
+            <option value="category_asc" {{ $sort === 'category_asc' ? 'selected' : '' }}>Kategori (A &rarr; Z)</option>
+            <option value="category_desc" {{ $sort === 'category_desc' ? 'selected' : '' }}>Kategori (Z &rarr; A)</option>
+            <option value="status_asc" {{ $sort === 'status_asc' ? 'selected' : '' }}>Status (Aman &rarr; Minus)</option>
+            <option value="status_desc" {{ $sort === 'status_desc' ? 'selected' : '' }}>Status (Minus &rarr; Aman)</option>
+            <option value="stock_desc" {{ $sort === 'stock_desc' ? 'selected' : '' }}>Stok Akhir Terbanyak</option>
+            <option value="stock_asc" {{ $sort === 'stock_asc' ? 'selected' : '' }}>Stok Sedikit / Minus</option>
+            <option value="in_desc" {{ $sort === 'in_desc' ? 'selected' : '' }}>Masuk Terbanyak</option>
+            <option value="out_desc" {{ $sort === 'out_desc' ? 'selected' : '' }}>Keluar Terbanyak</option>
+          </select>
+
+          <!-- 6. Input Search -->
+          <div class="relative flex-1 min-w-[200px] max-w-xs">
+            <input type="text" name="q" value="{{ $search }}"
+                   placeholder="Cari nama atau kode..."
+                   class="h-9 w-full text-xs rounded-xl border-slate-200 bg-slate-50 pl-8 pr-3 focus:border-brand focus:ring-brand font-medium">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+          </div>
+
+          <!-- 7. Tombol Cari -->
+          <button type="submit" class="h-9 px-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs">
+            Cari
+          </button>
+
+          <!-- 8. Tombol Reset Semua Filter & Sortir -->
+          @if($selectedMonth != 10 || (string)$selectedYear !== '2026' || !empty($search) || $categoryFilter !== 'all' || $statusFilter !== 'all' || $sort !== 'code_asc')
+            <a href="{{ route('admin.material.index', ['tab' => 'laporan']) }}" title="Reset Filter & Sortir"
+               class="h-9 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0">
+              <i class="fa-solid fa-rotate-left text-[10px]"></i>
+              <span class="hidden sm:inline">Reset</span>
+            </a>
+          @endif
+
+        </form>
+      </div>
+
+      <!-- Tabel Master Laporan Stok Barang Sesuai Format CSV -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200/80">
+                <th class="py-3.5 px-3 w-10 text-center">
+                  <input type="checkbox"
+                         @click="toggleSelectAll(pageMaterialIds)"
+                         :checked="isPageAllSelected(pageMaterialIds)"
+                         class="rounded border-slate-300 text-brand focus:ring-brand">
+                </th>
+
+                <!-- Kode Barang Sortable -->
+                <th class="py-3.5 px-3 text-center w-24">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'code_asc' ? 'code_desc' : 'code_asc']) }}"
+                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Kode">
+                    <span>Kode Barang</span>
+                    <i class="fa-solid {{ $sort === 'code_asc' ? 'fa-arrow-up-short-wide text-brand' : ($sort === 'code_desc' ? 'fa-arrow-down-wide-short text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- Nama Barang Sortable -->
+                <th class="py-3.5 px-4 text-center min-w-[200px]">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'name_asc' ? 'name_desc' : 'name_asc']) }}"
+                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Nama Barang">
+                    <span>Nama Barang</span>
+                    <i class="fa-solid {{ $sort === 'name_asc' ? 'fa-arrow-up-a-z text-brand' : ($sort === 'name_desc' ? 'fa-arrow-down-z-a text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- Kategori Sortable -->
+                <th class="py-3.5 px-3 text-center">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'category_asc' ? 'category_desc' : 'category_asc']) }}"
+                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Kategori">
+                    <span>Kategori</span>
+                    <i class="fa-solid {{ $sort === 'category_asc' ? 'fa-arrow-up text-brand' : ($sort === 'category_desc' ? 'fa-arrow-down text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- Satuan Sortable -->
+                <th class="py-3.5 px-3 text-center">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'unit_asc' ? 'unit_desc' : 'unit_asc']) }}"
+                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Satuan">
+                    <span>Satuan</span>
+                    <i class="fa-solid {{ $sort === 'unit_asc' ? 'fa-arrow-up text-brand' : ($sort === 'unit_desc' ? 'fa-arrow-down text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- Bulan Sortable -->
+                <th class="py-3.5 px-3 text-center">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'month_asc' ? 'month_desc' : 'month_asc']) }}"
+                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Bulan">
+                    <span>Bulan</span>
+                    <i class="fa-solid {{ $sort === 'month_asc' ? 'fa-arrow-up text-brand' : ($sort === 'month_desc' ? 'fa-arrow-down text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- Stok Awal Sortable -->
+                <th class="py-3.5 px-3 text-center whitespace-nowrap font-black text-slate-700 bg-slate-100/50" style="text-align: center !important;">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'initial_desc' ? 'initial_asc' : 'initial_desc']) }}"
+                     class="inline-flex items-center justify-center gap-1.5 hover:text-slate-900 transition whitespace-nowrap" title="Sortir Stok Awal">
+                    <span>Stok Awal</span>
+                    <i class="fa-solid {{ $sort === 'initial_desc' ? 'fa-arrow-down-wide-short text-brand' : ($sort === 'initial_asc' ? 'fa-arrow-up-short-wide text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- Barang Masuk Sortable -->
+                <th class="py-3.5 px-3 text-center whitespace-nowrap font-black text-emerald-700 bg-emerald-50/50" style="text-align: center !important;">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'in_desc' ? 'in_asc' : 'in_desc']) }}"
+                     class="inline-flex items-center justify-center gap-1.5 hover:text-emerald-900 transition whitespace-nowrap" title="Sortir Barang Masuk">
+                    <span>Barang Masuk</span>
+                    <i class="fa-solid {{ $sort === 'in_desc' ? 'fa-arrow-down-wide-short text-emerald-700' : ($sort === 'in_asc' ? 'fa-arrow-up-short-wide text-emerald-700' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- Barang Keluar Sortable -->
+                <th class="py-3.5 px-3 text-center whitespace-nowrap font-black text-rose-700 bg-rose-50/50" style="text-align: center !important;">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'out_desc' ? 'out_asc' : 'out_desc']) }}"
+                     class="inline-flex items-center justify-center gap-1.5 hover:text-rose-900 transition whitespace-nowrap" title="Sortir Barang Keluar">
+                    <span>Barang Keluar</span>
+                    <i class="fa-solid {{ $sort === 'out_desc' ? 'fa-arrow-down-wide-short text-rose-700' : ($sort === 'out_asc' ? 'fa-arrow-up-short-wide text-rose-700' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- Stok Akhir Sortable -->
+                <th class="py-3.5 px-3 text-center whitespace-nowrap font-black text-slate-900 bg-amber-50/40" style="text-align: center !important;">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'stock_desc' ? 'stock_asc' : 'stock_desc']) }}"
+                     class="inline-flex items-center justify-center gap-1.5 hover:text-brand transition whitespace-nowrap" title="Sortir Stok Akhir">
+                    <span>Stok Akhir</span>
+                    <i class="fa-solid {{ $sort === 'stock_desc' ? 'fa-arrow-down-wide-short text-brand' : ($sort === 'stock_asc' ? 'fa-arrow-up-short-wide text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- Status Sortable -->
+                <th class="py-3.5 px-3 text-center">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'status_asc' ? 'status_desc' : 'status_asc']) }}"
+                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Status">
+                    <span>Status</span>
+                    <i class="fa-solid {{ $sort === 'status_asc' ? 'fa-arrow-up text-brand' : ($sort === 'status_desc' ? 'fa-arrow-down text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <th class="py-3.5 px-3 text-center">Aksi Cepat</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+              @forelse($materials as $material)
+                @php
+                  $stockVal = $material->computed_stock ?? $material->stock;
+                  $isNegative = $stockVal < 0;
+                  $isZero = $stockVal == 0;
+                  $isLow = $stockVal > 0 && $stockVal <= $material->min_stock;
+                  $isSafe = $stockVal > $material->min_stock;
+                @endphp
+                <tr class="hover:bg-slate-50/70 transition" :class="selectedIds.includes({{ $material->id }}) ? 'bg-red-50/30' : ''">
+                  
+                  <!-- Checkbox -->
+                  <td class="py-3 px-3 text-center">
+                    <input type="checkbox"
+                           value="{{ $material->id }}"
+                           @click="toggleSingle({{ $material->id }})"
+                           :checked="selectedIds.includes({{ $material->id }})"
+                           class="rounded border-slate-300 text-brand focus:ring-brand">
+                  </td>
+
+                  <!-- Kode Barang (Format Kolom 1 CSV) -->
+                  <td class="py-3 px-3 text-center">
+                    <span class="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      {{ $material->code }}
+                    </span>
+                  </td>
+
+                  <!-- Nama Barang (Format Kolom 2 CSV) -->
+                  <td class="py-3 px-4 text-center">
+                    <div class="font-extrabold text-slate-900 hover:text-brand transition cursor-pointer"
+                         @click="openHistory({{ Js::from($material) }})">
+                      {{ $material->name }}
+                    </div>
+                  </td>
+
+                  <!-- Kategori -->
+                  <td class="py-3 px-3 text-center">
+                    <span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">
+                      {{ $material->category }}
+                    </span>
+                  </td>
+
+                  <!-- Satuan -->
+                  <td class="py-3 px-3 text-center">
+                    <span class="font-bold text-slate-600 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded text-[11px]">
+                      {{ $material->unit }}
+                    </span>
+                  </td>
+
+                  <!-- Bulan (Sesuai Berkas Excel/CSV) -->
+                  <td class="py-3 px-3 text-center">
+                    <span class="inline-block bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200 whitespace-nowrap">
+                      {{ $material->display_month ?? $material->month ?? $monthName }}
+                    </span>
+                  </td>
+
+                  <!-- Stok Awal (Format Kolom 3 CSV) -->
+                  <td class="py-3 px-3 text-center font-mono font-bold text-slate-700 bg-slate-100/30" style="text-align: center !important;">
+                    <div class="w-full text-center" style="text-align: center !important;">
+                      {{ \App\Models\Material::formatQty($material->computed_initial_stock ?? $material->initial_stock) }}
+                    </div>
+                  </td>
+
+                  <!-- Barang Masuk (Format Kolom 4 CSV) -->
+                  <td class="py-3 px-3 text-center font-mono font-bold bg-emerald-50/30" style="text-align: center !important;">
+                    @php $inVal = $material->computed_total_in ?? $material->total_in; @endphp
+                    <div class="w-full text-center" style="text-align: center !important;">
+                      @if($inVal > 0)
+                        <span class="text-emerald-700 font-black">+{{ \App\Models\Material::formatQty($inVal) }}</span>
+                      @else
+                        <span class="text-slate-400">0</span>
+                      @endif
+                    </div>
+                  </td>
+
+                  <!-- Barang Keluar (Format Kolom 5 CSV) -->
+                  <td class="py-3 px-3 text-center font-mono font-bold bg-rose-50/30" style="text-align: center !important;">
+                    @php $outVal = $material->computed_total_out ?? $material->total_out; @endphp
+                    <div class="w-full text-center" style="text-align: center !important;">
+                      @if($outVal > 0)
+                        <span class="text-rose-700 font-black">-{{ \App\Models\Material::formatQty($outVal) }}</span>
+                      @else
+                        <span class="text-slate-400">0</span>
+                      @endif
+                    </div>
+                  </td>
+
+                  <!-- Stok Akhir (Format Kolom 6 CSV) -->
+                  <td class="py-3 px-3 text-center font-mono font-black text-sm bg-amber-50/20" style="text-align: center !important;">
+                    <div class="w-full text-center" style="text-align: center !important;">
+                      <span class="{{ $isNegative ? 'text-rose-600 underline font-black' : ($isZero ? 'text-red-500' : ($isLow ? 'text-amber-500' : 'text-slate-900')) }}">
+                        {{ \App\Models\Material::formatQty($stockVal) }}
                       </span>
                     </div>
-                    <div class="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
-                      <span class="font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{{ $material->code }}</span>
-                    </div>
-                  </div>
-                </div>
-              </td>
-
-              <!-- Kategori -->
-              <td class="py-3.5 px-4">
-                <span class="inline-block bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">
-                  {{ $material->category }}
-                </span>
-              </td>
-
-              <!-- Satuan -->
-              <td class="py-3.5 px-4 text-center">
-                <span class="font-bold text-slate-700 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-                  {{ $material->unit }}
-                </span>
-              </td>
-
-              <!-- Stok Fisik & Indikator Status -->
-              <td class="py-3.5 px-4 text-center">
-                <div class="flex flex-col items-center">
-                  <div class="flex items-baseline gap-1">
-                    <span class="text-base font-black {{ $isOutOfStock ? 'text-red-600' : ($isLowStock ? 'text-amber-500' : 'text-slate-900') }}">
-                      {{ number_format($material->stock, 0, ',', '.') }}
-                    </span>
-                    <span class="text-[10px] text-slate-400 font-semibold">{{ $material->unit }}</span>
-                  </div>
+                  </td>
 
                   <!-- Status Badge -->
-                  @if($isOutOfStock)
-                    <span class="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 text-[9px] font-black px-1.5 py-0.5 rounded-full mt-1">
-                      <span class="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-                      HABIS
-                    </span>
-                  @elseif($isLowStock)
-                    <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black px-1.5 py-0.5 rounded-full mt-1">
-                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                      MENIPIS (Min: {{ $material->min_stock }})
-                    </span>
-                  @else
-                    <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-black px-1.5 py-0.5 rounded-full mt-1">
-                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      AMAN
-                    </span>
-                  @endif
-                </div>
-              </td>
+                  <td class="py-3 px-3 text-center">
+                    @if($isNegative)
+                      <span class="inline-flex items-center gap-1 bg-rose-100 text-rose-800 border border-rose-300 text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                        <i class="fa-solid fa-circle-exclamation text-[8px]"></i> MINUS
+                      </span>
+                    @elseif($isZero)
+                      <span class="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                        <span class="w-1.5 h-1.5 rounded-full bg-red-600"></span> HABIS
+                      </span>
+                    @elseif($isLow)
+                      <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> MENIPIS
+                      </span>
+                    @else
+                      <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> AMAN
+                      </span>
+                    @endif
+                  </td>
 
-              <!-- Harga Satuan -->
-              <td class="py-3.5 px-4 text-right font-medium text-slate-600">
-                Rp {{ number_format($material->unit_price, 0, ',', '.') }}
-              </td>
+                  <!-- Aksi Cepat Mutasi & Kelola -->
+                  <td class="py-3 px-3 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                      
+                      <!-- Tambah Stok Manual (Masuk) -->
+                      <button type="button" @click="openAddStock({{ Js::from($material) }})"
+                              title="Tambah Stok (Barang Masuk)"
+                              class="w-7 h-7 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 rounded-lg flex items-center justify-center transition">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                      </button>
 
-              <!-- Nilai Aset -->
-              <td class="py-3.5 px-4 text-right font-bold text-slate-900">
-                Rp {{ number_format($material->total_asset_value, 0, ',', '.') }}
-              </td>
+                      <!-- Kurang Stok Manual (Keluar) -->
+                      <button type="button" @click="openReduceStock({{ Js::from($material) }})"
+                              title="Kurang Stok (Barang Keluar)"
+                              class="w-7 h-7 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 rounded-lg flex items-center justify-center transition">
+                        <i class="fa-solid fa-minus text-[10px]"></i>
+                      </button>
 
-              <!-- Aksi Cepat Mutasi & Kelola -->
-              <td class="py-3.5 px-4 text-center">
-                <div class="flex items-center justify-center gap-1.5">
-                  
-                  <!-- Tombol Tambah Stok Manual -->
-                  <button type="button" @click="openAddStock({{ Js::from($material) }})"
-                          title="Tambah Stok Manual (Barang Masuk / Pembelian)"
-                          class="h-7 px-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-lg text-xs font-bold transition flex items-center gap-1">
-                    <i class="fa-solid fa-plus text-[10px]"></i>
-                    <span class="hidden xl:inline">Tambah</span>
-                  </button>
+                      <!-- Opname / Sesuaikan -->
+                      <button type="button" @click="openAdjustStock({{ Js::from($material) }})"
+                              title="Penyesuaian Stok Opname Fisik"
+                              class="w-7 h-7 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 rounded-lg flex items-center justify-center transition">
+                        <i class="fa-solid fa-sliders text-[10px]"></i>
+                      </button>
 
-                  <!-- Tombol Kurang Stok Manual -->
-                  <button type="button" @click="openReduceStock({{ Js::from($material) }})"
-                          title="Kurang Stok Manual (Pemakaian Lapangan / Afkir)"
-                          @if($isOutOfStock) disabled @endif
-                          class="h-7 px-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 rounded-lg text-xs font-bold transition flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
-                    <i class="fa-solid fa-minus text-[10px]"></i>
-                    <span class="hidden xl:inline">Kurang</span>
-                  </button>
+                      <!-- Riwayat Mutasi -->
+                      <button type="button" @click="openHistory({{ Js::from($material) }})"
+                              title="Riwayat Keluar Masuk"
+                              class="w-7 h-7 bg-slate-100 hover:bg-slate-800 text-slate-700 hover:text-white border border-slate-200 rounded-lg flex items-center justify-center transition">
+                        <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
+                      </button>
 
-                  <!-- Tombol Opname / Sesuaikan -->
-                  <button type="button" @click="openAdjustStock({{ Js::from($material) }})"
-                          title="Penyesuaian Stok Opname Fisik"
-                          class="w-7 h-7 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 hover:border-blue-600 rounded-lg flex items-center justify-center text-xs transition">
-                    <i class="fa-solid fa-sliders"></i>
-                  </button>
+                      <!-- Edit Data -->
+                      <button type="button" @click="openEdit({{ Js::from($material) }})"
+                              title="Edit Barang"
+                              class="w-7 h-7 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 rounded-lg flex items-center justify-center transition">
+                        <i class="fa-solid fa-pen text-[10px]"></i>
+                      </button>
 
-                  <!-- Tombol Riwayat Mutasi / Log Keluar Masuk -->
-                  <button type="button" @click="openHistory({{ Js::from($material) }})"
-                          title="Lihat Log Barang Keluar & Masuk"
-                          class="w-7 h-7 bg-slate-100 hover:bg-slate-800 text-slate-700 hover:text-white border border-slate-200 hover:border-slate-800 rounded-lg flex items-center justify-center text-xs transition">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                  </button>
+                      <!-- Hapus -->
+                      <button type="button" @click="openDelete({{ Js::from($material) }})"
+                              title="Hapus Barang"
+                              class="w-7 h-7 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 rounded-lg flex items-center justify-center transition">
+                        <i class="fa-solid fa-trash-can text-[10px]"></i>
+                      </button>
 
-                  <!-- Tombol Edit Data -->
-                  <button type="button" @click="openEdit({{ Js::from($material) }})"
-                          title="Ubah Rincian Barang"
-                          class="w-7 h-7 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-600 rounded-lg flex items-center justify-center text-xs transition">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                  </button>
+                    </div>
+                  </td>
 
-                  <!-- Tombol Hapus Manual -->
-                  <button type="button" @click="openDelete({{ Js::from($material) }})"
-                          title="Hapus Material Manual"
-                          class="w-7 h-7 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-lg flex items-center justify-center text-xs transition">
-                    <i class="fa-solid fa-trash-can"></i>
-                  </button>
+                </tr>
+              @empty
+                <tr>
+                  <td colspan="12" class="py-12 text-center text-slate-400">
+                    <div class="flex flex-col items-center justify-center space-y-2">
+                      <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                      </div>
+                      <p class="font-bold text-slate-700 text-sm">Tidak Ada Data Barang</p>
+                      <p class="text-xs text-slate-400 max-w-sm">
+                        Tidak ditemukan data barang yang sesuai filter pada periode {{ $monthName }} {{ $selectedYear }}.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
 
-                </div>
-              </td>
-
-            </tr>
-          @empty
-            <tr>
-              <td colspan="8" class="py-12 text-center text-slate-400">
-                <div class="flex flex-col items-center justify-center space-y-2">
-                  <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-2xl">
-                    <i class="fa-solid fa-boxes-stacked"></i>
-                  </div>
-                  <p class="font-bold text-slate-700 text-sm">Tidak Ada Data Barang</p>
-                  <p class="text-xs text-slate-400 max-w-sm">
-                    Tidak ditemukan data barang yang sesuai filter atau pencarian. Silakan tambah barang baru atau sesuaikan filter.
-                  </p>
-                  <button type="button" @click="openCreateModal = true"
-                          class="mt-2 px-4 py-2 bg-brand text-white text-xs font-bold rounded-xl hover:bg-red-700 transition">
-                    <i class="fa-solid fa-plus mr-1"></i> Tambah Barang Baru Sekarang
-                  </button>
-                </div>
-              </td>
-            </tr>
-          @endforelse
-        </tbody>
-
-      </table>
-    </div>
-
-    <!-- Pagination -->
-    @if($materials->hasPages())
-      <div class="p-4 border-t border-slate-200/80 bg-slate-50/50">
-        {{ $materials->links() }}
+        @if($materials->hasPages())
+          <div class="p-4 border-t border-slate-200/80 bg-slate-50/50">
+            {{ $materials->links() }}
+          </div>
+        @endif
       </div>
-    @endif
 
-  </div>
+    </div>
+  @endif
 
 
   <!-- ============================================== -->
-  <!-- 6. MODAL TAMBAH MATERIAL BARU                  -->
+  <!-- 7. KONTEN TAB 2: BARANG MASUK (PER BULAN)      -->
+  <!-- ============================================== -->
+  @if($tab === 'masuk')
+    <div class="space-y-4">
+      
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div>
+          <h3 class="font-black text-slate-900 text-sm flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-arrow-down"></i>
+            </span>
+            <span>Tabel Log Barang Masuk (Periode {{ $monthName }} {{ $selectedYear }})</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Format CSV: <strong>Tgl, Nama Barang, Jumlah Masuk, Catatan</strong> &bull; Total: <strong>+{{ \App\Models\Material::formatQty($stats['total_in']) }}</strong> ({{ $stats['incoming_count'] }} transaksi).
+          </p>
+        </div>
+
+        <button type="button" @click="openIncomingModal = true"
+                class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+          <i class="fa-solid fa-plus"></i>
+          <span>Catat Barang Masuk Baru</span>
+        </button>
+      </div>
+
+      <!-- Tabel Barang Masuk -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200/80">
+                <th class="py-3 px-4 w-12 text-center">No</th>
+                <th class="py-3 px-4 w-32 text-center">Tgl</th>
+                <th class="py-3 px-4 text-center">Nama Barang</th>
+                <th class="py-3 px-4 w-28 text-center">Kode</th>
+                <th class="py-3 px-4 text-center w-36">Jumlah Masuk</th>
+                <th class="py-3 px-4 text-center">Catatan / Penerima / Sumber</th>
+                <th class="py-3 px-4 w-24 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+              @forelse($incomingMutations as $idx => $in)
+                <tr class="hover:bg-emerald-50/20 transition">
+                  <td class="py-3 px-4 text-center text-slate-400">{{ $incomingMutations->firstItem() + $idx }}</td>
+                  
+                  <!-- Tanggal (Tgl) -->
+                  <td class="py-3 px-4 text-center font-mono font-bold text-slate-900">
+                    {{ $in->transaction_date ? $in->transaction_date->format('d/m/Y') : $in->created_at->format('d/m/Y') }}
+                  </td>
+
+                  <!-- Nama Barang -->
+                  <td class="py-3 px-4 text-center font-extrabold text-slate-900">
+                    {{ $in->material->name ?? 'Barang Dihapus' }}
+                  </td>
+
+                  <!-- Kode Barang -->
+                  <td class="py-3 px-4 text-center">
+                    <span class="font-mono text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                      {{ $in->material->code ?? '-' }}
+                    </span>
+                  </td>
+
+                  <!-- Jumlah Masuk -->
+                  <td class="py-3 px-4 text-center">
+                    <span class="font-black text-sm text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      +{{ \App\Models\Material::formatQty($in->amount) }}
+                    </span>
+                    <span class="text-[10px] text-slate-400 ml-1">{{ $in->material->unit ?? 'Unit' }}</span>
+                  </td>
+
+                  <!-- Catatan (e.g. Pak Mono, Aris) -->
+                  <td class="py-3 px-4 text-center text-slate-800">
+                    <span class="font-semibold">{{ str_replace(' (Barang Masuk)', '', $in->notes) }}</span>
+                  </td>
+
+                  <!-- Aksi Hapus -->
+                  <td class="py-3 px-4 text-center">
+                    <form method="POST" action="{{ route('admin.material.mutation.destroy', $in->id) }}" onsubmit="return confirm('Hapus catatan mutasi masuk ini? Stok barang akan disesuaikan kembali.');">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="w-7 h-7 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-lg transition inline-flex items-center justify-center" title="Hapus Catatan Mutasi">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              @empty
+                <tr>
+                  <td colspan="7" class="py-12 text-center text-slate-400">
+                    <div class="flex flex-col items-center justify-center space-y-1.5">
+                      <i class="fa-solid fa-inbox text-2xl text-slate-300"></i>
+                      <p class="font-bold text-slate-700 text-xs">Tidak Ada Transaksi Barang Masuk</p>
+                      <p class="text-[11px] text-slate-400">Belum ada catatan barang masuk pada bulan <strong>{{ $monthName }} {{ $selectedYear }}</strong>.</p>
+                      <button type="button" @click="openIncomingModal = true" class="mt-2 px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-xl">
+                        + Catat Barang Masuk
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
+
+        @if($incomingMutations->hasPages())
+          <div class="p-4 border-t border-slate-200/80 bg-slate-50/50">
+            {{ $incomingMutations->links() }}
+          </div>
+        @endif
+      </div>
+
+    </div>
+  @endif
+
+
+  <!-- ============================================== -->
+  <!-- 8. KONTEN TAB 3: BARANG KELUAR (PER BULAN)     -->
+  <!-- ============================================== -->
+  @if($tab === 'keluar')
+    <div class="space-y-4">
+      
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div>
+          <h3 class="font-black text-slate-900 text-sm flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-arrow-up"></i>
+            </span>
+            <span>Tabel Log Barang Keluar (Periode {{ $monthName }} {{ $selectedYear }})</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Format CSV: <strong>Tgl, Nama Barang, Jumlah Keluar, Catatan</strong> &bull; Total: <strong>-{{ \App\Models\Material::formatQty($stats['total_out']) }}</strong> ({{ $stats['outgoing_count'] }} transaksi).
+          </p>
+        </div>
+
+        <button type="button" @click="openOutgoingModal = true"
+                class="h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+          <i class="fa-solid fa-minus"></i>
+          <span>Catat Barang Keluar Baru</span>
+        </button>
+      </div>
+
+      <!-- Tabel Barang Keluar -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200/80">
+                <th class="py-3 px-4 w-12 text-center">No</th>
+                <th class="py-3 px-4 w-32 text-center">Tgl</th>
+                <th class="py-3 px-4 text-center">Nama Barang</th>
+                <th class="py-3 px-4 w-28 text-center">Kode</th>
+                <th class="py-3 px-4 text-center w-36">Jumlah Keluar</th>
+                <th class="py-3 px-4 text-center">Catatan / Teknisi / Lokasi</th>
+                <th class="py-3 px-4 w-24 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+              @forelse($outgoingMutations as $idx => $out)
+                <tr class="hover:bg-rose-50/20 transition">
+                  <td class="py-3 px-4 text-center text-slate-400">{{ $outgoingMutations->firstItem() + $idx }}</td>
+                  
+                  <!-- Tanggal (Tgl) -->
+                  <td class="py-3 px-4 text-center font-mono font-bold text-slate-900">
+                    {{ $out->transaction_date ? $out->transaction_date->format('d/m/Y') : $out->created_at->format('d/m/Y') }}
+                  </td>
+
+                  <!-- Nama Barang -->
+                  <td class="py-3 px-4 text-center font-extrabold text-slate-900">
+                    {{ $out->material->name ?? 'Barang Dihapus' }}
+                  </td>
+
+                  <!-- Kode Barang -->
+                  <td class="py-3 px-4 text-center">
+                    <span class="font-mono text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                      {{ $out->material->code ?? '-' }}
+                    </span>
+                  </td>
+
+                  <!-- Jumlah Keluar -->
+                  <td class="py-3 px-4 text-center">
+                    <span class="font-black text-sm text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                      -{{ \App\Models\Material::formatQty($out->amount) }}
+                    </span>
+                    <span class="text-[10px] text-slate-400 ml-1">{{ $out->material->unit ?? 'Unit' }}</span>
+                  </td>
+
+                  <!-- Catatan (e.g. Okta_ThreeFive, Bagas_ThreeFive) -->
+                  <td class="py-3 px-4 text-center text-slate-800">
+                    <span class="inline-block px-2 py-0.5 rounded-lg bg-slate-100 font-semibold text-slate-700 border border-slate-200 text-[11px]">
+                      <i class="fa-solid fa-user-gear text-[10px] text-slate-400 mr-1"></i>
+                      {{ str_replace(' (Barang Keluar)', '', $out->notes) }}
+                    </span>
+                  </td>
+
+                  <!-- Aksi Hapus -->
+                  <td class="py-3 px-4 text-center">
+                    <form method="POST" action="{{ route('admin.material.mutation.destroy', $out->id) }}" onsubmit="return confirm('Hapus catatan mutasi keluar ini? Stok barang akan dikembalikan ke posisi semula.');">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="w-7 h-7 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-lg transition inline-flex items-center justify-center" title="Hapus Catatan Mutasi">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              @empty
+                <tr>
+                  <td colspan="7" class="py-12 text-center text-slate-400">
+                    <div class="flex flex-col items-center justify-center space-y-1.5">
+                      <i class="fa-solid fa-inbox text-2xl text-slate-300"></i>
+                      <p class="font-bold text-slate-700 text-xs">Tidak Ada Transaksi Barang Keluar</p>
+                      <p class="text-[11px] text-slate-400">Belum ada catatan barang keluar pada bulan <strong>{{ $monthName }} {{ $selectedYear }}</strong>.</p>
+                      <button type="button" @click="openOutgoingModal = true" class="mt-2 px-3 py-1.5 bg-rose-600 text-white text-xs font-bold rounded-xl">
+                        - Catat Barang Keluar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
+
+        @if($outgoingMutations->hasPages())
+          <div class="p-4 border-t border-slate-200/80 bg-slate-50/50">
+            {{ $outgoingMutations->links() }}
+          </div>
+        @endif
+      </div>
+
+    </div>
+  @endif
+
+
+
+
+
+  <!-- ============================================== -->
+  <!-- MODAL 1: TAMBAH MASTER BARANG BARU            -->
   <!-- ============================================== -->
   <div x-show="openCreateModal"
        style="display: none;"
@@ -580,8 +951,8 @@
             <i class="fa-solid fa-boxes-stacked"></i>
           </div>
           <div>
-            <h3 class="font-bold text-slate-900 text-sm">Tambah Barang / Perangkat Baru</h3>
-            <p class="text-[11px] text-slate-400">Pendaftaran master barang baru ke inventaris Banterpool</p>
+            <h3 class="font-bold text-slate-900 text-sm">Tambah Master Barang Baru</h3>
+            <p class="text-[11px] text-slate-400">Pendaftaran item barang ke inventaris Banterpool</p>
           </div>
         </div>
         <button type="button" @click="openCreateModal = false" class="text-slate-400 hover:text-slate-600 text-sm">
@@ -596,10 +967,10 @@
           <!-- Kode Barang -->
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">
-              Kode Barang <span class="text-slate-400 font-normal">(Opsional / Otomatis)</span>
+              Kode Barang <span class="text-slate-400 font-normal">(Opsional / Otomatis AXXX)</span>
             </label>
-            <input type="text" name="code" placeholder="Misal: BRG-ONT-001"
-                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-mono">
+            <input type="text" name="code" placeholder="Misal: A133"
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-mono font-bold">
           </div>
 
           <!-- Kategori -->
@@ -608,12 +979,24 @@
             <input type="text" name="category" list="category_options" placeholder="Pilih / Ketik Kategori" required
                    class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
             <datalist id="category_options">
-              <option value="Modem & ONT">
-              <option value="Kabel & Fiber">
-              <option value="Konektor & Aksesoris">
-              <option value="Pasif & ODP">
-              <option value="Perangkat Jaringan">
-              <option value="Tools & Alat Kerja">
+              <option value="Tiang & Bracket">
+              <option value="Aksesoris & Bracket">
+              <option value="Clamp & Aksesoris">
+              <option value="Joint Closure">
+              <option value="ODP & Box Pasif">
+              <option value="Kabel Drop & Fiber Optik">
+              <option value="Kabel LAN & UTP">
+              <option value="Patchcord & Pigtail">
+              <option value="Adapter & Konektor Optik">
+              <option value="Splitter Optik">
+              <option value="Router & AP Wireless">
+              <option value="Modem & ONT GPON">
+              <option value="Perangkat Jaringan & Switch">
+              <option value="Media Converter (HTB)">
+              <option value="Power & Adaptor">
+              <option value="Protection Sleeve (Smuft)">
+              <option value="Kabel Ties">
+              <option value="Material Pembantu & Instalasi">
             </datalist>
           </div>
         </div>
@@ -621,8 +1004,8 @@
         <!-- Nama Barang -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Nama Barang *</label>
-          <input type="text" name="name" placeholder="Misal: Modem ONT Fiberhome HG6243C Gigabit" required
-                 class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
+          <input type="text" name="name" placeholder="Misal: Tiang T7 (3INC - 6M) / Modem ZTE F672Y" required
+                 class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-semibold">
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -631,9 +1014,10 @@
             <label class="block text-xs font-bold text-slate-700 mb-1">Satuan *</label>
             <select name="unit" required class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
               <option value="Unit">Unit</option>
-              <option value="Roll">Roll</option>
-              <option value="Meter">Meter</option>
               <option value="Pcs">Pcs</option>
+              <option value="Meter">Meter</option>
+              <option value="Roll">Roll</option>
+              <option value="Batang">Batang</option>
               <option value="Box">Box</option>
               <option value="Set">Set</option>
             </select>
@@ -642,25 +1026,34 @@
           <!-- Stok Awal -->
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Stok Awal Fisik *</label>
-            <input type="number" name="stock" value="0" min="0" required
-                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
+            <input type="number" step="any" name="initial_stock" value="0" required
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold">
           </div>
 
-          <!-- Batas Minimum Stok -->
+          <!-- Batas Minimum Alert -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Batas Min Alert *</label>
-            <input type="number" name="min_stock" value="5" min="0" required
+            <label class="block text-xs font-bold text-slate-700 mb-1">Batas Min Alert</label>
+            <input type="number" step="any" name="min_stock" value="5"
                    class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
           </div>
         </div>
 
-        <!-- Harga Satuan Estimasi -->
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">
-            Harga Satuan (Rp) <span class="text-slate-400 font-normal">(Opsional)</span>
-          </label>
-          <input type="number" name="unit_price" value="0" min="0" step="100" placeholder="Rp"
-                 class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Bulan Periode -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Bulan Periode</label>
+            <input type="text" name="month" value="{{ $monthName }}" placeholder="Misal: Oktober / Oktober 2026"
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-semibold">
+          </div>
+
+          <!-- Harga Satuan Estimasi -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Harga Satuan (Rp) <span class="text-slate-400 font-normal">(Opsional)</span>
+            </label>
+            <input type="number" name="unit_price" value="0" min="0" step="100" placeholder="Rp"
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
+          </div>
         </div>
 
         <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
@@ -683,7 +1076,187 @@
 
 
   <!-- ============================================== -->
-  <!-- 7. MODAL TAMBAH STOK MANUAL (STOCK IN)         -->
+  <!-- MODAL 2: CATAT BARANG MASUK (GLOBAL)           -->
+  <!-- ============================================== -->
+  <div x-show="openIncomingModal"
+       style="display: none;"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0">
+
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5"
+         @click.away="openIncomingModal = false">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-arrow-down"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm">Catat Transaksi Barang Masuk</h3>
+            <p class="text-[11px] text-slate-400">Pengadaan, pembelian supplier, atau restock gudang</p>
+          </div>
+        </div>
+        <button type="button" @click="openIncomingModal = false" class="text-slate-400 hover:text-slate-600 text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form method="POST" action="{{ route('admin.material.store-in') }}" class="space-y-4">
+        @csrf
+
+        <!-- Pilih Barang -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Barang / Material *</label>
+          <select name="material_id" required
+                  class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-semibold">
+            <option value="">-- Pilih Barang --</option>
+            @foreach($allMaterialsList as $item)
+              <option value="{{ $item->id }}">
+                {{ $item->code }} - {{ $item->name }} (Stok Saat Ini: {{ \App\Models\Material::formatQty($item->stock) }} {{ $item->unit }})
+              </option>
+            @endforeach
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Tanggal (Tgl) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Masuk (Tgl) *</label>
+            <input type="date" name="transaction_date" value="{{ date('Y-m-d') }}" required
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-mono font-bold">
+          </div>
+
+          <!-- Jumlah Masuk -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Jumlah Masuk *</label>
+            <input type="number" step="any" name="amount" min="0.01" required placeholder="Misal: 900"
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold text-slate-900">
+          </div>
+        </div>
+
+        <!-- Catatan / PIC / Sumber (e.g. Pak Mono, Aris) -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Catatan / Supplier / Pengirim *</label>
+          <input type="text" name="notes" placeholder="Misal: Pak Mono / Aris / Restock PT Fiber" required
+                 class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button type="button" @click="openIncomingModal = false"
+                  class="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+            Batal
+          </button>
+          <button type="submit"
+                  class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-down"></i>
+            <span>Simpan Barang Masuk</span>
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+  <!-- ============================================== -->
+  <!-- MODAL 3: CATAT BARANG KELUAR (GLOBAL)          -->
+  <!-- ============================================== -->
+  <div x-show="openOutgoingModal"
+       style="display: none;"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0">
+
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5"
+         @click.away="openOutgoingModal = false">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-arrow-up"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm">Catat Transaksi Barang Keluar</h3>
+            <p class="text-[11px] text-slate-400">Pengeluaran untuk teknisi lapangan, instalasi, atau perbaikan</p>
+          </div>
+        </div>
+        <button type="button" @click="openOutgoingModal = false" class="text-slate-400 hover:text-slate-600 text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form method="POST" action="{{ route('admin.material.store-out') }}" class="space-y-4">
+        @csrf
+
+        <!-- Pilih Barang -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Barang / Material *</label>
+          <select name="material_id" required
+                  class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-semibold">
+            <option value="">-- Pilih Barang --</option>
+            @foreach($allMaterialsList as $item)
+              <option value="{{ $item->id }}">
+                {{ $item->code }} - {{ $item->name }} (Stok Saat Ini: {{ \App\Models\Material::formatQty($item->stock) }} {{ $item->unit }})
+              </option>
+            @endforeach
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Tanggal (Tgl) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Keluar (Tgl) *</label>
+            <input type="date" name="transaction_date" value="{{ date('Y-m-d') }}" required
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-mono font-bold">
+          </div>
+
+          <!-- Jumlah Keluar -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Jumlah Keluar *</label>
+            <input type="number" step="any" name="amount" min="0.01" required placeholder="Misal: 1 atau 0.5"
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold text-slate-900">
+          </div>
+        </div>
+
+        <!-- Catatan / Teknisi (e.g. Okta_ThreeFive, Bagas_ThreeFive) -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Catatan / Teknisi Penerima *</label>
+          <input type="text" name="notes" placeholder="Misal: Okta_ThreeFive / Bagas_ThreeFive / Danu_ThreeFive" required
+                 class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button type="button" @click="openOutgoingModal = false"
+                  class="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+            Batal
+          </button>
+          <button type="submit"
+                  class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-up"></i>
+            <span>Simpan Barang Keluar</span>
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+  <!-- ============================================== -->
+  <!-- MODAL 4: TAMBAH STOK BARANG PER BARIS (+ MASUK) -->
   <!-- ============================================== -->
   <div x-show="openAddStockModal"
        style="display: none;"
@@ -705,8 +1278,8 @@
             <i class="fa-solid fa-arrow-down"></i>
           </div>
           <div>
-            <h3 class="font-bold text-slate-900 text-sm">Tambah Stok Manual (Barang Masuk)</h3>
-            <p class="text-[11px] text-slate-400">Penambahan fisik stok barang ke inventaris</p>
+            <h3 class="font-bold text-slate-900 text-sm">Tambah Stok Barang (Barang Masuk)</h3>
+            <p class="text-[11px] text-slate-400">Pencatatan penambahan stok fisik</p>
           </div>
         </div>
         <button type="button" @click="openAddStockModal = false" class="text-slate-400 hover:text-slate-600 text-sm">
@@ -715,40 +1288,45 @@
       </div>
 
       <!-- Info Material -->
-      <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-1 text-xs">
+      <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-1 text-xs">
         <p class="font-bold text-slate-900" x-text="selectedMaterial ? selectedMaterial.name : ''"></p>
         <div class="flex items-center gap-2 text-slate-500 text-[11px]">
           <span class="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200" x-text="selectedMaterial ? selectedMaterial.code : ''"></span>
           <span>&bull;</span>
-          <span>Stok Saat Ini: <strong class="text-slate-800" x-text="selectedMaterial ? (selectedMaterial.stock + ' ' + selectedMaterial.unit) : ''"></strong></span>
+          <span>Stok Saat Ini: <strong class="text-slate-800" x-text="selectedMaterial ? (formatQty(selectedMaterial.computed_stock ?? selectedMaterial.stock) + ' ' + selectedMaterial.unit) : ''"></strong></span>
         </div>
       </div>
 
       <form method="POST" :action="'{{ url('admin/stok-material') }}/' + (selectedMaterial ? selectedMaterial.id : '') + '/tambah'" class="space-y-4">
         @csrf
 
-        <!-- Jumlah Tambah -->
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">
-            Jumlah Yang Ditambahkan (<span x-text="selectedMaterial ? selectedMaterial.unit : 'Unit'"></span>) *
-          </label>
-          <div class="relative">
-            <input type="number" name="amount" x-model.number="stockAmount" min="1" required
-                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold text-slate-900 pl-3 pr-10">
-            <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-bold" x-text="selectedMaterial ? selectedMaterial.unit : ''"></span>
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Tanggal -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Masuk *</label>
+            <input type="date" name="transaction_date" x-model="transactionDate" required
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-mono font-bold">
           </div>
-          <p class="text-[11px] text-emerald-600 font-medium mt-1">
-            Hasil stok baru setelah ditambah: <strong x-text="selectedMaterial ? ((selectedMaterial.stock + (stockAmount || 0)) + ' ' + selectedMaterial.unit) : ''"></strong>
-          </p>
+
+          <!-- Jumlah Tambah -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Jumlah (<span x-text="selectedMaterial ? selectedMaterial.unit : 'Unit'"></span>) *
+            </label>
+            <input type="number" step="any" name="amount" x-model.number="stockAmount" min="0.01" required
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold text-slate-900">
+          </div>
         </div>
+
+        <p class="text-[11px] text-emerald-600 font-medium">
+          Stok akhir setelah ditambah: <strong x-text="selectedMaterial ? (formatQty((selectedMaterial.computed_stock ?? selectedMaterial.stock) + (stockAmount || 0)) + ' ' + selectedMaterial.unit) : ''"></strong>
+        </p>
 
         <!-- Keterangan / Sumber Barang Masuk -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">
-            Keterangan / Sumber Barang Masuk <span class="text-slate-400 font-normal">(Opsional)</span>
-          </label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Catatan / Supplier / Pengirim</label>
           <input type="text" name="notes" x-model="stockNotes"
-                 placeholder="Misal: Pengadaan baru dari supplier PT Fiber / Restock"
+                 placeholder="Misal: Pak Mono / Aris / Restock"
                  class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
         </div>
 
@@ -760,7 +1338,7 @@
           <button type="submit"
                   class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
             <i class="fa-solid fa-plus"></i>
-            <span>Simpan Penambahan</span>
+            <span>Simpan Masuk</span>
           </button>
         </div>
 
@@ -772,7 +1350,7 @@
 
 
   <!-- ============================================== -->
-  <!-- 8. MODAL KURANG STOK MANUAL (STOCK OUT)        -->
+  <!-- MODAL 5: KURANG STOK BARANG PER BARIS (- KELUAR) -->
   <!-- ============================================== -->
   <div x-show="openReduceStockModal"
        style="display: none;"
@@ -794,8 +1372,8 @@
             <i class="fa-solid fa-arrow-up"></i>
           </div>
           <div>
-            <h3 class="font-bold text-slate-900 text-sm">Kurang Stok Manual (Pengeluaran Barang)</h3>
-            <p class="text-[11px] text-slate-400">Pengurangan pemakaian lapangan, instalasi, atau afkir</p>
+            <h3 class="font-bold text-slate-900 text-sm">Kurang Stok Barang (Barang Keluar)</h3>
+            <p class="text-[11px] text-slate-400">Pencatatan pemakaian lapangan atau instalasi</p>
           </div>
         </div>
         <button type="button" @click="openReduceStockModal = false" class="text-slate-400 hover:text-slate-600 text-sm">
@@ -804,51 +1382,45 @@
       </div>
 
       <!-- Info Material -->
-      <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-1 text-xs">
+      <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-1 text-xs">
         <p class="font-bold text-slate-900" x-text="selectedMaterial ? selectedMaterial.name : ''"></p>
         <div class="flex items-center gap-2 text-slate-500 text-[11px]">
           <span class="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200" x-text="selectedMaterial ? selectedMaterial.code : ''"></span>
           <span>&bull;</span>
-          <span>Stok Tersedia: <strong class="text-slate-800" x-text="selectedMaterial ? (selectedMaterial.stock + ' ' + selectedMaterial.unit) : ''"></strong></span>
+          <span>Stok Saat Ini: <strong class="text-slate-800" x-text="selectedMaterial ? (formatQty(selectedMaterial.computed_stock ?? selectedMaterial.stock) + ' ' + selectedMaterial.unit) : ''"></strong></span>
         </div>
       </div>
 
       <form method="POST" :action="'{{ url('admin/stok-material') }}/' + (selectedMaterial ? selectedMaterial.id : '') + '/kurang'" class="space-y-4">
         @csrf
 
-        <!-- Jumlah Kurang -->
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">
-            Jumlah Yang Dikurangkan (<span x-text="selectedMaterial ? selectedMaterial.unit : 'Unit'"></span>) *
-          </label>
-          <div class="relative">
-            <input type="number" name="amount" x-model.number="stockAmount" min="1" :max="selectedMaterial ? selectedMaterial.stock : 9999" required
-                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold text-slate-900 pl-3 pr-10">
-            <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-bold" x-text="selectedMaterial ? selectedMaterial.unit : ''"></span>
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Tanggal -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Keluar *</label>
+            <input type="date" name="transaction_date" x-model="transactionDate" required
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-mono font-bold">
           </div>
 
-          <div class="mt-1">
-            <template x-if="selectedMaterial && stockAmount > selectedMaterial.stock">
-              <p class="text-[11px] text-red-600 font-bold flex items-center gap-1">
-                <i class="fa-solid fa-circle-exclamation"></i>
-                Jumlah melebihi stok yang ada (<span x-text="selectedMaterial.stock"></span> <span x-text="selectedMaterial.unit"></span>)!
-              </p>
-            </template>
-            <template x-if="selectedMaterial && stockAmount <= selectedMaterial.stock">
-              <p class="text-[11px] text-slate-500 font-medium">
-                Sisa stok setelah dikurangi: <strong class="text-slate-800" x-text="(selectedMaterial.stock - (stockAmount || 0)) + ' ' + selectedMaterial.unit"></strong>
-              </p>
-            </template>
+          <!-- Jumlah Kurang -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Jumlah (<span x-text="selectedMaterial ? selectedMaterial.unit : 'Unit'"></span>) *
+            </label>
+            <input type="number" step="any" name="amount" x-model.number="stockAmount" min="0.01" required
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold text-slate-900">
           </div>
         </div>
 
-        <!-- Keterangan / Alasan Pengurangan -->
+        <p class="text-[11px] text-slate-600 font-medium">
+          Stok akhir setelah dikurangi: <strong class="text-slate-900" x-text="selectedMaterial ? (formatQty((selectedMaterial.computed_stock ?? selectedMaterial.stock) - (stockAmount || 0)) + ' ' + selectedMaterial.unit) : ''"></strong>
+        </p>
+
+        <!-- Keterangan / Teknisi -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">
-            Keterangan / Alasan Pengeluaran <span class="text-slate-400 font-normal">(Opsional)</span>
-          </label>
-          <input type="text" name="notes" x-model="stockNotes"
-                 placeholder="Misal: Pemasangan baru pelanggan Bpk Anton / Rusak"
+          <label class="block text-xs font-bold text-slate-700 mb-1">Catatan / Teknisi / Proyek *</label>
+          <input type="text" name="notes" x-model="stockNotes" required
+                 placeholder="Misal: Okta_ThreeFive / Bagas_ThreeFive / Aji_Jatilawang"
                  class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
         </div>
 
@@ -858,8 +1430,7 @@
             Batal
           </button>
           <button type="submit"
-                  :disabled="selectedMaterial && stockAmount > selectedMaterial.stock"
-                  class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                  class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
             <i class="fa-solid fa-minus"></i>
             <span>Simpan Pengurangan</span>
           </button>
@@ -873,7 +1444,7 @@
 
 
   <!-- ============================================== -->
-  <!-- 9. MODAL PENYESUAIAN STOK OPNAME (ADJUSTMENT) -->
+  <!-- MODAL 6: PENYESUAIAN STOK OPNAME (MANUAL)      -->
   <!-- ============================================== -->
   <div x-show="openAdjustStockModal"
        style="display: none;"
@@ -904,10 +1475,10 @@
         </button>
       </div>
 
-      <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-1 text-xs">
+      <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-1 text-xs">
         <p class="font-bold text-slate-900" x-text="selectedMaterial ? selectedMaterial.name : ''"></p>
         <p class="text-[11px] text-slate-500">
-          Stok di sistem saat ini: <strong class="text-slate-800" x-text="selectedMaterial ? (selectedMaterial.stock + ' ' + selectedMaterial.unit) : ''"></strong>
+          Stok di sistem saat ini: <strong class="text-slate-800" x-text="selectedMaterial ? (formatQty(selectedMaterial.computed_stock ?? selectedMaterial.stock) + ' ' + selectedMaterial.unit) : ''"></strong>
         </p>
       </div>
 
@@ -919,25 +1490,20 @@
           <label class="block text-xs font-bold text-slate-700 mb-1">
             Jumlah Stok Fisik Sebenarnya (<span x-text="selectedMaterial ? selectedMaterial.unit : 'Unit'"></span>) *
           </label>
-          <div class="relative">
-            <input type="number" name="new_stock" x-model.number="newStockTarget" min="0" required
-                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold text-slate-900 pl-3 pr-10">
-            <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-bold" x-text="selectedMaterial ? selectedMaterial.unit : ''"></span>
-          </div>
+          <input type="number" step="any" name="new_stock" x-model.number="newStockTarget" required
+                 class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold text-slate-900">
           <p class="text-[11px] text-slate-500 mt-1" x-show="selectedMaterial">
-            Selisih penyesuaian: 
-            <strong :class="newStockTarget >= selectedMaterial.stock ? 'text-emerald-600' : 'text-rose-600'"
-                    x-text="(newStockTarget >= selectedMaterial.stock ? '+' : '') + (newStockTarget - selectedMaterial.stock) + ' ' + selectedMaterial.unit"></strong>
+            Selisih: 
+            <strong :class="newStockTarget >= (selectedMaterial.computed_stock ?? selectedMaterial.stock) ? 'text-emerald-600' : 'text-rose-600'"
+                    x-text="(newStockTarget >= (selectedMaterial.computed_stock ?? selectedMaterial.stock) ? '+' : '') + formatQty(newStockTarget - (selectedMaterial.computed_stock ?? selectedMaterial.stock)) + ' ' + selectedMaterial.unit"></strong>
           </p>
         </div>
 
         <!-- Alasan Penyesuaian -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">
-            Alasan Penyesuaian Opname *
-          </label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Alasan Penyesuaian Opname *</label>
           <input type="text" name="notes" required
-                 placeholder="Misal: Hasil Stock Opname Fisik Akhir Bulan / Koreksi"
+                 placeholder="Misal: Hasil Stock Opname Fisik Closing / Koreksi"
                  class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
         </div>
 
@@ -961,7 +1527,7 @@
 
 
   <!-- ============================================== -->
-  <!-- 10. MODAL UBAH / EDIT DATA MATERIAL            -->
+  <!-- MODAL 7: UBAH RINCIAN BARANG                   -->
   <!-- ============================================== -->
   <div x-show="openEditModal"
        style="display: none;"
@@ -984,7 +1550,7 @@
           </div>
           <div>
             <h3 class="font-bold text-slate-900 text-sm">Ubah Rincian Barang</h3>
-            <p class="text-[11px] text-slate-400">Edit informasi nama, kategori, satuan, dan harga</p>
+            <p class="text-[11px] text-slate-400">Edit informasi kode, nama, stok awal, dan satuan</p>
           </div>
         </div>
         <button type="button" @click="openEditModal = false" class="text-slate-400 hover:text-slate-600 text-sm">
@@ -1007,16 +1573,8 @@
           <!-- Kategori -->
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Kategori Barang *</label>
-            <input type="text" name="category" list="edit_category_options" x-model="selectedMaterial.category" required
+            <input type="text" name="category" list="category_options" x-model="selectedMaterial.category" required
                    class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
-            <datalist id="edit_category_options">
-              <option value="Modem & ONT">
-              <option value="Kabel & Fiber">
-              <option value="Konektor & Aksesoris">
-              <option value="Pasif & ODP">
-              <option value="Perangkat Jaringan">
-              <option value="Tools & Alat Kerja">
-            </datalist>
           </div>
         </div>
 
@@ -1035,14 +1593,30 @@
                    class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
           </div>
 
-          <!-- Batas Minimum Alert -->
+          <!-- Stok Awal -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Batas Min Alert *</label>
-            <input type="number" name="min_stock" x-model.number="selectedMaterial.min_stock" min="0" required
-                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Stok Awal *</label>
+            <input type="number" step="any" name="initial_stock" x-model.number="selectedMaterial.initial_stock" required
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold">
           </div>
 
-          <!-- Harga Satuan -->
+          <!-- Batas Minimum Alert -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Batas Min Alert</label>
+            <input type="number" step="any" name="min_stock" x-model.number="selectedMaterial.min_stock"
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Bulan Periode -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Bulan Periode</label>
+            <input type="text" name="month" x-model="selectedMaterial.month" placeholder="Misal: Oktober / Oktober 2026"
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-semibold">
+          </div>
+
+          <!-- Harga Satuan Estimasi -->
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Harga Satuan (Rp)</label>
             <input type="number" name="unit_price" x-model.number="selectedMaterial.unit_price" min="0" step="100"
@@ -1070,7 +1644,7 @@
 
 
   <!-- ============================================== -->
-  <!-- 11. MODAL RIWAYAT MUTASI PER ITEM             -->
+  <!-- MODAL 8: RIWAYAT MUTASI PER BARANG             -->
   <!-- ============================================== -->
   <div x-show="openHistoryModal"
        style="display: none;"
@@ -1101,19 +1675,23 @@
         </button>
       </div>
 
-      <!-- Quick Summary -->
-      <div class="grid grid-cols-3 gap-2.5 text-center text-xs">
+      <!-- Quick Summary Rekonsiliasi -->
+      <div class="grid grid-cols-4 gap-2 text-center text-xs">
         <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-          <span class="text-[10px] text-slate-400 font-bold block uppercase">Stok Sekarang</span>
-          <span class="text-base font-black text-slate-900" x-text="selectedMaterial ? (selectedMaterial.stock + ' ' + selectedMaterial.unit) : ''"></span>
+          <span class="text-[9px] text-slate-400 font-bold block uppercase">Stok Awal</span>
+          <span class="text-sm font-black text-slate-700" x-text="selectedMaterial ? (formatQty(selectedMaterial.computed_initial_stock ?? selectedMaterial.initial_stock) + ' ' + selectedMaterial.unit) : ''"></span>
         </div>
-        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-          <span class="text-[10px] text-slate-400 font-bold block uppercase">Batas Minimum</span>
-          <span class="text-base font-black text-amber-500" x-text="selectedMaterial ? (selectedMaterial.min_stock + ' ' + selectedMaterial.unit) : ''"></span>
+        <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200/80">
+          <span class="text-[9px] text-emerald-700 font-bold block uppercase">Total Masuk</span>
+          <span class="text-sm font-black text-emerald-700" x-text="selectedMaterial ? ('+' + formatQty(selectedMaterial.computed_total_in ?? selectedMaterial.total_in) + ' ' + selectedMaterial.unit) : ''"></span>
         </div>
-        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-          <span class="text-[10px] text-slate-400 font-bold block uppercase">Harga Satuan</span>
-          <span class="text-xs font-bold text-slate-700 truncate block mt-0.5" x-text="selectedMaterial ? formatRupiah(selectedMaterial.unit_price) : 'Rp 0'"></span>
+        <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-200/80">
+          <span class="text-[9px] text-rose-700 font-bold block uppercase">Total Keluar</span>
+          <span class="text-sm font-black text-rose-700" x-text="selectedMaterial ? ('-' + formatQty(selectedMaterial.computed_total_out ?? selectedMaterial.total_out) + ' ' + selectedMaterial.unit) : ''"></span>
+        </div>
+        <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200/80">
+          <span class="text-[9px] text-amber-700 font-bold block uppercase">Stok Akhir</span>
+          <span class="text-sm font-black text-slate-900" x-text="selectedMaterial ? (formatQty(selectedMaterial.computed_stock ?? selectedMaterial.stock) + ' ' + selectedMaterial.unit) : ''"></span>
         </div>
       </div>
 
@@ -1122,7 +1700,7 @@
         <template x-if="selectedMaterial && (!selectedMaterial.mutations || selectedMaterial.mutations.length === 0)">
           <div class="py-8 text-center text-slate-400">
             <i class="fa-solid fa-clipboard-list text-2xl text-slate-300 block mb-1"></i>
-            <p>Belum ada catatan pergerakan untuk barang ini.</p>
+            <p>Belum ada catatan mutasi pergerakan untuk barang ini.</p>
           </div>
         </template>
 
@@ -1137,18 +1715,17 @@
                   </div>
                   <div>
                     <div class="flex items-center gap-2">
-                      <span class="font-bold text-slate-900" x-text="mut.type === 'in' ? 'Masuk / Tambah' : (mut.type === 'out' ? 'Keluar / Kurang' : 'Penyesuaian Opname')"></span>
-                      <span class="text-[10px] font-mono text-slate-400" x-text="new Date(mut.created_at).toLocaleString('id-ID')"></span>
+                      <span class="font-bold text-slate-900" x-text="mut.type === 'in' ? 'Barang Masuk' : (mut.type === 'out' ? 'Barang Keluar' : 'Penyesuaian Opname')"></span>
+                      <span class="text-[10px] font-mono text-slate-400" x-text="mut.transaction_date || new Date(mut.created_at).toLocaleDateString('id-ID')"></span>
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-0.5" x-text="mut.notes || '-'"></p>
+                    <p class="text-[11px] text-slate-600 mt-0.5" x-text="mut.notes || '-'"></p>
                   </div>
                 </div>
 
                 <div class="text-right shrink-0">
                   <span class="font-black text-sm block"
                         :class="mut.type === 'in' ? 'text-emerald-600' : (mut.type === 'out' ? 'text-rose-600' : 'text-blue-600')"
-                        x-text="(mut.type === 'in' ? '+' : (mut.type === 'out' ? '-' : '')) + mut.amount + ' ' + selectedMaterial.unit"></span>
-                  <span class="text-[10px] text-slate-400 font-medium" x-text="mut.stock_before + ' &rarr; ' + mut.stock_after"></span>
+                        x-text="(mut.type === 'in' ? '+' : (mut.type === 'out' ? '-' : '')) + formatQty(mut.amount) + ' ' + selectedMaterial.unit"></span>
                 </div>
               </div>
             </template>
@@ -1159,7 +1736,7 @@
       <div class="flex items-center justify-between pt-3 border-t border-slate-100">
         <a :href="'{{ url('admin/stok-material/mutasi') }}?material_id=' + (selectedMaterial ? selectedMaterial.id : '')"
            class="text-xs font-bold text-brand hover:underline">
-          Lihat Semua Log Barang Keluar & Masuk &rarr;
+          Lihat Semua Log Mutasi &rarr;
         </a>
         <button type="button" @click="openHistoryModal = false"
                 class="px-4 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition">
@@ -1173,7 +1750,7 @@
 
 
   <!-- ============================================== -->
-  <!-- 12. MODAL KONFIRMASI HAPUS MATERIAL (SINGLE)   -->
+  <!-- MODAL 9: KONFIRMASI HAPUS MATERIAL (SINGLE)    -->
   <!-- ============================================== -->
   <div x-show="openDeleteModal"
        style="display: none;"
@@ -1194,9 +1771,9 @@
       </div>
 
       <div>
-        <h3 class="font-extrabold text-slate-900 text-base">Hapus Barang Manual?</h3>
+        <h3 class="font-extrabold text-slate-900 text-base">Hapus Barang?</h3>
         <p class="text-xs text-slate-500 mt-1">
-          Apakah Anda yakin ingin menghapus barang <strong class="text-slate-900" x-text="selectedMaterial ? selectedMaterial.name : ''"></strong> (<span x-text="selectedMaterial ? selectedMaterial.code : ''"></span>)?
+          Hapus <strong class="text-slate-900" x-text="selectedMaterial ? selectedMaterial.name : ''"></strong> (<span x-text="selectedMaterial ? selectedMaterial.code : ''"></span>)?
           Semua riwayat mutasi terkait juga akan terhapus.
         </p>
       </div>
@@ -1222,7 +1799,7 @@
 
 
   <!-- ============================================== -->
-  <!-- 13. MODAL HAPUS TERPILIH (BULK DELETE)         -->
+  <!-- MODAL 10: HAPUS TERPILIH (BULK DELETE)        -->
   <!-- ============================================== -->
   <div x-show="openBulkDeleteModal"
        style="display: none;"
@@ -1245,7 +1822,7 @@
         <h3 class="font-extrabold text-slate-900 text-base"
             x-text="bulkDeleteAll ? 'Kosongkan Seluruh Stok Barang?' : ('Hapus ' + selectedIds.length + ' Barang Terpilih?')"></h3>
         <p class="text-xs text-slate-500 mt-1"
-           x-text="bulkDeleteAll ? 'Tindakan ini akan mengosongkan seluruh item inventaris barang beserta riwayat mutasinya secara permanen dari sistem.' : 'Tindakan ini tidak dapat dibatalkan. Seluruh data item barang yang Anda centang akan dihapus secara permanen dari sistem.'">
+           x-text="bulkDeleteAll ? 'Tindakan ini akan mengosongkan seluruh master barang dan seluruh riwayat mutasi dari sistem.' : 'Seluruh data barang yang dicentang akan dihapus permanen dari sistem.'">
         </p>
       </div>
 
@@ -1270,6 +1847,127 @@
                 class="w-1/2 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition shadow-sm"
                 x-text="bulkDeleteAll ? 'Ya, Kosongkan Semua' : 'Ya, Hapus Terpilih'">
         </button>
+      </form>
+
+    </div>
+
+  </div>
+
+
+  <!-- ============================================== -->
+  <!-- MODAL 11: IMPORT BERKAS EXCEL & CSV            -->
+  <!-- ============================================== -->
+  <div x-show="openImportModal"
+       style="display: none;"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0">
+
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5"
+         @click.away="openImportModal = false">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-slate-800 text-white flex items-center justify-center text-sm">
+            <i class="fa-solid fa-file-excel"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm">Import Berkas Excel & CSV Stok Barang</h3>
+            <p class="text-[11px] text-slate-400">Sinkronisasi data master dan mutasi dari template Excel (.xlsx, .xls) atau CSV (.csv, .txt)</p>
+          </div>
+        </div>
+        <button type="button" @click="openImportModal = false" class="text-slate-400 hover:text-slate-600 text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Info Format Excel & CSV -->
+      <div class="bg-blue-50/70 border border-blue-200 text-blue-900 p-3.5 rounded-2xl text-xs space-y-2">
+        <div class="flex items-center gap-2 font-bold text-blue-800">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>Format Berkas Excel & CSV 1 File Lengkap:</span>
+        </div>
+        <p class="text-[11px] text-blue-700 leading-relaxed">
+          Sistem otomatis membaca 3 bagian data sekaligus dalam <strong>1 file yang sama</strong>:
+          <span class="font-bold text-slate-800">Laporan Stok Barang</span>, <span class="font-bold text-emerald-800">Barang Masuk</span>, dan <span class="font-bold text-rose-800">Barang Keluar</span>.
+        </p>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-[11px] text-emerald-900 space-y-1">
+          <div class="font-bold flex items-center gap-1.5 text-emerald-800">
+            <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
+            <span>Penanganan Otomatis Data Tidak Lengkap:</span>
+          </div>
+          <p class="text-[10px] text-emerald-700 leading-normal">
+            Jika keterangan berkas tidak lengkap (misal: kode barang kosong, stok kosong, atau catatan tidak diisi), sistem akan otomatis melengkapi, mengenerate kode barang unik, menghitung saldo akhir, serta mengelompokkan seluruh data ke 1 periode bulan yang dipilih.
+          </p>
+        </div>
+        <div class="pt-0.5">
+          <a href="{{ route('admin.material.export-csv', ['month' => $selectedMonth, 'year' => $selectedYear]) }}" class="text-[11px] font-bold text-blue-800 hover:underline flex items-center gap-1">
+            <i class="fa-solid fa-download text-[10px]"></i>
+            <span>Unduh Contoh Berkas CSV Template ({{ $monthName }} {{ $selectedYear }})</span>
+          </a>
+        </div>
+      </div>
+
+      <form method="POST" action="{{ route('admin.material.import-csv') }}" enctype="multipart/form-data" class="space-y-4">
+        @csrf
+
+        <!-- Input File -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Pilih File Excel / CSV (.xlsx, .xls, .csv, .txt) *</label>
+          <input type="file" name="csv_file" accept=".xlsx,.xls,.csv,.txt" required
+                 class="w-full text-xs rounded-xl border border-slate-200 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-white hover:file:bg-slate-900 file:cursor-pointer cursor-pointer">
+        </div>
+
+        <!-- Pilihan Periode Bulan & Tahun Impor -->
+        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Bulan Periode Berkas</label>
+            <select name="import_month" class="w-full text-xs rounded-lg border-slate-300 focus:border-brand focus:ring-brand">
+              <option value="auto">Otomatis Deteksi dari Berkas</option>
+              @foreach(\App\Http\Controllers\Admin\MaterialController::MONTHS as $mNum => $mName)
+                <option value="{{ $mNum }}" {{ (string)$selectedMonth === (string)$mNum ? 'selected' : '' }}>{{ $mName }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Tahun Periode</label>
+            <select name="import_year" class="w-full text-xs rounded-lg border-slate-300 focus:border-brand focus:ring-brand">
+              <option value="auto">Otomatis Deteksi dari Berkas</option>
+              @for($y = 2024; $y <= 2030; $y++)
+                <option value="{{ $y }}" {{ (int)$selectedYear === $y ? 'selected' : '' }}>{{ $y }}</option>
+              @endfor
+            </select>
+          </div>
+          <p class="col-span-2 text-[10px] text-slate-500">Pilih periode jika berkas tidak memiliki header bulan yang jelas agar seluruh data stok dan mutasi masuk ke periode tersebut.</p>
+        </div>
+
+        <!-- Opsi Timpa Data Periode Terpilih -->
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <label class="flex items-start gap-2.5 cursor-pointer">
+            <input type="checkbox" name="replace_all" value="1" class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand">
+            <div>
+              <span class="text-xs font-bold text-slate-800 block">Perbarui / Timpa Data Stok Bulan Ini</span>
+              <span class="text-[10px] text-slate-500">Centang opsi ini jika ingin memperbarui seluruh stok pada bulan yang diimpor. <strong>Data bulan lain (Januari, Februari, dsb.) tetap tersimpan aman dan tidak akan hilang.</strong></span>
+            </div>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button type="button" @click="openImportModal = false"
+                  class="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+            Batal
+          </button>
+          <button type="submit"
+                  class="px-5 py-2.5 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Proses Impor Berkas</span>
+          </button>
+        </div>
+
       </form>
 
     </div>

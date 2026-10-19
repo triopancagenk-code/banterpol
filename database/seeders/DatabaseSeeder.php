@@ -205,5 +205,8 @@ class DatabaseSeeder extends Seeder
 
         // 3. Impor seluruh data pelanggan dari berkas pendaftaran Google Drive Banterpool
         $this->call(CustomerDriveSeeder::class);
+
+        // 4. Impor master stok barang & riwayat transaksi dari berkas CSV Banterpool
+        $this->call(MaterialCsvDataSeeder::class);
     }
 }

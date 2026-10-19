@@ -16,6 +16,11 @@ class Material extends Model
         'name',
         'category',
         'unit',
+        'month',
+        'year',
+        'initial_stock',
+        'total_in',
+        'total_out',
         'stock',
         'min_stock',
         'unit_price',
@@ -24,14 +29,23 @@ class Material extends Model
     ];
 
     protected $casts = [
-        'stock' => 'integer',
-        'min_stock' => 'integer',
+        'year' => 'integer',
+        'initial_stock' => 'float',
+        'total_in' => 'float',
+        'total_out' => 'float',
+        'stock' => 'float',
+        'min_stock' => 'float',
         'unit_price' => 'float',
     ];
 
     public function mutations(): HasMany
     {
         return $this->hasMany(MaterialMutation::class)->latest();
+    }
+
+    public function monthlyStocks(): HasMany
+    {
+        return $this->hasMany(MaterialMonthlyStock::class);
     }
 
     public function isLowStock(): bool
@@ -50,9 +64,9 @@ class Material extends Model
     }
 
     /**
-     * Tambah stok manual
+     * Tambah stok manual / Barang Masuk
      */
-    public function addStock(int $amount, ?string $notes = null, ?int $userId = null): MaterialMutation
+    public function addStock(float $amount, ?string $notes = null, ?int $userId = null, ?string $transactionDate = null): MaterialMutation
     {
         if ($amount <= 0) {
             throw new \InvalidArgumentException('Jumlah penambahan stok harus lebih besar dari 0.');
@@ -60,65 +74,74 @@ class Material extends Model
 
         $stockBefore = $this->stock;
         $stockAfter = $stockBefore + $amount;
+        $totalIn = ($this->total_in ?? 0) + $amount;
 
-        $this->update(['stock' => $stockAfter]);
+        $this->update([
+            'stock' => $stockAfter,
+            'total_in' => $totalIn,
+        ]);
 
         return $this->mutations()->create([
             'user_id' => $userId,
             'type' => 'in',
+            'transaction_date' => $transactionDate ?: now()->toDateString(),
             'amount' => $amount,
             'stock_before' => $stockBefore,
             'stock_after' => $stockAfter,
-            'notes' => $notes ?: 'Penambahan stok manual',
+            'notes' => $notes ?: 'Barang masuk / Penambahan stok',
         ]);
     }
 
     /**
-     * Kurang stok manual
+     * Kurang stok manual / Barang Keluar
      */
-    public function reduceStock(int $amount, ?string $notes = null, ?int $userId = null): MaterialMutation
+    public function reduceStock(float $amount, ?string $notes = null, ?int $userId = null, ?string $transactionDate = null, bool $allowNegative = true): MaterialMutation
     {
         if ($amount <= 0) {
             throw new \InvalidArgumentException('Jumlah pengurangan stok harus lebih besar dari 0.');
         }
 
-        if ($amount > $this->stock) {
+        if (!$allowNegative && $amount > $this->stock) {
             throw new \InvalidArgumentException("Stok tidak mencukupi. Stok saat ini: {$this->stock} {$this->unit}, pengurangan yang diminta: {$amount} {$this->unit}.");
         }
 
         $stockBefore = $this->stock;
         $stockAfter = $stockBefore - $amount;
+        $totalOut = ($this->total_out ?? 0) + $amount;
 
-        $this->update(['stock' => $stockAfter]);
+        $this->update([
+            'stock' => $stockAfter,
+            'total_out' => $totalOut,
+        ]);
 
         return $this->mutations()->create([
             'user_id' => $userId,
             'type' => 'out',
+            'transaction_date' => $transactionDate ?: now()->toDateString(),
             'amount' => $amount,
             'stock_before' => $stockBefore,
             'stock_after' => $stockAfter,
-            'notes' => $notes ?: 'Pengurangan stok manual',
+            'notes' => $notes ?: 'Barang keluar / Pemakaian lapangan',
         ]);
     }
 
     /**
      * Penyesuaian stok opname manual
      */
-    public function adjustStock(int $newStock, ?string $notes = null, ?int $userId = null): MaterialMutation
+    public function adjustStock(float $newStock, ?string $notes = null, ?int $userId = null): MaterialMutation
     {
-        if ($newStock < 0) {
-            throw new \InvalidArgumentException('Jumlah stok baru tidak boleh negatif.');
-        }
-
         $stockBefore = $this->stock;
         $diff = $newStock - $stockBefore;
         $type = $diff >= 0 ? 'in' : 'out';
 
-        $this->update(['stock' => $newStock]);
+        $this->update([
+            'stock' => $newStock,
+        ]);
 
         return $this->mutations()->create([
             'user_id' => $userId,
             'type' => 'adjustment',
+            'transaction_date' => now()->toDateString(),
             'amount' => abs($diff),
             'stock_before' => $stockBefore,
             'stock_after' => $newStock,
@@ -128,6 +151,36 @@ class Material extends Model
 
     public function getTotalAssetValueAttribute(): float
     {
-        return (float) ($this->stock * ($this->unit_price ?? 0));
+        return (float) (max(0, $this->stock) * ($this->unit_price ?? 0));
+    }
+
+    public static function formatQty(float|int|null $qty): string
+    {
+        if ($qty === null) {
+            return '0';
+        }
+        return (float) $qty == (int) $qty
+            ? number_format($qty, 0, ',', '.')
+            : number_format($qty, 1, ',', '.');
+    }
+
+    public function getFormattedStockAttribute(): string
+    {
+        return self::formatQty($this->stock);
+    }
+
+    public function getFormattedInitialStockAttribute(): string
+    {
+        return self::formatQty($this->initial_stock);
+    }
+
+    public function getFormattedTotalInAttribute(): string
+    {
+        return self::formatQty($this->total_in);
+    }
+
+    public function getFormattedTotalOutAttribute(): string
+    {
+        return self::formatQty($this->total_out);
     }
 }

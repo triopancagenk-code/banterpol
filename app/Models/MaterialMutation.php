@@ -14,6 +14,7 @@ class MaterialMutation extends Model
         'material_id',
         'user_id',
         'type', // 'in', 'out', 'adjustment'
+        'transaction_date',
         'amount',
         'stock_before',
         'stock_after',
@@ -21,9 +22,10 @@ class MaterialMutation extends Model
     ];
 
     protected $casts = [
-        'amount' => 'integer',
-        'stock_before' => 'integer',
-        'stock_after' => 'integer',
+        'amount' => 'float',
+        'stock_before' => 'float',
+        'stock_after' => 'float',
+        'transaction_date' => 'date',
     ];
 
     public function material(): BelongsTo
@@ -39,10 +41,15 @@ class MaterialMutation extends Model
     public function getTypeLabelAttribute(): string
     {
         return match ($this->type) {
-            'in' => 'Masuk / Tambah',
-            'out' => 'Keluar / Kurang',
+            'in' => 'Barang Masuk',
+            'out' => 'Barang Keluar',
             'adjustment' => 'Penyesuaian Manual',
             default => ucfirst($this->type),
         };
+    }
+
+    public function getFormattedAmountAttribute(): string
+    {
+        return Material::formatQty($this->amount);
     }
 }

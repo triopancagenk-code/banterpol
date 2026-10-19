@@ -88,10 +88,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::put('/stok-material/{id}', [MaterialController::class, 'update'])->name('material.update');
     Route::delete('/stok-material/{id}', [MaterialController::class, 'destroy'])->name('material.destroy');
     Route::post('/stok-material/bulk-delete', [MaterialController::class, 'bulkDelete'])->name('material.bulk-delete');
+    Route::post('/stok-material/import-csv', [MaterialController::class, 'importCsv'])->name('material.import-csv');
+    Route::post('/stok-material/tambah-masuk', [MaterialController::class, 'storeIncoming'])->name('material.store-in');
+    Route::post('/stok-material/tambah-keluar', [MaterialController::class, 'storeOutgoing'])->name('material.store-out');
     Route::post('/stok-material/{id}/tambah', [MaterialController::class, 'addStock'])->name('material.add-stock');
     Route::post('/stok-material/{id}/kurang', [MaterialController::class, 'reduceStock'])->name('material.reduce-stock');
     Route::post('/stok-material/{id}/sesuaikan', [MaterialController::class, 'adjustStock'])->name('material.adjust-stock');
+    Route::delete('/stok-material/mutasi/{id}', [MaterialController::class, 'destroyMutation'])->name('material.mutation.destroy');
     Route::get('/stok-material/export', [MaterialController::class, 'export'])->name('material.export');
+    Route::get('/stok-material/export-csv', [MaterialController::class, 'exportCsv'])->name('material.export-csv');
     Route::get('/stok-material/mutasi', [MaterialController::class, 'mutations'])->name('material.mutations');
 });
 
