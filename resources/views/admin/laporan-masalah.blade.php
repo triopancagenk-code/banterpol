@@ -52,6 +52,13 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+      <!-- Live Server Time -->
+      <div class="hidden lg:flex items-center gap-2 bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl border border-slate-800 shadow-xs font-mono">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-slate-400 font-sans text-[10px]">Waktu Real-Time:</span>
+        <span class="font-bold text-emerald-300" x-text="liveDate + ' • ' + liveTime"></span>
+      </div>
+
       <!-- Tombol Hapus Pilihan (Selalu Terlihat) -->
       <button type="button"
               @click="selectedIds.length > 0 ? confirmBulkDelete(false) : showToast('Silakan centang minimal satu tiket pada kolom kotak centang tabel.', 'error')"
@@ -77,10 +84,10 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- 3. STATISTIC KPI CARDS                         -->
+  <!-- 3. STATISTIC KPI CARDS (Serupa Data Pelanggan) -->
   <!-- ============================================== -->
   <div class="w-full overflow-x-auto pb-1 sm:pb-0">
-    <div class="grid grid-cols-5 gap-3 sm:gap-4 min-w-[780px] lg:min-w-0">
+    <div class="grid grid-cols-5 gap-3 sm:gap-4 min-w-[780px] lg:min-w-0" style="display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important;">
       
       <!-- 1. Total Laporan -->
       <a href="{{ route('admin.laporan', ['status' => 'all']) }}"

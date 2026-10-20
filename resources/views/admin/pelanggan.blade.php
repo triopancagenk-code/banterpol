@@ -231,7 +231,7 @@
   <!-- 3. STATISTIC KPI CARDS                         -->
   <!-- ============================================== -->
   <div class="w-full overflow-x-auto pb-1 sm:pb-0">
-    <div class="grid grid-cols-5 gap-3 sm:gap-4 min-w-[780px] lg:min-w-0">
+    <div class="grid grid-cols-5 gap-3 sm:gap-4 min-w-[780px] lg:min-w-0" style="display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important;">
       
       <!-- Total Pelanggan -->
       <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between min-w-0">
