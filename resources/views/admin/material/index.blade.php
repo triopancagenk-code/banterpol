@@ -314,8 +314,8 @@
     <div class="space-y-4">
       
       <!-- Filter Toolbar -->
-      <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs relative z-30">
-        <form method="GET" action="{{ route('admin.material.index') }}" class="flex items-center gap-2 w-full flex-nowrap">
+      <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs relative z-30 overflow-x-auto custom-scrollbar" style="-webkit-overflow-scrolling: touch;">
+        <form method="GET" action="{{ route('admin.material.index') }}" class="flex items-center gap-2 w-max min-w-full flex-nowrap">
           <input type="hidden" name="tab" value="laporan">
 
           <!-- 1. Dropdown Bulan (Januari - Desember) -->
