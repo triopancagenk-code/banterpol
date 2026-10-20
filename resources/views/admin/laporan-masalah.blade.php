@@ -86,70 +86,70 @@
   <!-- ============================================== -->
   <!-- 3. STATISTIC KPI CARDS (Serupa Data Pelanggan) -->
   <!-- ============================================== -->
-  <div class="w-full overflow-x-auto pb-1 sm:pb-0 custom-scrollbar" style="-webkit-overflow-scrolling: touch;">
-    <div class="grid grid-cols-5 gap-3 sm:gap-4 min-w-[780px] lg:min-w-0" style="display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important;">
+  <div class="w-full">
+    <div class="grid grid-cols-6 lg:grid-cols-5 gap-2.5 sm:gap-4 w-full">
       
       <!-- 1. Total Laporan -->
       <a href="{{ route('admin.laporan', ['status' => 'all']) }}"
-         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $statusFilter === 'all' ? 'border-brand ring-2 ring-brand/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-        <div class="min-w-0 pr-2">
+         class="bg-white p-3 sm:p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 col-span-2 lg:col-span-1 {{ $statusFilter === 'all' ? 'border-brand ring-2 ring-brand/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-1.5 sm:pr-2">
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Tiket</p>
-          <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="counts.all">{{ $counts['all'] }}</h3>
+          <h3 class="text-lg sm:text-2xl font-black text-slate-900 mt-0.5 sm:mt-1" x-text="counts.all">{{ $counts['all'] }}</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Laporan Gangguan Masuk</span>
         </div>
-        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shrink-0">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm sm:text-lg shrink-0">
           <i class="fa-solid fa-headset"></i>
         </div>
       </a>
 
       <!-- 2. Menunggu Respon -->
       <a href="{{ route('admin.laporan', ['status' => 'Menunggu Respon']) }}"
-         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $statusFilter === 'Menunggu Respon' ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-        <div class="min-w-0 pr-2">
+         class="bg-white p-3 sm:p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 col-span-2 lg:col-span-1 {{ $statusFilter === 'Menunggu Respon' ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-1.5 sm:pr-2">
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Menunggu Respon</p>
-          <h3 class="text-2xl font-black text-amber-600 mt-1" x-text="counts.menunggu">{{ $counts['menunggu'] }}</h3>
+          <h3 class="text-lg sm:text-2xl font-black text-amber-600 mt-0.5 sm:mt-1" x-text="counts.menunggu">{{ $counts['menunggu'] }}</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Antrian Perlu Ditangani</span>
         </div>
-        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg shrink-0">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm sm:text-lg shrink-0">
           <i class="fa-regular fa-clock"></i>
         </div>
       </a>
 
       <!-- 3. Sedang Ditangani -->
       <a href="{{ route('admin.laporan', ['status' => 'Sedang Ditangani']) }}"
-         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $statusFilter === 'Sedang Ditangani' ? 'border-blue-600 ring-2 ring-blue-600/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-        <div class="min-w-0 pr-2">
+         class="bg-white p-3 sm:p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 col-span-2 lg:col-span-1 {{ $statusFilter === 'Sedang Ditangani' ? 'border-blue-600 ring-2 ring-blue-600/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-1.5 sm:pr-2">
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Sedang Ditangani</p>
-          <h3 class="text-2xl font-black text-blue-600 mt-1" x-text="counts.proses">{{ $counts['proses'] }}</h3>
+          <h3 class="text-lg sm:text-2xl font-black text-blue-600 mt-0.5 sm:mt-1" x-text="counts.proses">{{ $counts['proses'] }}</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Teknisi Sedang Proses</span>
         </div>
-        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg shrink-0">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm sm:text-lg shrink-0">
           <i class="fa-solid fa-person-digging"></i>
         </div>
       </a>
 
       <!-- 4. Selesai Ditangani -->
       <a href="{{ route('admin.laporan', ['status' => 'Selesai']) }}"
-         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $statusFilter === 'Selesai' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-        <div class="min-w-0 pr-2">
+         class="bg-white p-3 sm:p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 col-span-3 lg:col-span-1 {{ $statusFilter === 'Selesai' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-1.5 sm:pr-2">
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Selesai Normal</p>
-          <h3 class="text-2xl font-black text-emerald-600 mt-1" x-text="counts.selesai">{{ $counts['selesai'] }}</h3>
+          <h3 class="text-lg sm:text-2xl font-black text-emerald-600 mt-0.5 sm:mt-1" x-text="counts.selesai">{{ $counts['selesai'] }}</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Koneksi Sudah Pulih</span>
         </div>
-        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg shrink-0">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm sm:text-lg shrink-0">
           <i class="fa-solid fa-circle-check"></i>
         </div>
       </a>
 
       <!-- 5. Gangguan Kritis -->
       <a href="{{ route('admin.laporan', ['priority' => 'Kritis']) }}"
-         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $priorityFilter === 'Kritis' ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-        <div class="min-w-0 pr-2">
+         class="bg-white p-3 sm:p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 col-span-3 lg:col-span-1 {{ $priorityFilter === 'Kritis' ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-1.5 sm:pr-2">
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Gangguan Kritis</p>
-          <h3 class="text-2xl font-black text-brand mt-1" x-text="counts.kritis">{{ $counts['kritis'] }}</h3>
+          <h3 class="text-lg sm:text-2xl font-black text-brand mt-0.5 sm:mt-1" x-text="counts.kritis">{{ $counts['kritis'] }}</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Prioritas Darurat NOC</span>
         </div>
-        <div class="w-10 h-10 rounded-xl bg-red-50 text-brand flex items-center justify-center text-lg shrink-0">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm sm:text-lg shrink-0">
           <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
       </a>
