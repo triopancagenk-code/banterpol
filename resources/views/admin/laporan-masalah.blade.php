@@ -51,7 +51,7 @@
       </p>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+    <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
       <!-- Live Server Time -->
       <div class="hidden lg:flex items-center gap-2 bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl border border-slate-800 shadow-xs font-mono">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -63,7 +63,7 @@
       <button type="button"
               @click="selectedIds.length > 0 ? confirmBulkDelete(false) : showToast('Silakan centang minimal satu tiket pada kolom kotak centang tabel.', 'error')"
               :class="selectedIds.length > 0 ? 'bg-red-600 hover:bg-red-700 text-white shadow-xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-500 border border-slate-200/80'"
-              class="h-10 px-3.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+              class="flex-1 sm:flex-initial h-10 px-3.5 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
               title="Hapus Tiket Laporan Kendala Terpilih">
         <i class="fa-solid fa-trash-can" :class="selectedIds.length > 0 ? 'text-white' : 'text-slate-400'"></i>
         <span>Hapus Pilihan</span>
@@ -75,7 +75,7 @@
       <!-- Tombol Hapus Semua Data (POV Admin & Direktur) -->
       <button type="button" @click="confirmBulkDelete(true)"
               :disabled="tickets.length === 0"
-              class="h-10 px-3.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              class="flex-1 sm:flex-initial h-10 px-3.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               title="Hapus Seluruh Data Laporan Masalah">
         <i class="fa-solid fa-trash-arrow-up text-white"></i>
         <span>Hapus Semua Data</span>
@@ -86,7 +86,7 @@
   <!-- ============================================== -->
   <!-- 3. STATISTIC KPI CARDS (Serupa Data Pelanggan) -->
   <!-- ============================================== -->
-  <div class="w-full overflow-x-auto pb-1 sm:pb-0">
+  <div class="w-full overflow-x-auto pb-1 sm:pb-0 custom-scrollbar" style="-webkit-overflow-scrolling: touch;">
     <div class="grid grid-cols-5 gap-3 sm:gap-4 min-w-[780px] lg:min-w-0" style="display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important;">
       
       <!-- 1. Total Laporan -->
@@ -160,11 +160,11 @@
   <!-- ============================================== -->
   <!-- 4. SEARCH & FILTER BAR                         -->
   <!-- ============================================== -->
-  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs w-fit max-w-full relative z-30" style="width: fit-content;">
-    <form method="GET" action="{{ route('admin.laporan') }}" class="flex items-end gap-3 flex-nowrap">
+  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs w-full max-w-full relative z-30">
+    <form method="GET" action="{{ route('admin.laporan') }}" class="flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap items-stretch sm:items-end gap-3">
       
       <!-- 1. Pencarian Laporan Masalah with Live Autocomplete Suggestions -->
-      <div class="w-72 sm:w-80 shrink-0 relative"
+      <div class="w-full sm:flex-1 xl:w-80 xl:flex-none relative"
            x-data="{
              searchVal: '{{ addslashes($search) }}',
              suggestions: [],
@@ -272,7 +272,7 @@
                x-transition:leave="transition ease-in duration-75"
                x-transition:leave-start="transform opacity-100 scale-100"
                x-transition:leave-end="transform opacity-0 scale-98"
-               class="absolute left-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto w-full min-w-[340px] sm:min-w-[400px]">
+               class="absolute left-0 right-0 xl:right-auto top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto w-full xl:min-w-[400px]">
             
             <div class="px-3.5 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-400 flex items-center justify-between">
               <span>Hasil Pencarian Awalan "<span class="text-slate-700 font-extrabold" x-text="searchVal"></span>"</span>
@@ -303,7 +303,7 @@
       </div>
 
       <!-- 2. Filter Status Tiket -->
-      <div class="w-52 shrink-0">
+      <div class="w-full sm:w-48 xl:w-52 shrink-0">
         <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Status Tiket</label>
         <select name="status" onchange="this.form.submit()" class="h-10 w-full text-xs px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer font-medium text-slate-800">
           <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status ({{ $counts['all'] }} Tiket)</option>
@@ -314,7 +314,7 @@
       </div>
 
       <!-- 3. Tingkat Prioritas -->
-      <div class="w-40 shrink-0">
+      <div class="w-full sm:w-36 xl:w-40 shrink-0">
         <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Tingkat Prioritas</label>
         <select name="priority" onchange="this.form.submit()" class="h-10 w-full text-xs px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer font-medium text-slate-800">
           <option value="all" {{ $priorityFilter === 'all' ? 'selected' : '' }}>Semua Prioritas</option>
@@ -325,7 +325,7 @@
       </div>
 
       <!-- 4. Kategori Kendala -->
-      <div class="w-44 shrink-0">
+      <div class="w-full sm:w-40 xl:w-44 shrink-0">
         <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Kategori Kendala</label>
         <select name="category" onchange="this.form.submit()" class="h-10 w-full text-xs px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer font-medium text-slate-800">
           <option value="all" {{ ($categoryFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Kendala</option>
@@ -338,8 +338,8 @@
 
       <!-- 5. Reset Filter -->
       @if($search || $statusFilter !== 'all' || $priorityFilter !== 'all' || ($categoryFilter ?? 'all') !== 'all')
-        <div class="shrink-0">
-          <a href="{{ route('admin.laporan') }}" class="h-10 px-3.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap" title="Reset Semua Filter">
+        <div class="w-full sm:w-auto shrink-0">
+          <a href="{{ route('admin.laporan') }}" class="h-10 w-full sm:w-auto px-3.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap" title="Reset Semua Filter">
             <i class="fa-solid fa-arrow-rotate-left text-[11px]"></i>
             <span>Reset</span>
           </a>
@@ -645,7 +645,7 @@
        class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
 
     <div @click.away="openModal = false"
-         class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl relative space-y-5"
+         class="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-7 shadow-2xl relative space-y-5 my-auto custom-scrollbar"
          x-show="selectedTicket">
 
       <!-- Header Modal -->

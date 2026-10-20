@@ -193,8 +193,9 @@
 
       <!-- 3. Catat Barang Keluar -->
       <button type="button" @click="openOutgoingModal = true"
-              class="h-9 px-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
-        <i class="fa-solid fa-arrow-up text-xs"></i>
+              style="background-color: #e11d48 !important;"
+              class="h-9 px-3 bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+        <i class="fa-solid fa-arrow-up text-xs text-white"></i>
         <span>Catat Keluar</span>
       </button>
 
@@ -852,8 +853,9 @@
         </div>
 
         <button type="button" @click="openOutgoingModal = true"
-                class="h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
-          <i class="fa-solid fa-minus"></i>
+                style="background-color: #e11d48 !important;"
+                class="h-9 px-4 bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+          <i class="fa-solid fa-minus text-white"></i>
           <span>Catat Barang Keluar Baru</span>
         </button>
       </div>
@@ -928,7 +930,7 @@
                       <i class="fa-solid fa-inbox text-2xl text-slate-300"></i>
                       <p class="font-bold text-slate-700 text-xs">Tidak Ada Transaksi Barang Keluar</p>
                       <p class="text-[11px] text-slate-400">Belum ada catatan barang keluar pada bulan <strong>{{ $monthName }} {{ $selectedYear }}</strong>.</p>
-                      <button type="button" @click="openOutgoingModal = true" class="mt-2 px-3 py-1.5 bg-rose-600 text-white text-xs font-bold rounded-xl">
+                      <button type="button" @click="openOutgoingModal = true" style="background-color: #e11d48 !important;" class="mt-2 px-3 py-1.5 bg-[#e11d48] text-white text-xs font-bold rounded-xl">
                         - Catat Barang Keluar
                       </button>
                     </div>
@@ -1266,8 +1268,9 @@
             Batal
           </button>
           <button type="submit"
-                  class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
-            <i class="fa-solid fa-arrow-up"></i>
+                  style="background-color: #e11d48 !important;"
+                  class="px-5 py-2.5 bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-up text-white"></i>
             <span>Simpan Barang Keluar</span>
           </button>
         </div>
@@ -1454,8 +1457,9 @@
             Batal
           </button>
           <button type="submit"
-                  class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
-            <i class="fa-solid fa-minus"></i>
+                  style="background-color: #e11d48 !important;"
+                  class="px-5 py-2.5 bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-minus text-white"></i>
             <span>Simpan Pengurangan</span>
           </button>
         </div>
