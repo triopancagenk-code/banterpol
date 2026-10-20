@@ -160,8 +160,8 @@
   <!-- ============================================== -->
   <!-- 4. SEARCH & FILTER BAR                         -->
   <!-- ============================================== -->
-  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs w-fit max-w-full relative z-30" style="width: fit-content;">
-    <form method="GET" action="{{ route('admin.laporan') }}" class="flex items-end gap-3 flex-nowrap">
+  <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs w-full max-w-full relative z-30 overflow-x-auto custom-scrollbar" style="-webkit-overflow-scrolling: touch;">
+    <form method="GET" action="{{ route('admin.laporan') }}" class="flex items-end gap-3 w-max min-w-full flex-nowrap">
       
       <!-- 1. Pencarian Laporan Masalah with Live Autocomplete Suggestions -->
       <div class="w-72 sm:w-80 shrink-0 relative"
