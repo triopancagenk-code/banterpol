@@ -18,8 +18,15 @@
         openImportModal: false,
         openIncomingModal: false,
         openOutgoingModal: false,
+        openEditMutationModal: false,
         
         selectedMaterial: null,
+        selectedMutation: null,
+        editMutationMaterialId: '',
+        editMutationAmount: 1,
+        editMutationNotes: '',
+        editMutationDate: '{{ date('Y-m-d') }}',
+        editMutationType: 'in',
         stockAmount: 1,
         stockNotes: '',
         transactionDate: '{{ date('Y-m-d') }}',
@@ -81,6 +88,16 @@
         openEdit(m) {
             this.selectedMaterial = Object.assign({}, m);
             this.openEditModal = true;
+        },
+
+        openEditMutation(mut) {
+            this.selectedMutation = Object.assign({}, mut);
+            this.editMutationMaterialId = mut.material_id;
+            this.editMutationAmount = mut.amount;
+            this.editMutationNotes = mut.notes ? mut.notes.replace(' (Barang Masuk)', '').replace(' (Barang Keluar)', '') : '';
+            this.editMutationDate = mut.transaction_date ? String(mut.transaction_date).substring(0, 10) : (mut.created_at ? String(mut.created_at).substring(0, 10) : '{{ date('Y-m-d') }}');
+            this.editMutationType = mut.type;
+            this.openEditMutationModal = true;
         },
 
         openDelete(m) {
@@ -151,12 +168,7 @@
   <!-- ============================================== -->
   <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
     <div>
-      <div class="flex flex-wrap items-center gap-2.5">
-        <div class="w-9 h-9 rounded-xl bg-red-100 text-brand flex items-center justify-center text-lg shadow-xs">
-          <i class="fa-solid fa-boxes-stacked"></i>
-        </div>
-        <h2 class="text-xl font-black text-slate-900 tracking-tight">Laporan & Manajemen Stok Barang</h2>
-      </div>
+      <h2 class="text-xl font-black text-slate-900 tracking-tight">Laporan & Manajemen Stok Barang</h2>
       <p class="text-xs text-slate-500 mt-1">
         Sinkronisasi inventaris fiber optik, perangkat modem ONT, splitter, drop core, serta rekonsiliasi barang masuk & keluar bulanan sesuai berkas CSV Banterpool.
       </p>
@@ -301,13 +313,13 @@
     <div class="space-y-4">
       
       <!-- Filter Toolbar -->
-      <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-        <form method="GET" action="{{ route('admin.material.index') }}" class="flex flex-wrap items-center gap-2.5">
+      <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs relative z-30">
+        <form method="GET" action="{{ route('admin.material.index') }}" class="flex items-center gap-2 w-full flex-nowrap">
           <input type="hidden" name="tab" value="laporan">
 
           <!-- 1. Dropdown Bulan (Januari - Desember) -->
           <select id="filter-month" name="month" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 pr-8">
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 px-2.5 pr-7 shrink-0">
             <option value="all" {{ $selectedMonth === 'all' ? 'selected' : '' }}>Semua Periode</option>
             @foreach(\App\Http\Controllers\Admin\MaterialController::MONTHS as $mNum => $mTxt)
               <option value="{{ $mNum }}" {{ (string)$selectedMonth === (string)$mNum ? 'selected' : '' }}>
@@ -318,7 +330,7 @@
 
           <!-- 2. Dropdown Tahun -->
           <select id="filter-year" name="year" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 pr-8">
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 px-2.5 pr-7 shrink-0">
             <option value="all" {{ (string)$selectedYear === 'all' ? 'selected' : '' }}>Semua Tahun</option>
             @foreach([2025, 2026, 2027, 2028] as $yVal)
               <option value="{{ $yVal }}" {{ (string)$selectedYear === (string)$yVal ? 'selected' : '' }}>{{ $yVal }}</option>
@@ -327,7 +339,7 @@
 
           <!-- 3. Dropdown Status Stok -->
           <select id="filter-status" name="status" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 pr-8">
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 px-2.5 pr-7 shrink-0">
             <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status ({{ $stats['total_items'] }})</option>
             <option value="aman" {{ $statusFilter === 'aman' ? 'selected' : '' }}>🟢 Aman ({{ $stats['safe_stock_count'] }})</option>
             <option value="menipis" {{ $statusFilter === 'menipis' ? 'selected' : '' }}>🟡 Menipis ({{ $stats['low_stock_count'] }})</option>
@@ -337,7 +349,7 @@
 
           <!-- 4. Filter Kategori Dropdown -->
           <select name="category" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium pr-8">
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium px-2.5 pr-7 shrink-0">
             <option value="all" {{ $categoryFilter === 'all' ? 'selected' : '' }}>Semua Kategori</option>
             @foreach($categories as $cat)
               <option value="{{ $cat }}" {{ $categoryFilter === $cat ? 'selected' : '' }}>{{ $cat }}</option>
@@ -346,7 +358,7 @@
 
           <!-- 5. Filter Urutan (Sort) -->
           <select name="sort" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium pr-8">
+                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium px-2.5 pr-7 shrink-0">
             <option value="code_asc" {{ $sort === 'code_asc' ? 'selected' : '' }}>Kode (A001 &rarr; A135)</option>
             <option value="code_desc" {{ $sort === 'code_desc' ? 'selected' : '' }}>Kode (A135 &rarr; A001)</option>
             <option value="name_asc" {{ $sort === 'name_asc' ? 'selected' : '' }}>Nama Barang (A &rarr; Z)</option>
@@ -363,25 +375,153 @@
             <option value="out_desc" {{ $sort === 'out_desc' ? 'selected' : '' }}>Keluar Terbanyak</option>
           </select>
 
-          <!-- 6. Input Search -->
-          <div class="relative flex-1 min-w-[200px] max-w-xs">
-            <input type="text" name="q" value="{{ $search }}"
-                   placeholder="Cari nama atau kode..."
-                   class="h-9 w-full text-xs rounded-xl border-slate-200 bg-slate-50 pl-8 pr-3 focus:border-brand focus:ring-brand font-medium">
-            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+          <!-- 6. Input Search with Live Autocomplete Suggestions (Sesuai Fitur Data Pelanggan) -->
+          <div class="relative flex-1 min-w-[140px]"
+               x-data="{
+                 searchVal: '{{ addslashes($search) }}',
+                 suggestions: [],
+                 showDropdown: false,
+                 loading: false,
+                 selectedIndex: -1,
+
+                 async onInput() {
+                   const val = this.searchVal.trim();
+                   if (!val) {
+                     this.suggestions = [];
+                     this.showDropdown = false;
+                     this.selectedIndex = -1;
+                     return;
+                   }
+                   this.loading = true;
+                   try {
+                     const res = await fetch(`{{ route('admin.material.index') }}?ajax=1&q=${encodeURIComponent(val)}`, {
+                       headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                     });
+                     if (res.ok) {
+                       this.suggestions = await res.json();
+                       this.showDropdown = this.suggestions.length > 0;
+                       this.selectedIndex = -1;
+                     }
+                   } catch (err) {
+                     this.suggestions = [];
+                   } finally {
+                     this.loading = false;
+                   }
+                 },
+
+                 selectItem(item) {
+                   this.searchVal = item.name;
+                   this.showDropdown = false;
+                   $nextTick(() => {
+                     $el.closest('form').submit();
+                   });
+                 },
+
+                 onKeyDown(e) {
+                   if (!this.showDropdown || this.suggestions.length === 0) return;
+                   if (e.key === 'ArrowDown') {
+                     e.preventDefault();
+                     this.selectedIndex = (this.selectedIndex + 1) % this.suggestions.length;
+                   } else if (e.key === 'ArrowUp') {
+                     e.preventDefault();
+                     this.selectedIndex = (this.selectedIndex - 1 + this.suggestions.length) % this.suggestions.length;
+                   } else if (e.key === 'Enter' && this.selectedIndex >= 0) {
+                     e.preventDefault();
+                     this.selectItem(this.suggestions[this.selectedIndex]);
+                   } else if (e.key === 'Escape') {
+                     this.showDropdown = false;
+                   }
+                 },
+
+                 highlightPrefix(name, prefix) {
+                   if (!prefix) return name;
+                   const lowerName = name.toLowerCase();
+                   const lowerPrefix = prefix.toLowerCase();
+                   if (lowerName.startsWith(lowerPrefix)) {
+                     const firstChar = name.charAt(0).toUpperCase();
+                     const restMatched = name.substring(1, prefix.length);
+                     const matched = firstChar + restMatched;
+                     const rest = name.substring(prefix.length);
+                     return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+                   }
+                   const wordIndex = lowerName.indexOf(' ' + lowerPrefix);
+                   if (wordIndex !== -1) {
+                     const before = name.substring(0, wordIndex + 1);
+                     const matched = name.substring(wordIndex + 1, wordIndex + 1 + prefix.length);
+                     const rest = name.substring(wordIndex + 1 + prefix.length);
+                     return `${before}<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+                   }
+                   return name;
+                 }
+               }"
+               @click.outside="showDropdown = false">
+            
+            <div class="relative w-full">
+              <input type="text" name="q"
+                     x-model="searchVal"
+                     @input.debounce.150ms="onInput()"
+                     @keydown="onKeyDown($event)"
+                     @focus="if (suggestions.length > 0) showDropdown = true"
+                     autocomplete="off"
+                     placeholder="Cari inisial A-Z, nama, kode..."
+                     class="h-9 w-full text-xs rounded-xl border-slate-200 bg-slate-50 pl-8 pr-7 focus:border-brand focus:ring-brand font-medium">
+              <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+
+              <!-- Spinner Loading -->
+              <div x-show="loading" style="display: none;" class="absolute right-2.5 top-2.5 text-slate-400 text-xs">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+              </div>
+
+              <!-- Dropdown Autocomplete Awalan (Sama Persis Seperti Menu Data Pelanggan) -->
+              <div x-show="showDropdown && suggestions.length > 0"
+                   style="display: none;"
+                   x-transition:enter="transition ease-out duration-100"
+                   x-transition:enter-start="transform opacity-0 scale-98"
+                   x-transition:enter-end="transform opacity-100 scale-100"
+                   x-transition:leave="transition ease-in duration-75"
+                   x-transition:leave-start="transform opacity-100 scale-100"
+                   x-transition:leave-end="transform opacity-0 scale-98"
+                   class="absolute left-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto w-full min-w-[340px] sm:min-w-[400px]">
+                
+                <div class="px-3.5 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-400 flex items-center justify-between">
+                  <span>Hasil Pencarian Awalan "<span class="text-slate-700 font-extrabold" x-text="searchVal"></span>"</span>
+                  <span class="text-[9px] text-slate-400">Pilih nama atau tekan Enter</span>
+                </div>
+
+                <template x-for="(item, idx) in suggestions" :key="item.id">
+                  <div @click="selectItem(item)"
+                       :class="selectedIndex === idx ? 'bg-red-50 text-brand' : 'hover:bg-slate-50 text-slate-700'"
+                       class="px-3.5 py-2.5 cursor-pointer flex items-center justify-between text-xs transition">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <div class="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 text-[10px]">
+                        <i class="fa-solid fa-box text-slate-500"></i>
+                      </div>
+                      <div class="truncate">
+                        <span class="text-xs font-semibold" x-html="highlightPrefix(item.name, searchVal)"></span>
+                        <span class="text-[10px] text-slate-400 ml-1.5" x-text="item.category ? '• ' + item.category : ''"></span>
+                      </div>
+                    </div>
+                    <div class="text-right shrink-0 ml-3">
+                      <span class="text-[10px] text-brand font-mono font-bold block" x-text="item.code ? 'KODE: ' + item.code : ''"></span>
+                      <span class="text-[10px] text-slate-400 font-mono block" x-text="'Stok: ' + (item.stock !== undefined && item.stock !== null ? formatQty(item.stock) : 0) + ' ' + (item.unit || 'Unit')"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
           </div>
 
           <!-- 7. Tombol Cari -->
-          <button type="submit" class="h-9 px-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs">
+          <button type="submit" class="h-9 px-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs flex items-center justify-center whitespace-nowrap">
             Cari
           </button>
 
           <!-- 8. Tombol Reset Semua Filter & Sortir -->
           @if($selectedMonth != 10 || (string)$selectedYear !== '2026' || !empty($search) || $categoryFilter !== 'all' || $statusFilter !== 'all' || $sort !== 'code_asc')
             <a href="{{ route('admin.material.index', ['tab' => 'laporan']) }}" title="Reset Filter & Sortir"
-               class="h-9 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0">
+               class="h-9 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 whitespace-nowrap">
               <i class="fa-solid fa-rotate-left text-[10px]"></i>
-              <span class="hidden sm:inline">Reset</span>
+              <span>Reset</span>
             </a>
           @endif
 
@@ -394,15 +534,8 @@
           <table class="w-full text-left border-collapse text-xs">
             <thead>
               <tr class="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200/80">
-                <th class="py-3.5 px-3 w-10 text-center">
-                  <input type="checkbox"
-                         @click="toggleSelectAll(pageMaterialIds)"
-                         :checked="isPageAllSelected(pageMaterialIds)"
-                         class="rounded border-slate-300 text-brand focus:ring-brand">
-                </th>
-
-                <!-- Kode Barang Sortable -->
-                <th class="py-3.5 px-3 text-center w-24">
+                <!-- 1. Kode Barang (Paling Kiri) -->
+                <th class="py-3.5 px-3 text-center w-28">
                   <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'code_asc' ? 'code_desc' : 'code_asc']) }}"
                      class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Kode">
                     <span>Kode Barang</span>
@@ -410,7 +543,16 @@
                   </a>
                 </th>
 
-                <!-- Nama Barang Sortable -->
+                <!-- 2. Bulan -->
+                <th class="py-3.5 px-3 text-center w-28">
+                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'month_asc' ? 'month_desc' : 'month_asc']) }}"
+                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Bulan">
+                    <span>Bulan</span>
+                    <i class="fa-solid {{ $sort === 'month_asc' ? 'fa-arrow-up text-brand' : ($sort === 'month_desc' ? 'fa-arrow-down text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
+                  </a>
+                </th>
+
+                <!-- 3. Nama Barang -->
                 <th class="py-3.5 px-4 text-center min-w-[200px]">
                   <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'name_asc' ? 'name_desc' : 'name_asc']) }}"
                      class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Nama Barang">
@@ -419,34 +561,7 @@
                   </a>
                 </th>
 
-                <!-- Kategori Sortable -->
-                <th class="py-3.5 px-3 text-center">
-                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'category_asc' ? 'category_desc' : 'category_asc']) }}"
-                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Kategori">
-                    <span>Kategori</span>
-                    <i class="fa-solid {{ $sort === 'category_asc' ? 'fa-arrow-up text-brand' : ($sort === 'category_desc' ? 'fa-arrow-down text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
-                  </a>
-                </th>
-
-                <!-- Satuan Sortable -->
-                <th class="py-3.5 px-3 text-center">
-                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'unit_asc' ? 'unit_desc' : 'unit_asc']) }}"
-                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Satuan">
-                    <span>Satuan</span>
-                    <i class="fa-solid {{ $sort === 'unit_asc' ? 'fa-arrow-up text-brand' : ($sort === 'unit_desc' ? 'fa-arrow-down text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
-                  </a>
-                </th>
-
-                <!-- Bulan Sortable -->
-                <th class="py-3.5 px-3 text-center">
-                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'month_asc' ? 'month_desc' : 'month_asc']) }}"
-                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Bulan">
-                    <span>Bulan</span>
-                    <i class="fa-solid {{ $sort === 'month_asc' ? 'fa-arrow-up text-brand' : ($sort === 'month_desc' ? 'fa-arrow-down text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
-                  </a>
-                </th>
-
-                <!-- Stok Awal Sortable -->
+                <!-- 4. Stok Awal -->
                 <th class="py-3.5 px-3 text-center whitespace-nowrap font-black text-slate-700 bg-slate-100/50" style="text-align: center !important;">
                   <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'initial_desc' ? 'initial_asc' : 'initial_desc']) }}"
                      class="inline-flex items-center justify-center gap-1.5 hover:text-slate-900 transition whitespace-nowrap" title="Sortir Stok Awal">
@@ -455,7 +570,7 @@
                   </a>
                 </th>
 
-                <!-- Barang Masuk Sortable -->
+                <!-- 5. Barang Masuk -->
                 <th class="py-3.5 px-3 text-center whitespace-nowrap font-black text-emerald-700 bg-emerald-50/50" style="text-align: center !important;">
                   <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'in_desc' ? 'in_asc' : 'in_desc']) }}"
                      class="inline-flex items-center justify-center gap-1.5 hover:text-emerald-900 transition whitespace-nowrap" title="Sortir Barang Masuk">
@@ -464,7 +579,7 @@
                   </a>
                 </th>
 
-                <!-- Barang Keluar Sortable -->
+                <!-- 6. Barang Keluar -->
                 <th class="py-3.5 px-3 text-center whitespace-nowrap font-black text-rose-700 bg-rose-50/50" style="text-align: center !important;">
                   <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'out_desc' ? 'out_asc' : 'out_desc']) }}"
                      class="inline-flex items-center justify-center gap-1.5 hover:text-rose-900 transition whitespace-nowrap" title="Sortir Barang Keluar">
@@ -473,7 +588,7 @@
                   </a>
                 </th>
 
-                <!-- Stok Akhir Sortable -->
+                <!-- 7. Stok Akhir -->
                 <th class="py-3.5 px-3 text-center whitespace-nowrap font-black text-slate-900 bg-amber-50/40" style="text-align: center !important;">
                   <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'stock_desc' ? 'stock_asc' : 'stock_desc']) }}"
                      class="inline-flex items-center justify-center gap-1.5 hover:text-brand transition whitespace-nowrap" title="Sortir Stok Akhir">
@@ -482,16 +597,8 @@
                   </a>
                 </th>
 
-                <!-- Status Sortable -->
-                <th class="py-3.5 px-3 text-center">
-                  <a href="{{ request()->fullUrlWithQuery(['sort' => $sort === 'status_asc' ? 'status_desc' : 'status_asc']) }}"
-                     class="inline-flex items-center justify-center gap-1 hover:text-slate-900 transition w-full" title="Sortir Status">
-                    <span>Status</span>
-                    <i class="fa-solid {{ $sort === 'status_asc' ? 'fa-arrow-up text-brand' : ($sort === 'status_desc' ? 'fa-arrow-down text-brand' : 'fa-sort text-slate-300') }} text-[10px]"></i>
-                  </a>
-                </th>
-
-                <th class="py-3.5 px-3 text-center">Aksi Cepat</th>
+                <!-- 8. Aksi (Edit) -->
+                <th class="py-3.5 px-3 text-center w-24">Aksi</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
@@ -503,25 +610,23 @@
                   $isLow = $stockVal > 0 && $stockVal <= $material->min_stock;
                   $isSafe = $stockVal > $material->min_stock;
                 @endphp
-                <tr class="hover:bg-slate-50/70 transition" :class="selectedIds.includes({{ $material->id }}) ? 'bg-red-50/30' : ''">
+                <tr class="hover:bg-slate-50/70 transition">
                   
-                  <!-- Checkbox -->
-                  <td class="py-3 px-3 text-center">
-                    <input type="checkbox"
-                           value="{{ $material->id }}"
-                           @click="toggleSingle({{ $material->id }})"
-                           :checked="selectedIds.includes({{ $material->id }})"
-                           class="rounded border-slate-300 text-brand focus:ring-brand">
-                  </td>
-
-                  <!-- Kode Barang (Format Kolom 1 CSV) -->
+                  <!-- 1. Kode Barang (Paling Kiri) -->
                   <td class="py-3 px-3 text-center">
                     <span class="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                       {{ $material->code }}
                     </span>
                   </td>
 
-                  <!-- Nama Barang (Format Kolom 2 CSV) -->
+                  <!-- 2. Bulan -->
+                  <td class="py-3 px-3 text-center">
+                    <span class="inline-block bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200 whitespace-nowrap">
+                      {{ $material->display_month ?? $material->month ?? $monthName }}
+                    </span>
+                  </td>
+
+                  <!-- 3. Nama Barang -->
                   <td class="py-3 px-4 text-center">
                     <div class="font-extrabold text-slate-900 hover:text-brand transition cursor-pointer"
                          @click="openHistory({{ Js::from($material) }})">
@@ -529,35 +634,14 @@
                     </div>
                   </td>
 
-                  <!-- Kategori -->
-                  <td class="py-3 px-3 text-center">
-                    <span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">
-                      {{ $material->category }}
-                    </span>
-                  </td>
-
-                  <!-- Satuan -->
-                  <td class="py-3 px-3 text-center">
-                    <span class="font-bold text-slate-600 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded text-[11px]">
-                      {{ $material->unit }}
-                    </span>
-                  </td>
-
-                  <!-- Bulan (Sesuai Berkas Excel/CSV) -->
-                  <td class="py-3 px-3 text-center">
-                    <span class="inline-block bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200 whitespace-nowrap">
-                      {{ $material->display_month ?? $material->month ?? $monthName }}
-                    </span>
-                  </td>
-
-                  <!-- Stok Awal (Format Kolom 3 CSV) -->
+                  <!-- 4. Stok Awal -->
                   <td class="py-3 px-3 text-center font-mono font-bold text-slate-700 bg-slate-100/30" style="text-align: center !important;">
                     <div class="w-full text-center" style="text-align: center !important;">
                       {{ \App\Models\Material::formatQty($material->computed_initial_stock ?? $material->initial_stock) }}
                     </div>
                   </td>
 
-                  <!-- Barang Masuk (Format Kolom 4 CSV) -->
+                  <!-- 5. Barang Masuk -->
                   <td class="py-3 px-3 text-center font-mono font-bold bg-emerald-50/30" style="text-align: center !important;">
                     @php $inVal = $material->computed_total_in ?? $material->total_in; @endphp
                     <div class="w-full text-center" style="text-align: center !important;">
@@ -569,7 +653,7 @@
                     </div>
                   </td>
 
-                  <!-- Barang Keluar (Format Kolom 5 CSV) -->
+                  <!-- 6. Barang Keluar -->
                   <td class="py-3 px-3 text-center font-mono font-bold bg-rose-50/30" style="text-align: center !important;">
                     @php $outVal = $material->computed_total_out ?? $material->total_out; @endphp
                     <div class="w-full text-center" style="text-align: center !important;">
@@ -581,7 +665,7 @@
                     </div>
                   </td>
 
-                  <!-- Stok Akhir (Format Kolom 6 CSV) -->
+                  <!-- 7. Stok Akhir -->
                   <td class="py-3 px-3 text-center font-mono font-black text-sm bg-amber-50/20" style="text-align: center !important;">
                     <div class="w-full text-center" style="text-align: center !important;">
                       <span class="{{ $isNegative ? 'text-rose-600 underline font-black' : ($isZero ? 'text-red-500' : ($isLow ? 'text-amber-500' : 'text-slate-900')) }}">
@@ -590,80 +674,22 @@
                     </div>
                   </td>
 
-                  <!-- Status Badge -->
+                  <!-- 8. Aksi (Edit) -->
                   <td class="py-3 px-3 text-center">
-                    @if($isNegative)
-                      <span class="inline-flex items-center gap-1 bg-rose-100 text-rose-800 border border-rose-300 text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                        <i class="fa-solid fa-circle-exclamation text-[8px]"></i> MINUS
-                      </span>
-                    @elseif($isZero)
-                      <span class="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                        <span class="w-1.5 h-1.5 rounded-full bg-red-600"></span> HABIS
-                      </span>
-                    @elseif($isLow)
-                      <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> MENIPIS
-                      </span>
-                    @else
-                      <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> AMAN
-                      </span>
-                    @endif
-                  </td>
-
-                  <!-- Aksi Cepat Mutasi & Kelola -->
-                  <td class="py-3 px-3 text-center">
-                    <div class="flex items-center justify-center gap-1">
-                      
-                      <!-- Tambah Stok Manual (Masuk) -->
-                      <button type="button" @click="openAddStock({{ Js::from($material) }})"
-                              title="Tambah Stok (Barang Masuk)"
-                              class="w-7 h-7 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 rounded-lg flex items-center justify-center transition">
-                        <i class="fa-solid fa-plus text-[10px]"></i>
-                      </button>
-
-                      <!-- Kurang Stok Manual (Keluar) -->
-                      <button type="button" @click="openReduceStock({{ Js::from($material) }})"
-                              title="Kurang Stok (Barang Keluar)"
-                              class="w-7 h-7 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 rounded-lg flex items-center justify-center transition">
-                        <i class="fa-solid fa-minus text-[10px]"></i>
-                      </button>
-
-                      <!-- Opname / Sesuaikan -->
-                      <button type="button" @click="openAdjustStock({{ Js::from($material) }})"
-                              title="Penyesuaian Stok Opname Fisik"
-                              class="w-7 h-7 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 rounded-lg flex items-center justify-center transition">
-                        <i class="fa-solid fa-sliders text-[10px]"></i>
-                      </button>
-
-                      <!-- Riwayat Mutasi -->
-                      <button type="button" @click="openHistory({{ Js::from($material) }})"
-                              title="Riwayat Keluar Masuk"
-                              class="w-7 h-7 bg-slate-100 hover:bg-slate-800 text-slate-700 hover:text-white border border-slate-200 rounded-lg flex items-center justify-center transition">
-                        <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
-                      </button>
-
-                      <!-- Edit Data -->
+                    <div class="flex items-center justify-center">
                       <button type="button" @click="openEdit({{ Js::from($material) }})"
                               title="Edit Barang"
-                              class="w-7 h-7 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 rounded-lg flex items-center justify-center transition">
+                              class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 rounded-lg flex items-center gap-1.5 transition text-xs font-bold shadow-2xs">
                         <i class="fa-solid fa-pen text-[10px]"></i>
+                        <span>Edit</span>
                       </button>
-
-                      <!-- Hapus -->
-                      <button type="button" @click="openDelete({{ Js::from($material) }})"
-                              title="Hapus Barang"
-                              class="w-7 h-7 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 rounded-lg flex items-center justify-center transition">
-                        <i class="fa-solid fa-trash-can text-[10px]"></i>
-                      </button>
-
                     </div>
                   </td>
 
                 </tr>
               @empty
                 <tr>
-                  <td colspan="12" class="py-12 text-center text-slate-400">
+                  <td colspan="8" class="py-12 text-center text-slate-400">
                     <div class="flex flex-col items-center justify-center space-y-2">
                       <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-xl">
                         <i class="fa-solid fa-boxes-stacked"></i>
@@ -726,9 +752,8 @@
                 <th class="py-3 px-4 w-12 text-center">No</th>
                 <th class="py-3 px-4 w-32 text-center">Tgl</th>
                 <th class="py-3 px-4 text-center">Nama Barang</th>
-                <th class="py-3 px-4 w-28 text-center">Kode</th>
                 <th class="py-3 px-4 text-center w-36">Jumlah Masuk</th>
-                <th class="py-3 px-4 text-center">Catatan / Penerima / Sumber</th>
+                <th class="py-3 px-4 text-center">Catatan</th>
                 <th class="py-3 px-4 w-24 text-center">Aksi</th>
               </tr>
             </thead>
@@ -747,13 +772,6 @@
                     {{ $in->material->name ?? 'Barang Dihapus' }}
                   </td>
 
-                  <!-- Kode Barang -->
-                  <td class="py-3 px-4 text-center">
-                    <span class="font-mono text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
-                      {{ $in->material->code ?? '-' }}
-                    </span>
-                  </td>
-
                   <!-- Jumlah Masuk -->
                   <td class="py-3 px-4 text-center">
                     <span class="font-black text-sm text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -767,20 +785,27 @@
                     <span class="font-semibold">{{ str_replace(' (Barang Masuk)', '', $in->notes) }}</span>
                   </td>
 
-                  <!-- Aksi Hapus -->
+                  <!-- Aksi: Edit & Hapus -->
                   <td class="py-3 px-4 text-center">
-                    <form method="POST" action="{{ route('admin.material.mutation.destroy', $in->id) }}" onsubmit="return confirm('Hapus catatan mutasi masuk ini? Stok barang akan disesuaikan kembali.');">
-                      @csrf
-                      @method('DELETE')
-                      <button type="submit" class="w-7 h-7 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-lg transition inline-flex items-center justify-center" title="Hapus Catatan Mutasi">
-                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    <div class="flex items-center justify-center gap-1.5">
+                      <button type="button" @click="openEditMutation({{ Js::from($in) }})"
+                              title="Edit Catatan Barang Masuk"
+                              class="w-7 h-7 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 rounded-lg flex items-center justify-center transition text-xs shadow-2xs">
+                        <i class="fa-solid fa-pen text-[10px]"></i>
                       </button>
-                    </form>
+                      <form method="POST" action="{{ route('admin.material.mutation.destroy', $in->id) }}" onsubmit="return confirm('Hapus catatan mutasi masuk ini? Stok barang akan disesuaikan kembali.');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-7 h-7 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 rounded-lg transition inline-flex items-center justify-center text-xs shadow-2xs" title="Hapus Catatan Mutasi">
+                          <i class="fa-solid fa-trash-can text-[10px]"></i>
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               @empty
                 <tr>
-                  <td colspan="7" class="py-12 text-center text-slate-400">
+                  <td colspan="6" class="py-12 text-center text-slate-400">
                     <div class="flex flex-col items-center justify-center space-y-1.5">
                       <i class="fa-solid fa-inbox text-2xl text-slate-300"></i>
                       <p class="font-bold text-slate-700 text-xs">Tidak Ada Transaksi Barang Masuk</p>
@@ -842,9 +867,8 @@
                 <th class="py-3 px-4 w-12 text-center">No</th>
                 <th class="py-3 px-4 w-32 text-center">Tgl</th>
                 <th class="py-3 px-4 text-center">Nama Barang</th>
-                <th class="py-3 px-4 w-28 text-center">Kode</th>
                 <th class="py-3 px-4 text-center w-36">Jumlah Keluar</th>
-                <th class="py-3 px-4 text-center">Catatan / Teknisi / Lokasi</th>
+                <th class="py-3 px-4 text-center">Catatan</th>
                 <th class="py-3 px-4 w-24 text-center">Aksi</th>
               </tr>
             </thead>
@@ -863,13 +887,6 @@
                     {{ $out->material->name ?? 'Barang Dihapus' }}
                   </td>
 
-                  <!-- Kode Barang -->
-                  <td class="py-3 px-4 text-center">
-                    <span class="font-mono text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
-                      {{ $out->material->code ?? '-' }}
-                    </span>
-                  </td>
-
                   <!-- Jumlah Keluar -->
                   <td class="py-3 px-4 text-center">
                     <span class="font-black text-sm text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
@@ -886,20 +903,27 @@
                     </span>
                   </td>
 
-                  <!-- Aksi Hapus -->
+                  <!-- Aksi: Edit & Hapus -->
                   <td class="py-3 px-4 text-center">
-                    <form method="POST" action="{{ route('admin.material.mutation.destroy', $out->id) }}" onsubmit="return confirm('Hapus catatan mutasi keluar ini? Stok barang akan dikembalikan ke posisi semula.');">
-                      @csrf
-                      @method('DELETE')
-                      <button type="submit" class="w-7 h-7 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-lg transition inline-flex items-center justify-center" title="Hapus Catatan Mutasi">
-                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    <div class="flex items-center justify-center gap-1.5">
+                      <button type="button" @click="openEditMutation({{ Js::from($out) }})"
+                              title="Edit Catatan Barang Keluar"
+                              class="w-7 h-7 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 rounded-lg flex items-center justify-center transition text-xs shadow-2xs">
+                        <i class="fa-solid fa-pen text-[10px]"></i>
                       </button>
-                    </form>
+                      <form method="POST" action="{{ route('admin.material.mutation.destroy', $out->id) }}" onsubmit="return confirm('Hapus catatan mutasi keluar ini? Stok barang akan dikembalikan ke posisi semula.');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-7 h-7 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 rounded-lg transition inline-flex items-center justify-center text-xs shadow-2xs" title="Hapus Catatan Mutasi">
+                          <i class="fa-solid fa-trash-can text-[10px]"></i>
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               @empty
                 <tr>
-                  <td colspan="7" class="py-12 text-center text-slate-400">
+                  <td colspan="6" class="py-12 text-center text-slate-400">
                     <div class="flex flex-col items-center justify-center space-y-1.5">
                       <i class="fa-solid fa-inbox text-2xl text-slate-300"></i>
                       <p class="font-bold text-slate-700 text-xs">Tidak Ada Transaksi Barang Keluar</p>
@@ -1965,6 +1989,104 @@
                   class="px-5 py-2.5 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
             <i class="fa-solid fa-cloud-arrow-up"></i>
             <span>Proses Impor Berkas</span>
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+  <!-- ============================================== -->
+  <!-- MODAL: EDIT TRANSAKSI MUTASI (MASUK / KELUAR)  -->
+  <!-- ============================================== -->
+  <div x-show="openEditMutationModal"
+       style="display: none;"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0">
+
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5"
+         @click.away="openEditMutationModal = false"
+         x-show="selectedMutation">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+               :class="editMutationType === 'in' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'">
+            <i class="fa-solid" :class="editMutationType === 'in' ? 'fa-arrow-down' : 'fa-arrow-up'"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm"
+                x-text="editMutationType === 'in' ? 'Edit Transaksi Barang Masuk' : 'Edit Transaksi Barang Keluar'">
+            </h3>
+            <p class="text-[11px] text-slate-400">Sesuaikan data barang, tanggal, jumlah, atau catatan transaksi</p>
+          </div>
+        </div>
+        <button type="button" @click="openEditMutationModal = false" class="text-slate-400 hover:text-slate-600 text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form method="POST" :action="'{{ url('admin/stok-material/mutasi') }}/' + (selectedMutation ? selectedMutation.id : '')" class="space-y-4">
+        @csrf
+        @method('PUT')
+
+        <!-- Pilih Barang -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Barang / Material *</label>
+          <select name="material_id" x-model="editMutationMaterialId" required
+                  class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-semibold">
+            <option value="">-- Pilih Barang --</option>
+            @foreach($allMaterialsList as $item)
+              <option value="{{ $item->id }}">
+                {{ $item->code }} - {{ $item->name }} (Stok Saat Ini: {{ \App\Models\Material::formatQty($item->stock) }} {{ $item->unit }})
+              </option>
+            @endforeach
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Tanggal (Tgl) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Transaksi (Tgl) *</label>
+            <input type="date" name="transaction_date" x-model="editMutationDate" required
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-mono font-bold">
+          </div>
+
+          <!-- Jumlah -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Jumlah <span x-text="editMutationType === 'in' ? 'Masuk' : 'Keluar'"></span> *
+            </label>
+            <input type="number" step="any" name="amount" x-model.number="editMutationAmount" min="0.01" required placeholder="Misal: 10"
+                   class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand font-bold text-slate-900">
+          </div>
+        </div>
+
+        <!-- Catatan -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Catatan</label>
+          <input type="text" name="notes" x-model="editMutationNotes" placeholder="Catatan transaksi..."
+                 class="w-full text-xs rounded-xl border-slate-200 focus:border-brand focus:ring-brand">
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button type="button" @click="openEditMutationModal = false"
+                  class="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+            Batal
+          </button>
+          <button type="submit"
+                  class="px-5 py-2.5 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5"
+                  :class="editMutationType === 'in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Simpan Perubahan</span>
           </button>
         </div>
 

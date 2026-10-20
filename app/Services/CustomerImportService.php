@@ -921,6 +921,14 @@ class CustomerImportService
         $extension = strtolower($file->getClientOriginalExtension());
         $path = $file->getRealPath();
 
+        // 1. Prioritas Utama: Gunakan PhpSpreadsheet (Laravel Excel engine)
+        // Mampu mengevaluasi formula, membaca binary .xls BIFF8, format serial tanggal, XLSX, dan CSV multi-delimiter
+        $sheets = self::extractSheetsWithSpreadsheet($path, $extension);
+        if (!empty($sheets)) {
+            return $sheets;
+        }
+
+        // 2. Fallback: Parser native bawaan untuk format khusus (misal file HTML Table / XML 2003 yang dinamai .xls)
         if ($extension === 'csv' || $extension === 'txt') {
             $rows = self::parseCsv($path);
             return !empty($rows) ? [['name' => 'Sheet 1', 'rows' => $rows]] : [];
@@ -953,6 +961,114 @@ class CustomerImportService
 
         $rows = self::parseCsv($path);
         return !empty($rows) ? [['name' => 'Sheet 1', 'rows' => $rows]] : [];
+    }
+
+    /**
+     * Ekstraksi seluruh sheet menggunakan PhpOffice\PhpSpreadsheet (Engine Laravel Excel)
+     *
+     * @param string $path
+     * @param string $extension
+     * @return array
+     */
+    public static function extractSheetsWithSpreadsheet(string $path, string $extension = ''): array
+    {
+        if (!class_exists(\PhpOffice\PhpSpreadsheet\IOFactory::class)) {
+            return [];
+        }
+
+        try {
+            $extension = strtolower($extension);
+            $reader = null;
+
+            if ($extension === 'csv' || $extension === 'txt') {
+                $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+                $firstLine = '';
+                if ($h = @fopen($path, 'r')) {
+                    $firstLine = (string)fgets($h);
+                    fclose($h);
+                }
+                $delimiter = ',';
+                if (substr_count($firstLine, ';') > substr_count($firstLine, ',')) {
+                    $delimiter = ';';
+                } elseif (substr_count($firstLine, "\t") > substr_count($firstLine, ',')) {
+                    $delimiter = "\t";
+                }
+                $reader->setDelimiter($delimiter);
+                $reader->setInputEncoding('UTF-8');
+            } else {
+                try {
+                    $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($path);
+                } catch (\Throwable $e) {
+                    if ($extension === 'xlsx') {
+                        $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+                    } elseif ($extension === 'xls') {
+                        $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+                    }
+                }
+            }
+
+            if (!$reader) {
+                return [];
+            }
+
+            // Baca nilai saja agar hemat memori & cepat
+            $reader->setReadDataOnly(true);
+            if (method_exists($reader, 'setReadEmptyCells')) {
+                $reader->setReadEmptyCells(false);
+            }
+
+            $spreadsheet = $reader->load($path);
+            $sheets = [];
+
+            foreach ($spreadsheet->getAllSheets() as $index => $worksheet) {
+                $sheetTitle = trim($worksheet->getTitle()) ?: ('Sheet ' . ($index + 1));
+
+                // toArray(nullValue, calculateFormulas = true, formatData = false, returnCellRef = false)
+                $rawRows = $worksheet->toArray(null, true, false, false);
+                if (empty($rawRows) || !is_array($rawRows)) {
+                    continue;
+                }
+
+                $cleanedRows = [];
+                foreach ($rawRows as $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+
+                    $trimmedRow = array_map(function ($val) {
+                        if ($val === null) {
+                            return '';
+                        }
+                        if (is_bool($val)) {
+                            return $val ? 'TRUE' : 'FALSE';
+                        }
+                        return trim(str_replace(["\xc2\xa0", "\u{00a0}", "&nbsp;"], ' ', (string)$val));
+                    }, $row);
+
+                    // Lewati baris jika seluruh kolom kosong
+                    if (count(array_filter($trimmedRow, fn($v) => $v !== '')) === 0) {
+                        continue;
+                    }
+
+                    $cleanedRows[] = $trimmedRow;
+                }
+
+                if (!empty($cleanedRows)) {
+                    $sheets[] = [
+                        'name' => $sheetTitle,
+                        'rows' => $cleanedRows,
+                    ];
+                }
+            }
+
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet);
+
+            return $sheets;
+        } catch (\Throwable $e) {
+            Log::info('PhpSpreadsheet reader info: ' . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -1648,6 +1764,9 @@ class CustomerImportService
         // Jika angka serial Excel (misal: 31048 untuk tanggal)
         if (is_numeric($dateStr) && (float)$dateStr > 1000 && (float)$dateStr < 60000) {
             try {
+                if (class_exists(\PhpOffice\PhpSpreadsheet\Shared\Date::class)) {
+                    return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$dateStr)->format('Y-m-d');
+                }
                 // Serial 1 = 1899-12-30
                 $base = Carbon::create(1899, 12, 30);
                 return $base->addDays((int)$dateStr)->toDateString();

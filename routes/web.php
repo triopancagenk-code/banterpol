@@ -94,6 +94,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/stok-material/{id}/tambah', [MaterialController::class, 'addStock'])->name('material.add-stock');
     Route::post('/stok-material/{id}/kurang', [MaterialController::class, 'reduceStock'])->name('material.reduce-stock');
     Route::post('/stok-material/{id}/sesuaikan', [MaterialController::class, 'adjustStock'])->name('material.adjust-stock');
+    Route::put('/stok-material/mutasi/{id}', [MaterialController::class, 'updateMutation'])->name('material.mutation.update');
     Route::delete('/stok-material/mutasi/{id}', [MaterialController::class, 'destroyMutation'])->name('material.mutation.destroy');
     Route::get('/stok-material/export', [MaterialController::class, 'export'])->name('material.export');
     Route::get('/stok-material/export-csv', [MaterialController::class, 'exportCsv'])->name('material.export-csv');

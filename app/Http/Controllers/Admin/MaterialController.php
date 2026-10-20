@@ -43,7 +43,39 @@ class MaterialController extends Controller
         $search = trim($request->input('q', $request->input('search', '')));
         $categoryFilter = $request->input('category', 'all');
         $statusFilter = $request->input('status', 'all'); // all, aman, menipis, habis, minus
-        $sort = $request->input('sort', 'code_asc');
+        $sort = $request->input('sort', !empty($search) ? 'name_asc' : 'code_asc');
+
+        // Dukungan AJAX Live Autocomplete Suggestion (Pencarian Berdasarkan Awalan / Inisial Abjad a-z)
+        if ($request->ajax() || $request->wantsJson() || $request->has('ajax')) {
+            $search = trim($request->input('q', ''));
+            if (empty($search)) {
+                return response()->json([]);
+            }
+            $lowerSearch = strtolower($search);
+            $upperSearch = strtoupper($search);
+
+            $results = Material::where(function ($q) use ($search, $lowerSearch, $upperSearch) {
+                $q->where('name', 'like', "{$search}%")
+                  ->orWhere('name', 'like', "{$lowerSearch}%")
+                  ->orWhere('name', 'like', "{$upperSearch}%")
+                  ->orWhere('name', 'like', " {$search}%")
+                  ->orWhere('name', 'like', " {$lowerSearch}%")
+                  ->orWhere('name', 'like', " {$upperSearch}%")
+                  ->orWhere('code', 'like', "{$upperSearch}%")
+                  ->orWhere('code', 'like', "{$search}%");
+
+                if (strlen($search) > 2) {
+                    $q->orWhere('name', 'like', "% {$search}%")
+                      ->orWhere('name', 'like', "%{$search}%")
+                      ->orWhere('category', 'like', "{$search}%");
+                }
+            })
+            ->orderBy('name', 'asc')
+            ->limit(10)
+            ->get(['id', 'code', 'name', 'unit', 'stock', 'category']);
+
+            return response()->json($results);
+        }
 
         // Pilihan Periode Bulanan & Tahunan (Default: Bulan 10 / Oktober Tahun 2026)
         $monthInput = $request->input('month', '10');
@@ -136,15 +168,30 @@ class MaterialController extends Controller
                       ->selectRaw('COALESCE(SUM(amount), 0)');
                 }, 'period_out');
 
-            // Pencarian Teks (Kode, Nama, Kategori, Bulan, Lokasi)
+            // Pencarian Teks (Inisial Awalan A-Z, Nama, Kode, Kategori, Bulan, Lokasi)
             if (!empty($search)) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%")
-                      ->orWhere('category', 'like', "%{$search}%")
-                      ->orWhere('month', 'like', "%{$search}%")
-                      ->orWhere('location', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                $trimmedSearch = trim($search);
+                $lowerSearch = strtolower($trimmedSearch);
+                $upperSearch = strtoupper($trimmedSearch);
+
+                $query->where(function ($q) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                    $q->where('name', 'like', "{$trimmedSearch}%")
+                      ->orWhere('name', 'like', "{$lowerSearch}%")
+                      ->orWhere('name', 'like', "{$upperSearch}%")
+                      ->orWhere('name', 'like', " {$trimmedSearch}%")
+                      ->orWhere('name', 'like', " {$lowerSearch}%")
+                      ->orWhere('name', 'like', " {$upperSearch}%")
+                      ->orWhere('code', 'like', "{$upperSearch}%")
+                      ->orWhere('code', 'like', "{$trimmedSearch}%");
+
+                    if (strlen($trimmedSearch) > 1) {
+                        $q->orWhere('name', 'like', "% {$trimmedSearch}%")
+                          ->orWhere('name', 'like', "%{$trimmedSearch}%")
+                          ->orWhere('category', 'like', "%{$trimmedSearch}%")
+                          ->orWhere('month', 'like', "%{$trimmedSearch}%")
+                          ->orWhere('location', 'like', "%{$trimmedSearch}%")
+                          ->orWhere('description', 'like', "%{$trimmedSearch}%");
+                    }
                 });
             }
 
@@ -227,14 +274,29 @@ class MaterialController extends Controller
             }
 
             if (!empty($search)) {
-                $monthlyQuery->where(function ($q) use ($search) {
-                    $q->where('month_name', 'like', "%{$search}%")
-                      ->orWhereHas('material', function ($mq) use ($search) {
-                          $mq->where('name', 'like', "%{$search}%")
-                             ->orWhere('code', 'like', "%{$search}%")
-                             ->orWhere('category', 'like', "%{$search}%")
-                             ->orWhere('location', 'like', "%{$search}%")
-                             ->orWhere('description', 'like', "%{$search}%");
+                $trimmedSearch = trim($search);
+                $lowerSearch = strtolower($trimmedSearch);
+                $upperSearch = strtoupper($trimmedSearch);
+
+                $monthlyQuery->where(function ($q) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                    $q->where('month_name', 'like', "%{$trimmedSearch}%")
+                      ->orWhereHas('material', function ($mq) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                          $mq->where('name', 'like', "{$trimmedSearch}%")
+                             ->orWhere('name', 'like', "{$lowerSearch}%")
+                             ->orWhere('name', 'like', "{$upperSearch}%")
+                             ->orWhere('name', 'like', " {$trimmedSearch}%")
+                             ->orWhere('name', 'like', " {$lowerSearch}%")
+                             ->orWhere('name', 'like', " {$upperSearch}%")
+                             ->orWhere('code', 'like', "{$upperSearch}%")
+                             ->orWhere('code', 'like', "{$trimmedSearch}%");
+
+                          if (strlen($trimmedSearch) > 1) {
+                              $mq->orWhere('name', 'like', "% {$trimmedSearch}%")
+                                 ->orWhere('name', 'like', "%{$trimmedSearch}%")
+                                 ->orWhere('category', 'like', "%{$trimmedSearch}%")
+                                 ->orWhere('location', 'like', "%{$trimmedSearch}%")
+                                 ->orWhere('description', 'like', "%{$trimmedSearch}%");
+                          }
                       });
                 });
             }
@@ -267,12 +329,27 @@ class MaterialController extends Controller
                 $orphansQuery->where('category', $categoryFilter);
             }
             if (!empty($search)) {
-                $orphansQuery->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%")
-                      ->orWhere('category', 'like', "%{$search}%")
-                      ->orWhere('location', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                $trimmedSearch = trim($search);
+                $lowerSearch = strtolower($trimmedSearch);
+                $upperSearch = strtoupper($trimmedSearch);
+
+                $orphansQuery->where(function ($q) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                    $q->where('name', 'like', "{$trimmedSearch}%")
+                      ->orWhere('name', 'like', "{$lowerSearch}%")
+                      ->orWhere('name', 'like', "{$upperSearch}%")
+                      ->orWhere('name', 'like', " {$trimmedSearch}%")
+                      ->orWhere('name', 'like', " {$lowerSearch}%")
+                      ->orWhere('name', 'like', " {$upperSearch}%")
+                      ->orWhere('code', 'like', "{$upperSearch}%")
+                      ->orWhere('code', 'like', "{$trimmedSearch}%");
+
+                    if (strlen($trimmedSearch) > 1) {
+                        $q->orWhere('name', 'like', "% {$trimmedSearch}%")
+                          ->orWhere('name', 'like', "%{$trimmedSearch}%")
+                          ->orWhere('category', 'like', "%{$trimmedSearch}%")
+                          ->orWhere('location', 'like', "%{$trimmedSearch}%")
+                          ->orWhere('description', 'like', "%{$trimmedSearch}%");
+                    }
                 });
             }
             $orphanItems = $orphansQuery->get()->map(function ($m) {
@@ -376,10 +453,20 @@ class MaterialController extends Controller
             });
         }
         if (!empty($search)) {
-            $incomingQuery->where(function ($q) use ($search) {
-                $q->where('notes', 'like', "%{$search}%")
-                  ->orWhereHas('material', function ($mq) use ($search) {
-                      $mq->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%");
+            $trimmedSearch = trim($search);
+            $lowerSearch = strtolower($trimmedSearch);
+            $upperSearch = strtoupper($trimmedSearch);
+
+            $incomingQuery->where(function ($q) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                $q->where('notes', 'like', "%{$trimmedSearch}%")
+                  ->orWhereHas('material', function ($mq) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                      $mq->where('name', 'like', "{$trimmedSearch}%")
+                         ->orWhere('name', 'like', "{$lowerSearch}%")
+                         ->orWhere('name', 'like', "{$upperSearch}%")
+                         ->orWhere('name', 'like', " {$trimmedSearch}%")
+                         ->orWhere('code', 'like', "{$upperSearch}%")
+                         ->orWhere('code', 'like', "{$trimmedSearch}%")
+                         ->orWhere('name', 'like', "%{$trimmedSearch}%");
                   });
             });
         }
@@ -396,10 +483,20 @@ class MaterialController extends Controller
             });
         }
         if (!empty($search)) {
-            $outgoingQuery->where(function ($q) use ($search) {
-                $q->where('notes', 'like', "%{$search}%")
-                  ->orWhereHas('material', function ($mq) use ($search) {
-                      $mq->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%");
+            $trimmedSearch = trim($search);
+            $lowerSearch = strtolower($trimmedSearch);
+            $upperSearch = strtoupper($trimmedSearch);
+
+            $outgoingQuery->where(function ($q) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                $q->where('notes', 'like', "%{$trimmedSearch}%")
+                  ->orWhereHas('material', function ($mq) use ($trimmedSearch, $lowerSearch, $upperSearch) {
+                      $mq->where('name', 'like', "{$trimmedSearch}%")
+                         ->orWhere('name', 'like', "{$lowerSearch}%")
+                         ->orWhere('name', 'like', "{$upperSearch}%")
+                         ->orWhere('name', 'like', " {$trimmedSearch}%")
+                         ->orWhere('code', 'like', "{$upperSearch}%")
+                         ->orWhere('code', 'like', "{$trimmedSearch}%")
+                         ->orWhere('name', 'like', "%{$trimmedSearch}%");
                   });
             });
         }
@@ -914,6 +1011,112 @@ class MaterialController extends Controller
     }
 
     /**
+     * Perbarui Catatan Mutasi (Barang Masuk / Keluar)
+     */
+    public function updateMutation(Request $request, $id)
+    {
+        $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'amount' => 'required|numeric|min:0.01',
+            'transaction_date' => 'required|date',
+            'notes' => 'nullable|string|max:500',
+        ], [
+            'material_id.required' => 'Pilih barang yang bersangkutan.',
+            'amount.required' => 'Jumlah barang wajib diisi.',
+            'amount.min' => 'Jumlah barang minimal lebih dari 0.',
+            'transaction_date.required' => 'Tanggal transaksi wajib diisi.',
+        ]);
+
+        return DB::transaction(function () use ($request, $id) {
+            $mut = MaterialMutation::findOrFail($id);
+            $oldMaterial = Material::find($mut->material_id);
+            $oldAmount = (float) $mut->amount;
+            $oldType = $mut->type;
+            $oldDate = $mut->transaction_date;
+
+            $newMaterialId = (int) $request->input('material_id');
+            $newAmount = (float) $request->input('amount');
+            $newDate = $request->input('transaction_date');
+            $newNotes = $request->input('notes');
+
+            // 1. Revert efek mutasi lama dari oldMaterial & monthly snapshot
+            if ($oldMaterial) {
+                if ($oldType === 'in') {
+                    $oldMaterial->total_in = max(0, (float)($oldMaterial->total_in ?? 0) - $oldAmount);
+                } elseif ($oldType === 'out') {
+                    $oldMaterial->total_out = max(0, (float)($oldMaterial->total_out ?? 0) - $oldAmount);
+                }
+                $oldMaterial->stock = (float)($oldMaterial->initial_stock ?? 0) + (float)($oldMaterial->total_in ?? 0) - (float)($oldMaterial->total_out ?? 0);
+                $oldMaterial->save();
+
+                if ($oldDate) {
+                    try {
+                        $oldCarbon = Carbon::parse($oldDate);
+                        $oldStock = MaterialMonthlyStock::where('material_id', $oldMaterial->id)
+                            ->where('month', $oldCarbon->month)
+                            ->where('year', $oldCarbon->year)
+                            ->first();
+                        if ($oldStock) {
+                            if ($oldType === 'in') {
+                                $oldStock->total_in = max(0, (float)$oldStock->total_in - $oldAmount);
+                            } elseif ($oldType === 'out') {
+                                $oldStock->total_out = max(0, (float)$oldStock->total_out - $oldAmount);
+                            }
+                            $oldStock->final_stock = (float)$oldStock->initial_stock + (float)$oldStock->total_in - (float)$oldStock->total_out;
+                            $oldStock->save();
+                        }
+                    } catch (\Throwable $e) {}
+                }
+            }
+
+            // 2. Terapkan efek mutasi baru ke newMaterial & monthly snapshot
+            $newMaterial = Material::findOrFail($newMaterialId);
+            if ($oldType === 'in') {
+                $newMaterial->total_in = (float)($newMaterial->total_in ?? 0) + $newAmount;
+            } elseif ($oldType === 'out') {
+                $newMaterial->total_out = (float)($newMaterial->total_out ?? 0) + $newAmount;
+            }
+            $newMaterial->stock = (float)($newMaterial->initial_stock ?? 0) + (float)($newMaterial->total_in ?? 0) - (float)($newMaterial->total_out ?? 0);
+            $newMaterial->save();
+
+            if ($newDate) {
+                try {
+                    $newCarbon = Carbon::parse($newDate);
+                    $newStock = MaterialMonthlyStock::where('material_id', $newMaterial->id)
+                        ->where('month', $newCarbon->month)
+                        ->where('year', $newCarbon->year)
+                        ->first();
+                    if ($newStock) {
+                        if ($oldType === 'in') {
+                            $newStock->total_in = (float)$newStock->total_in + $newAmount;
+                        } elseif ($oldType === 'out') {
+                            $newStock->total_out = (float)$newStock->total_out + $newAmount;
+                        }
+                        $newStock->final_stock = (float)$newStock->initial_stock + (float)$newStock->total_in - (float)$newStock->total_out;
+                        $newStock->save();
+                    }
+                } catch (\Throwable $e) {}
+            }
+
+            // 3. Perbarui record mutasi
+            $typeSuffix = $oldType === 'in' ? ' (Barang Masuk)' : ' (Barang Keluar)';
+            $formattedNotes = $newNotes ? (str_ends_with($newNotes, $typeSuffix) ? $newNotes : ($newNotes . $typeSuffix)) : ($oldType === 'in' ? 'Barang Masuk' : 'Barang Keluar');
+
+            $mut->update([
+                'material_id' => $newMaterial->id,
+                'amount' => $newAmount,
+                'transaction_date' => $newDate,
+                'notes' => $formattedNotes,
+                'stock_before' => $oldType === 'in' ? ($newMaterial->stock - $newAmount) : ($newMaterial->stock + $newAmount),
+                'stock_after' => $newMaterial->stock,
+            ]);
+
+            $typeLabel = $oldType === 'in' ? 'Barang Masuk' : 'Barang Keluar';
+            return redirect()->back()->with('success', "Catatan {$typeLabel} untuk \"{$newMaterial->name}\" berhasil diperbarui.");
+        });
+    }
+
+    /**
      * Hapus Catatan Mutasi Tertentu
      */
     public function destroyMutation($id)
@@ -1018,11 +1221,9 @@ class MaterialController extends Controller
         }
 
         $sheets = [];
-        if (in_array($extension, ['xlsx', 'xls'])) {
-            try {
-                $sheets = CustomerImportService::extractSheetsFromFile($file);
-            } catch (\Throwable $e) {}
-        }
+        try {
+            $sheets = CustomerImportService::extractSheetsFromFile($file);
+        } catch (\Throwable $e) {}
 
         if (empty($sheets)) {
             $content = @file_get_contents($file->getRealPath());
@@ -1166,7 +1367,8 @@ class MaterialController extends Controller
                     $materialOutSums,
                     $importedMaterials,
                     $importedIn,
-                    $importedOut
+                    $importedOut,
+                    $s['name'] ?? ''
                 );
             }
 
@@ -1236,14 +1438,15 @@ class MaterialController extends Controller
         array &$materialOutSums,
         int &$importedMaterials,
         int &$importedIn,
-        int &$importedOut
+        int &$importedOut,
+        string $sheetName = ''
     ): void {
         if (empty($rows)) return;
 
         // 1. Cari baris header utama (baris yang mendefinisikan kolom-kolom seperti Kode Barang, Nama Barang, Stok Awal, dsb.)
         $headerRowIndex = 0;
-        for ($i = 0; $i < min(count($rows), 20); $i++) {
-            $joined = strtolower(implode(' ', array_slice($rows[$i] ?? [], 0, 16)));
+        for ($i = 0; $i < min(count($rows), 25); $i++) {
+            $joined = strtolower(implode(' ', array_slice($rows[$i] ?? [], 0, 20)));
             if (str_starts_with(trim($joined), 'tgl stok awal') || str_starts_with(trim($joined), 'tgl closing') || str_starts_with(trim($joined), 'laporan')) {
                 continue;
             }
@@ -1252,7 +1455,8 @@ class MaterialController extends Controller
                 (str_contains($joined, 'nama barang') && str_contains($joined, 'stok')) ||
                 (str_contains($joined, 'kode barang') && str_contains($joined, 'stok')) ||
                 (str_contains($joined, 'stok awal') && (str_contains($joined, 'kode') || str_contains($joined, 'nama') || str_contains($joined, 'stok akhir'))) ||
-                (str_contains($joined, 'jumlah masuk') && str_contains($joined, 'jumlah keluar'))
+                (str_contains($joined, 'jumlah masuk') && str_contains($joined, 'jumlah keluar')) ||
+                ((str_contains($joined, 'tgl') || str_contains($joined, 'tanggal') || str_contains($joined, 'date')) && (str_contains($joined, 'nama') || str_contains($joined, 'barang')) && (str_contains($joined, 'masuk') || str_contains($joined, 'keluar') || str_contains($joined, 'jumlah') || str_contains($joined, 'qty')))
             ) {
                 $headerRowIndex = $i;
                 break;
@@ -1264,13 +1468,17 @@ class MaterialController extends Controller
 
         // 2. Deteksi pemetaan kolom untuk 3 bagian:
         // - Stok Barang (code, name, month, initial_stock, total_in, total_out, stock)
-        // - Barang Masuk (date, name, amount, notes)
-        // - Barang Keluar (date, name, amount, notes)
+        // - Barang Masuk: 1. Tanggal, 2. Nama Barang, 3. Jumlah Masuk, 4. Catatan
+        // - Barang Keluar: 1. Tanggal, 2. Nama Barang, 3. Jumlah Keluar, 4. Catatan
         $stokCols = ['code' => null, 'name' => null, 'month' => null, 'initial_stock' => null, 'total_in' => null, 'total_out' => null, 'stock' => null];
         $inCols = ['date' => null, 'name' => null, 'amount' => null, 'notes' => null];
         $outCols = ['date' => null, 'name' => null, 'amount' => null, 'notes' => null];
 
-        // Cari tahu apakah ada judul seksi di baris-baris SEBELUM header (contoh baris 0: LAPORAN STOK BARANG, BARANG MASUK, Barang Keluar)
+        $sNameLower = strtolower(trim($sheetName));
+        $isDedicatedInSheet = str_contains($sNameLower, 'barang masuk') || $sNameLower === 'masuk' || str_contains($sNameLower, 'mutasi masuk');
+        $isDedicatedOutSheet = str_contains($sNameLower, 'barang keluar') || $sNameLower === 'keluar' || str_contains($sNameLower, 'mutasi keluar');
+
+        // Cari tahu apakah ada judul seksi di baris-baris SEBELUM header (contoh: BARANG MASUK, Barang Keluar)
         $masukColStart = null;
         $keluarColStart = null;
         for ($r = 0; $r < $headerRowIndex; $r++) {
@@ -1293,21 +1501,46 @@ class MaterialController extends Controller
             $h = strtolower(trim((string)$cHdr));
             if ($h === '') continue;
 
-            // Apakah kolom ini berada di seksi Barang Keluar?
             $isKeluarZone = ($keluarColStart !== null && $cIdx >= $keluarColStart);
-            // Apakah kolom ini berada di seksi Barang Masuk?
             $isMasukZone = !$isKeluarZone && ($masukColStart !== null && $cIdx >= $masukColStart);
 
+            // Deteksi kolom spesifik Barang Keluar / Masuk
             if (str_contains($h, 'jumlah keluar') || str_contains($h, 'jml keluar') || str_contains($h, 'qty keluar')) {
                 $outCols['amount'] = $cIdx;
+                if ($outCols['name'] === null && $cIdx >= 1) $outCols['name'] = $cIdx - 1;
+                if ($outCols['date'] === null && $cIdx >= 2) $outCols['date'] = $cIdx - 2;
+                if ($outCols['notes'] === null && isset($headerCols[$cIdx + 1])) $outCols['notes'] = $cIdx + 1;
             } elseif (str_contains($h, 'jumlah masuk') || str_contains($h, 'jml masuk') || str_contains($h, 'qty masuk')) {
                 $inCols['amount'] = $cIdx;
+                if ($inCols['name'] === null && $cIdx >= 1) $inCols['name'] = $cIdx - 1;
+                if ($inCols['date'] === null && $cIdx >= 2) $inCols['date'] = $cIdx - 2;
+                if ($inCols['notes'] === null && isset($headerCols[$cIdx + 1])) $inCols['notes'] = $cIdx + 1;
+            } elseif ($isDedicatedInSheet) {
+                if ($inCols['date'] === null && (str_contains($h, 'tgl') || str_contains($h, 'tanggal') || str_contains($h, 'date'))) {
+                    $inCols['date'] = $cIdx;
+                } elseif ($inCols['name'] === null && (str_contains($h, 'nama') || str_contains($h, 'barang') || str_contains($h, 'item'))) {
+                    $inCols['name'] = $cIdx;
+                } elseif ($inCols['amount'] === null && (str_contains($h, 'jumlah') || str_contains($h, 'qty') || str_contains($h, 'masuk') || str_contains($h, 'total'))) {
+                    $inCols['amount'] = $cIdx;
+                } elseif ($inCols['notes'] === null && (str_contains($h, 'catatan') || str_contains($h, 'keterangan') || str_contains($h, 'ket') || str_contains($h, 'supplier') || str_contains($h, 'vendor'))) {
+                    $inCols['notes'] = $cIdx;
+                }
+            } elseif ($isDedicatedOutSheet) {
+                if ($outCols['date'] === null && (str_contains($h, 'tgl') || str_contains($h, 'tanggal') || str_contains($h, 'date'))) {
+                    $outCols['date'] = $cIdx;
+                } elseif ($outCols['name'] === null && (str_contains($h, 'nama') || str_contains($h, 'barang') || str_contains($h, 'item'))) {
+                    $outCols['name'] = $cIdx;
+                } elseif ($outCols['amount'] === null && (str_contains($h, 'jumlah') || str_contains($h, 'qty') || str_contains($h, 'keluar') || str_contains($h, 'total'))) {
+                    $outCols['amount'] = $cIdx;
+                } elseif ($outCols['notes'] === null && (str_contains($h, 'catatan') || str_contains($h, 'keterangan') || str_contains($h, 'ket') || str_contains($h, 'teknisi') || str_contains($h, 'keperluan'))) {
+                    $outCols['notes'] = $cIdx;
+                }
             } elseif ($isKeluarZone) {
                 if ($outCols['date'] === null && (str_contains($h, 'tgl') || str_contains($h, 'tanggal') || str_contains($h, 'date'))) {
                     $outCols['date'] = $cIdx;
                 } elseif ($outCols['name'] === null && (str_contains($h, 'nama') || str_contains($h, 'barang') || str_contains($h, 'item'))) {
                     $outCols['name'] = $cIdx;
-                } elseif ($outCols['amount'] === null && (str_contains($h, 'jumlah') || str_contains($h, 'qty') || str_contains($h, 'total') || str_contains($h, 'keluar'))) {
+                } elseif ($outCols['amount'] === null && (str_contains($h, 'jumlah') || str_contains($h, 'qty') || str_contains($h, 'keluar') || str_contains($h, 'total'))) {
                     $outCols['amount'] = $cIdx;
                 } elseif ($outCols['notes'] === null && (str_contains($h, 'catatan') || str_contains($h, 'keterangan') || str_contains($h, 'ket') || str_contains($h, 'teknisi') || str_contains($h, 'keperluan') || str_contains($h, 'tujuan'))) {
                     $outCols['notes'] = $cIdx;
@@ -1317,7 +1550,7 @@ class MaterialController extends Controller
                     $inCols['date'] = $cIdx;
                 } elseif ($inCols['name'] === null && (str_contains($h, 'nama') || str_contains($h, 'barang') || str_contains($h, 'item'))) {
                     $inCols['name'] = $cIdx;
-                } elseif ($inCols['amount'] === null && (str_contains($h, 'jumlah') || str_contains($h, 'qty') || str_contains($h, 'total') || str_contains($h, 'masuk'))) {
+                } elseif ($inCols['amount'] === null && (str_contains($h, 'jumlah') || str_contains($h, 'qty') || str_contains($h, 'masuk') || str_contains($h, 'total'))) {
                     $inCols['amount'] = $cIdx;
                 } elseif ($inCols['notes'] === null && (str_contains($h, 'catatan') || str_contains($h, 'keterangan') || str_contains($h, 'ket') || str_contains($h, 'supplier') || str_contains($h, 'vendor') || str_contains($h, 'petugas'))) {
                     $inCols['notes'] = $cIdx;
@@ -1342,8 +1575,33 @@ class MaterialController extends Controller
             }
         }
 
-        // Fallback cerdas untuk berkas standar Banterpool (seperti database/data/stok_barang.csv)
-        if ($totalCols >= 16) {
+        // Fallback cerdas berdasarkan struktur kolom
+        if ($totalCols >= 17 && (strtolower(trim((string)($headerCols[1] ?? ''))) === 'bulan' || strtolower(trim((string)($headerCols[2] ?? ''))) === 'bulan' || $stokCols['month'] !== null)) {
+            // Berkas Excel / CSV Export Banterpool (17 kolom dengan kolom Bulan)
+            if ($stokCols['code'] === null) $stokCols['code'] = 0;
+            if (strtolower(trim((string)($headerCols[1] ?? ''))) === 'bulan') {
+                if ($stokCols['month'] === null) $stokCols['month'] = 1;
+                if ($stokCols['name'] === null) $stokCols['name'] = 2;
+            } else {
+                if ($stokCols['name'] === null) $stokCols['name'] = 1;
+                if ($stokCols['month'] === null) $stokCols['month'] = 2;
+            }
+            if ($stokCols['initial_stock'] === null) $stokCols['initial_stock'] = 3;
+            if ($stokCols['total_in'] === null) $stokCols['total_in'] = 4;
+            if ($stokCols['total_out'] === null) $stokCols['total_out'] = 5;
+            if ($stokCols['stock'] === null) $stokCols['stock'] = 6;
+
+            if ($inCols['date'] === null) $inCols['date'] = 8;
+            if ($inCols['name'] === null) $inCols['name'] = 9;
+            if ($inCols['amount'] === null) $inCols['amount'] = 10;
+            if ($inCols['notes'] === null) $inCols['notes'] = 11;
+
+            if ($outCols['date'] === null) $outCols['date'] = 13;
+            if ($outCols['name'] === null) $outCols['name'] = 14;
+            if ($outCols['amount'] === null) $outCols['amount'] = 15;
+            if ($outCols['notes'] === null) $outCols['notes'] = 16;
+        } elseif ($totalCols >= 16) {
+            // Berkas CSV Standar Banterpool (16 kolom tanpa kolom Bulan)
             if ($stokCols['code'] === null) $stokCols['code'] = 0;
             if ($stokCols['name'] === null) $stokCols['name'] = 1;
             if ($stokCols['initial_stock'] === null) $stokCols['initial_stock'] = 2;
@@ -1360,6 +1618,18 @@ class MaterialController extends Controller
             if ($outCols['name'] === null) $outCols['name'] = 13;
             if ($outCols['amount'] === null) $outCols['amount'] = 14;
             if ($outCols['notes'] === null) $outCols['notes'] = 15;
+        } elseif ($isDedicatedInSheet && $totalCols >= 4) {
+            // Dedicated Sheet Barang Masuk: urutan [Tanggal, Nama Barang, Jumlah Masuk, Catatan]
+            if ($inCols['date'] === null) $inCols['date'] = 0;
+            if ($inCols['name'] === null) $inCols['name'] = 1;
+            if ($inCols['amount'] === null) $inCols['amount'] = 2;
+            if ($inCols['notes'] === null) $inCols['notes'] = 3;
+        } elseif ($isDedicatedOutSheet && $totalCols >= 4) {
+            // Dedicated Sheet Barang Keluar: urutan [Tanggal, Nama Barang, Jumlah Keluar, Catatan]
+            if ($outCols['date'] === null) $outCols['date'] = 0;
+            if ($outCols['name'] === null) $outCols['name'] = 1;
+            if ($outCols['amount'] === null) $outCols['amount'] = 2;
+            if ($outCols['notes'] === null) $outCols['notes'] = 3;
         } else {
             // Jika kolom stok belum terpetakan di sheet yang lebih sederhana
             if ($stokCols['code'] === null && $stokCols['name'] === null) {
@@ -1384,6 +1654,14 @@ class MaterialController extends Controller
             return false;
         };
 
+        $isSummaryLabel = function(string $val): bool {
+            $clean = strtolower(trim($val));
+            return in_array($clean, [
+                'total', 'total masuk', 'total keluar', 'jumlah total',
+                'grand total', 'subtotal', 'nama barang', 'kode barang', 'tgl', 'tanggal'
+            ]);
+        };
+
         // 3. Iterasi setiap baris data
         // ==========================================
         // PASS 1: Laporan Master Stok Barang
@@ -1398,17 +1676,22 @@ class MaterialController extends Controller
             $name = $stokCols['name'] !== null ? trim((string)($cols[$stokCols['name']] ?? '')) : '';
             $rowMonth = $stokCols['month'] !== null ? trim((string)($cols[$stokCols['month']] ?? '')) : '';
 
+            // Abaikan baris summary / total
+            if ($isSummaryLabel($name) || $isSummaryLabel($code)) {
+                continue;
+            }
+
             // Jika $name berisi nama bulan (misal "Januari"), pisahkan dan cari nama barang yang asli
             if ($isMonthName($name)) {
                 if (empty($rowMonth)) {
                     $rowMonth = $name;
                 }
                 $candidateNext = trim((string)($cols[$stokCols['name'] + 1] ?? ''));
-                if (!empty($candidateNext) && !$isMonthName($candidateNext)) {
+                if (!empty($candidateNext) && !$isMonthName($candidateNext) && !$isSummaryLabel($candidateNext)) {
                     $name = $candidateNext;
                 } else {
                     $candidatePrev = trim((string)($cols[$stokCols['name'] - 1] ?? ''));
-                    if (!empty($candidatePrev) && !$isMonthName($candidatePrev) && $stokCols['name'] - 1 !== $stokCols['code']) {
+                    if (!empty($candidatePrev) && !$isMonthName($candidatePrev) && $stokCols['name'] - 1 !== $stokCols['code'] && !$isSummaryLabel($candidatePrev)) {
                         $name = $candidatePrev;
                     }
                 }
@@ -1418,7 +1701,7 @@ class MaterialController extends Controller
             if (empty($name) || $isMonthName($name)) {
                 for ($c = 0; $c < min(count($cols), 6); $c++) {
                     $val = trim((string)($cols[$c] ?? ''));
-                    if (!empty($val) && !$isMonthName($val) && !is_numeric($val) && $c !== $stokCols['code']) {
+                    if (!empty($val) && !$isMonthName($val) && !is_numeric($val) && $c !== $stokCols['code'] && !$isSummaryLabel($val)) {
                         $name = $val;
                         break;
                     }
@@ -1426,7 +1709,7 @@ class MaterialController extends Controller
             }
 
             // Jika nama barang ada (meskipun kode barang kosong/keterangan tidak lengkap):
-            if (!empty($name) && !$isMonthName($name) && strtolower($name) !== 'nama barang' && strtolower($code) !== 'kode barang') {
+            if (!empty($name) && !$isMonthName($name) && !$isSummaryLabel($name)) {
                 // Lengkapi kode barang jika kosong
                 if (empty($code)) {
                     $existingMat = $this->findMaterialHelper($name, $materialMap);
@@ -1530,6 +1813,15 @@ class MaterialController extends Controller
 
         // ==========================================
         // PASS 2: Transaksi Barang Masuk dan Barang Keluar
+        // Sesuai Aturan:
+        // 1. Barang Masuk: dibaca mulai dari kolom tanggal (urutan tanggal-bulan-tahun),
+        //    kemudian kolom nama barang dan isi dari nama barangnya,
+        //    kemudian kolom jumlah masuk dari barangnya,
+        //    serta yang terakhir yaitu kolom catatan.
+        // 2. Barang Keluar: dibaca mulai dari kolom tanggal (urutan tanggal-bulan-tahun),
+        //    kemudian kolom nama barang dan isi dari nama barangnya,
+        //    kemudian kolom jumlah keluar dari barangnya,
+        //    serta yang terakhir yaitu kolom catatan.
         // ==========================================
         for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
             $cols = $rows[$i];
@@ -1537,14 +1829,19 @@ class MaterialController extends Controller
                 continue;
             }
 
-            // BAGIAN 2: Barang Masuk (Transaksi Masuk)
+            // ATURAN 1: TABEL BARANG MASUK
+            // 1. Tanggal (urutan tanggal-bulan-tahun) -> 2. Nama Barang -> 3. Jumlah Masuk -> 4. Catatan
             if ($inCols['name'] !== null && $inCols['amount'] !== null) {
-                $namaMasuk = trim((string)($cols[$inCols['name']] ?? ''));
-                $jmlMasukStr = trim((string)($cols[$inCols['amount']] ?? ''));
+                // 1. Kolom Tanggal (urutan tanggal-bulan-tahun)
                 $tglMasuk = $inCols['date'] !== null ? trim((string)($cols[$inCols['date']] ?? '')) : '';
+                // 2. Kolom Nama Barang dan isinya
+                $namaMasuk = trim((string)($cols[$inCols['name']] ?? ''));
+                // 3. Kolom Jumlah Masuk dari barangnya
+                $jmlMasukStr = trim((string)($cols[$inCols['amount']] ?? ''));
+                // 4. Kolom Catatan
                 $catatanMasuk = $inCols['notes'] !== null ? trim((string)($cols[$inCols['notes']] ?? '')) : '';
 
-                if (!empty($namaMasuk) && $jmlMasukStr !== '' && !$isMonthName($namaMasuk)) {
+                if (!empty($namaMasuk) && $jmlMasukStr !== '' && !$isSummaryLabel($namaMasuk) && !$isMonthName($namaMasuk)) {
                     $amt = $this->parseNumberHelper($jmlMasukStr);
                     if ($amt > 0) {
                         $mat = $this->findMaterialHelper($namaMasuk, $materialMap);
@@ -1585,6 +1882,7 @@ class MaterialController extends Controller
                             $importedMaterials++;
                         }
 
+                        // Parse tanggal dengan urutan prioritas tanggal-bulan-tahun
                         $dt = $this->parseDateTimeWithPeriod($tglMasuk, $fileMonthNumber, $fileYear, 9);
                         $dateStr = $dt->toDateString();
 
@@ -1596,7 +1894,7 @@ class MaterialController extends Controller
                             'amount' => $amt,
                             'stock_before' => (float)$mat->stock,
                             'stock_after' => (float)$mat->stock + $amt,
-                            'notes' => ($catatanMasuk ?: 'Barang Masuk') . ' [Import]',
+                            'notes' => $catatanMasuk ?: 'Barang Masuk',
                             'created_at' => $dt,
                             'updated_at' => $dt,
                         ]);
@@ -1607,14 +1905,19 @@ class MaterialController extends Controller
                 }
             }
 
-            // BAGIAN 3: Barang Keluar (Transaksi Keluar)
+            // ATURAN 2: TABEL BARANG KELUAR
+            // 1. Tanggal (urutan tanggal-bulan-tahun) -> 2. Nama Barang -> 3. Jumlah Keluar -> 4. Catatan
             if ($outCols['name'] !== null && $outCols['amount'] !== null) {
-                $namaKeluar = trim((string)($cols[$outCols['name']] ?? ''));
-                $jmlKeluarStr = trim((string)($cols[$outCols['amount']] ?? ''));
+                // 1. Kolom Tanggal (urutan tanggal-bulan-tahun)
                 $tglKeluar = $outCols['date'] !== null ? trim((string)($cols[$outCols['date']] ?? '')) : '';
+                // 2. Kolom Nama Barang dan isinya
+                $namaKeluar = trim((string)($cols[$outCols['name']] ?? ''));
+                // 3. Kolom Jumlah Keluar dari barangnya
+                $jmlKeluarStr = trim((string)($cols[$outCols['amount']] ?? ''));
+                // 4. Kolom Catatan
                 $catatanKeluar = $outCols['notes'] !== null ? trim((string)($cols[$outCols['notes']] ?? '')) : '';
 
-                if (!empty($namaKeluar) && $jmlKeluarStr !== '' && !$isMonthName($namaKeluar)) {
+                if (!empty($namaKeluar) && $jmlKeluarStr !== '' && !$isSummaryLabel($namaKeluar) && !$isMonthName($namaKeluar)) {
                     $amt = $this->parseNumberHelper($jmlKeluarStr);
                     if ($amt > 0) {
                         $mat = $this->findMaterialHelper($namaKeluar, $materialMap);
@@ -1655,6 +1958,7 @@ class MaterialController extends Controller
                             $importedMaterials++;
                         }
 
+                        // Parse tanggal dengan urutan prioritas tanggal-bulan-tahun
                         $dt = $this->parseDateTimeWithPeriod($tglKeluar, $fileMonthNumber, $fileYear, 14);
                         $dateStr = $dt->toDateString();
 
@@ -1666,7 +1970,7 @@ class MaterialController extends Controller
                             'amount' => $amt,
                             'stock_before' => (float)$mat->stock,
                             'stock_after' => (float)$mat->stock - $amt,
-                            'notes' => ($catatanKeluar ?: 'Barang Keluar') . ' [Import]',
+                            'notes' => $catatanKeluar ?: 'Barang Keluar',
                             'created_at' => $dt,
                             'updated_at' => $dt,
                         ]);
@@ -1712,8 +2016,8 @@ class MaterialController extends Controller
                       });
                 })->orderBy('transaction_date', 'asc')->get();
 
-            $tglAwal = Carbon::parse($startDate)->format('m/d/Y');
-            $tglClosing = Carbon::parse($endDate)->format('m/d/Y');
+            $tglAwal = Carbon::parse($startDate)->format('d/m/Y');
+            $tglClosing = Carbon::parse($endDate)->format('d/m/Y');
         } else {
             $materials = MaterialMonthlyStock::with('material')
                 ->orderBy('year', 'desc')
@@ -1743,7 +2047,7 @@ class MaterialController extends Controller
             $incoming = MaterialMutation::where('type', 'in')->with('material')->orderBy('transaction_date', 'asc')->get();
             $outgoing = MaterialMutation::where('type', 'out')->with('material')->orderBy('transaction_date', 'asc')->get();
             $tglAwal = 'Awal';
-            $tglClosing = date('m/d/Y');
+            $tglClosing = date('d/m/Y');
         }
 
         $maxRows = max($materials->count(), $incoming->count(), $outgoing->count());
@@ -1758,7 +2062,7 @@ class MaterialController extends Controller
             echo "Tgl Stok Awal;{$tglAwal};;;;;;;;;;;;;;;\r\n";
             echo "Tgl Closing;{$tglClosing};;;;;;;;;;;;;;;\r\n";
             echo ";;;;;;;;;;;;;;;;;;\r\n";
-            echo "Kode Barang;Nama Barang;Stok Awal;Barang Masuk;Barang Keluar;Stok Akhir;;Tgl;Nama Barang;Jumlah Masuk;Catatan;;Tgl;Nama Barang;Jumlah Keluar;Catatan;;;\r\n";
+            echo "Kode Barang;Bulan;Nama Barang;Stok Awal;Barang Masuk;Barang Keluar;Stok Akhir;;Tgl;Nama Barang;Jumlah Masuk;Catatan;;Tgl;Nama Barang;Jumlah Keluar;Catatan;;;\r\n";
 
             for ($i = 0; $i < $maxRows; $i++) {
                 $mat = $materials->get($i);
@@ -1767,25 +2071,26 @@ class MaterialController extends Controller
 
                 $matCols = $mat ? [
                     $mat->code,
+                    $mat->display_month ?? $mat->month ?? $monthName,
                     $mat->name,
                     Material::formatQty($mat->computed_initial_stock ?? $mat->initial_stock),
                     Material::formatQty($mat->computed_total_in ?? $mat->total_in),
                     Material::formatQty($mat->computed_total_out ?? $mat->total_out),
                     Material::formatQty($mat->computed_stock ?? $mat->stock),
-                ] : ['', '', '', '', '', ''];
+                ] : ['', '', '', '', '', '', ''];
 
                 $inCols = $in ? [
                     $in->transaction_date ? $in->transaction_date->format('d/m/Y') : $in->created_at->format('d/m/Y'),
                     $in->material->name ?? '-',
                     Material::formatQty($in->amount),
-                    str_replace(' (Barang Masuk)', '', $in->notes ?? ''),
+                    str_replace([' (Barang Masuk)', ' [Import]'], '', $in->notes ?? ''),
                 ] : ['', '', '', ''];
 
                 $outCols = $out ? [
                     $out->transaction_date ? $out->transaction_date->format('d/m/Y') : $out->created_at->format('d/m/Y'),
                     $out->material->name ?? '-',
                     Material::formatQty($out->amount),
-                    str_replace(' (Barang Keluar)', '', $out->notes ?? ''),
+                    str_replace([' (Barang Keluar)', ' [Import]'], '', $out->notes ?? ''),
                 ] : ['', '', '', ''];
 
                 $row = array_merge(
@@ -2039,6 +2344,14 @@ class MaterialController extends Controller
         // 1. Angka serial Excel (misal: 46305 atau 46305.58)
         if (is_numeric($str) && (float)$str > 1000 && (float)$str < 60000) {
             try {
+                if (class_exists(\PhpOffice\PhpSpreadsheet\Shared\Date::class)) {
+                    $dt = Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$str));
+                    $fraction = (float)$str - floor((float)$str);
+                    if ($fraction <= 0) {
+                        $dt->setTime($defaultHour, 0, 0);
+                    }
+                    return $dt;
+                }
                 $num = (float)$str;
                 $days = (int) floor($num);
                 $fraction = $num - $days;
@@ -2053,7 +2366,15 @@ class MaterialController extends Controller
             } catch (\Exception $e) {}
         }
 
-        // 2. Format tanggal numerik A/B/C atau A-B-C atau A.B.C
+        // 2. Hanya angka hari (1 s.d. 31), misal pada laporan harian di mana kolom tanggal hanya berisi angka hari
+        if (preg_match('/^(\d{1,2})$/', $str, $dayMatch)) {
+            $dayOnly = (int)$dayMatch[1];
+            if (checkdate($fileMonth, $dayOnly, $fileYear)) {
+                return Carbon::create($fileYear, $fileMonth, $dayOnly, $defaultHour, 0, 0);
+            }
+        }
+
+        // 3. Format tanggal numerik: A/B/C, A-B-C, atau A.B.C dengan urutan membaca TANGGAL-BULAN-TAHUN
         if (preg_match('/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})(?:[ \tT]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/', $str, $m)) {
             $a = (int)$m[1];
             $b = (int)$m[2];
@@ -2071,12 +2392,12 @@ class MaterialController extends Controller
             } elseif ($b > 12) {
                 $month = $a;
                 $day = $b;
-            } elseif ($a === $fileMonth) {
-                $month = $a;
-                $day = $b;
             } elseif ($b === $fileMonth) {
                 $day = $a;
                 $month = $b;
+            } elseif ($a === $fileMonth) {
+                $month = $a;
+                $day = $b;
             } else {
                 $day = $a;
                 $month = $b;
@@ -2085,9 +2406,39 @@ class MaterialController extends Controller
             if (checkdate($month, $day, $year)) {
                 return Carbon::create($year, $month, $day, $hour, $min, $sec);
             }
+
+            // Fallback swap jika tanggal tidak valid
+            if (checkdate($day, $month, $year)) {
+                return Carbon::create($year, $day, $month, $hour, $min, $sec);
+            }
         }
 
-        // 3. Fallback ke helper tanggal bawaan
+        // 4. Format tanggal dan bulan saja (tanpa tahun): DD/MM atau DD-MM
+        if (preg_match('/^(\d{1,2})[\/\.-](\d{1,2})$/', $str, $m)) {
+            $a = (int)$m[1];
+            $b = (int)$m[2];
+            if ($a > 12) {
+                $day = $a;
+                $month = $b;
+            } elseif ($b > 12) {
+                $month = $a;
+                $day = $b;
+            } elseif ($b === $fileMonth) {
+                $day = $a;
+                $month = $b;
+            } elseif ($a === $fileMonth) {
+                $month = $a;
+                $day = $b;
+            } else {
+                $day = $a;
+                $month = $b;
+            }
+            if (checkdate($month, $day, $fileYear)) {
+                return Carbon::create($fileYear, $month, $day, $defaultHour, 0, 0);
+            }
+        }
+
+        // 5. Fallback ke helper tanggal bawaan
         return $this->parseDateTimeHelper($val, $defaultHour);
     }
 
@@ -2129,8 +2480,8 @@ class MaterialController extends Controller
         // 2. Format tanggal-bulan-tahun: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY beserta jam opsional
         // Urutan: $1 = Tanggal (d), $2 = Bulan (m), $3 = Tahun (Y)
         if (preg_match('/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})(?:[ \tT]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/', $str, $m)) {
-            $day = (int)$m[1];
-            $month = (int)$m[2];
+            $a = (int)$m[1];
+            $b = (int)$m[2];
             $year = (int)$m[3];
             if ($year < 100) {
                 $year += ($year < 70 ? 2000 : 1900);
@@ -2139,41 +2490,52 @@ class MaterialController extends Controller
             $min = isset($m[5]) ? (int)$m[5] : 0;
             $sec = isset($m[6]) ? (int)$m[6] : 0;
 
+            if ($b > 12) {
+                $month = $a;
+                $day = $b;
+            } else {
+                $day = $a;
+                $month = $b;
+            }
+
             if (checkdate($month, $day, $year)) {
                 return Carbon::create($year, $month, $day, $hour, $min, $sec);
             }
         }
 
         // 3. Format dengan nama bulan (Indonesia atau Inggris) diawali tanggal:
-        // Contoh: "19 Oktober 2026", "19 Okt 2026 14:30", "19-Okt-2026"
+        // Contoh: "19 Oktober 2026", "19 Okt 2026 14:30", "19-Okt-2026", "19 Oktober"
         $indoMonths = [
-            'januari' => 'january', 'jan' => 'jan',
-            'februari' => 'february', 'pebruari' => 'february', 'feb' => 'feb',
-            'maret' => 'march', 'mar' => 'mar',
-            'april' => 'april', 'apr' => 'apr',
-            'mei' => 'may',
-            'juni' => 'june', 'jun' => 'jun',
-            'juli' => 'july', 'jul' => 'jul',
-            'agustus' => 'august', 'ags' => 'aug', 'agt' => 'aug',
-            'september' => 'september', 'sep' => 'sep', 'sept' => 'sep',
-            'oktober' => 'october', 'okt' => 'oct',
-            'november' => 'november', 'nopember' => 'november', 'nov' => 'nov', 'nop' => 'nov',
-            'desember' => 'december', 'des' => 'dec',
+            'januari' => 1, 'jan' => 1,
+            'februari' => 2, 'pebruari' => 2, 'feb' => 2,
+            'maret' => 3, 'mar' => 3,
+            'april' => 4, 'apr' => 4,
+            'mei' => 5, 'may' => 5,
+            'juni' => 6, 'jun' => 6,
+            'juli' => 7, 'jul' => 7,
+            'agustus' => 8, 'ags' => 8, 'agt' => 8, 'aug' => 8,
+            'september' => 9, 'sep' => 9, 'sept' => 9,
+            'oktober' => 10, 'okt' => 10, 'oct' => 10,
+            'november' => 11, 'nopember' => 11, 'nov' => 11, 'nop' => 11,
+            'desember' => 12, 'des' => 12, 'dec' => 12,
         ];
 
-        if (preg_match('/^(\d{1,2})[ \t\/\.-]+([a-zA-Z]+)[ \t\/\.-]+(\d{2,4})(?:[ \tT]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/', $str, $m)) {
+        if (preg_match('/^(\d{1,2})[ \t\/\.-]+([a-zA-Z]+)(?:[ \t\/\.-]+(\d{2,4}))?(?:[ \tT]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/', $str, $m)) {
             $day = (int)$m[1];
             $monthStr = strtolower($m[2]);
-            $enMonth = $indoMonths[$monthStr] ?? $monthStr;
-            $year = (int)$m[3];
-            if ($year < 100) {
-                $year += ($year < 70 ? 2000 : 1900);
+            if (isset($indoMonths[$monthStr])) {
+                $month = $indoMonths[$monthStr];
+                $year = !empty($m[3]) ? (int)$m[3] : (int)date('Y');
+                if ($year < 100) {
+                    $year += ($year < 70 ? 2000 : 1900);
+                }
+                $hour = isset($m[4]) ? (int)$m[4] : $defaultHour;
+                $min = isset($m[5]) ? (int)$m[5] : 0;
+                $sec = isset($m[6]) ? (int)$m[6] : 0;
+                if (checkdate($month, $day, $year)) {
+                    return Carbon::create($year, $month, $day, $hour, $min, $sec);
+                }
             }
-            $timePart = isset($m[4]) ? sprintf('%02d:%02d:%02d', (int)$m[4], (int)($m[5] ?? 0), (int)($m[6] ?? 0)) : sprintf('%02d:00:00', $defaultHour);
-
-            try {
-                return Carbon::parse("{$day} {$enMonth} {$year} {$timePart}");
-            } catch (\Exception $e) {}
         }
 
         // 4. Format ISO jika berkas menggunakan tahun-bulan-tanggal (YYYY-MM-DD)
@@ -2191,8 +2553,15 @@ class MaterialController extends Controller
         }
 
         // 5. Fallback ke terjemahan nama bulan dan Carbon::parse
+        $enMonths = [
+            'januari' => 'january', 'pebruari' => 'february', 'februari' => 'february',
+            'maret' => 'march', 'mei' => 'may', 'juni' => 'june', 'juli' => 'july',
+            'agustus' => 'august', 'ags' => 'aug', 'agt' => 'aug',
+            'oktober' => 'october', 'okt' => 'oct',
+            'nopember' => 'november', 'nop' => 'nov', 'desember' => 'december',
+        ];
         $translated = strtolower($str);
-        foreach ($indoMonths as $idName => $enName) {
+        foreach ($enMonths as $idName => $enName) {
             $translated = preg_replace('/\b' . $idName . '\b/i', $enName, $translated);
         }
 

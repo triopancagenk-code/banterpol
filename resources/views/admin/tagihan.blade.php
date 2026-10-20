@@ -160,32 +160,32 @@
   @endif
 
   <!-- Filter Tabs Bar -->
-  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-4">
     
-    <!-- Status Pills -->
-    <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+    <!-- Status Pills (Satu Baris Paten) -->
+    <div class="flex items-center gap-2 text-xs font-semibold flex-nowrap overflow-x-auto pb-1 xl:pb-0 min-w-0">
       <a href="{{ route('admin.tagihan', ['status' => 'all', 'q' => $search]) }}"
          title="Semua Tagihan Aktif Belum Lunas"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'all' ? 'bg-brand text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+         class="h-9 px-3.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 {{ $statusFilter === 'all' ? 'bg-brand text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
         <span>Semua</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'all' ? 'bg-white/20' : 'bg-slate-200' }}">{{ $counts['all'] }}</span>
       </a>
 
       <a href="{{ route('admin.tagihan', ['status' => 'Menunggu Verifikasi', 'q' => $search]) }}"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Menunggu Verifikasi' ? 'bg-amber-500 text-white font-bold shadow-xs' : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100' }}">
+         class="h-9 px-3.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 {{ $statusFilter === 'Menunggu Verifikasi' ? 'bg-amber-500 text-white font-bold shadow-xs' : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100' }}">
         <i class="fa-regular fa-clock"></i>
         <span>Menunggu Verifikasi</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Menunggu Verifikasi' ? 'bg-white/20' : 'bg-amber-200' }}">{{ $counts['menunggu'] }}</span>
       </a>
 
       <a href="{{ route('admin.tagihan', ['status' => 'Belum Bayar', 'q' => $search]) }}"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Belum Bayar' ? 'bg-slate-800 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+         class="h-9 px-3.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 {{ $statusFilter === 'Belum Bayar' ? 'bg-slate-800 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
         <span>Belum Bayar</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Belum Bayar' ? 'bg-white/20' : 'bg-slate-200' }}">{{ $counts['belum_bayar'] }}</span>
       </a>
 
       <a href="{{ route('admin.tagihan', ['status' => 'Jatuh Tempo', 'q' => $search]) }}"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ $statusFilter === 'Jatuh Tempo' ? 'bg-red-600 text-white font-bold shadow-xs' : 'bg-red-50 text-red-800 border border-red-200 hover:bg-red-100' }}">
+         class="h-9 px-3.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 {{ $statusFilter === 'Jatuh Tempo' ? 'bg-red-600 text-white font-bold shadow-xs' : 'bg-red-50 text-red-800 border border-red-200 hover:bg-red-100' }}">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span>Jatuh Tempo</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ $statusFilter === 'Jatuh Tempo' ? 'bg-white/20' : 'bg-red-200' }}">{{ $counts['jatuh_tempo'] }}</span>
@@ -193,7 +193,7 @@
 
       <a href="{{ route('admin.tagihan', ['status' => 'rekap', 'q' => $search]) }}"
          title="Data Rekapitulasi Tagihan yang Sudah Terverifikasi Lunas"
-         class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 {{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100' }}">
+         class="h-9 px-3.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0 {{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100' }}">
         <i class="fa-solid fa-receipt"></i>
         <span>Riwayat / Rekap Pembayaran</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-full {{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'bg-white/20' : 'bg-emerald-200' }}">{{ $counts['rekap'] ?? $counts['lunas'] }}</span>
@@ -201,7 +201,7 @@
     </div>
 
     <!-- Search Form -->
-    <form method="GET" action="{{ route('admin.tagihan') }}" class="flex items-center gap-2">
+    <form method="GET" action="{{ route('admin.tagihan') }}" class="flex items-center gap-2 shrink-0">
       <input type="hidden" name="status" value="{{ $statusFilter }}">
       @if(!empty($monthFilter) && $monthFilter !== 'all')
         <input type="hidden" name="month" value="{{ $monthFilter }}">
@@ -209,13 +209,13 @@
       <div class="relative w-full sm:w-64">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
         <input type="text" name="q" value="{{ $search }}" placeholder="Cari nama, invoice, no hp..."
-               class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
+               class="h-9 w-full pl-9 pr-3 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
       </div>
-      <button type="submit" class="bg-brand text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-brand-700 transition">
+      <button type="submit" class="h-9 bg-brand text-white px-3.5 rounded-xl text-xs font-bold hover:bg-brand-700 transition shrink-0">
         Cari
       </button>
       @if($search || (($monthFilter ?? 'all') !== 'all'))
-        <a href="{{ route('admin.tagihan', ['status' => $statusFilter]) }}" class="text-xs text-slate-400 hover:text-red-500 font-bold">Reset</a>
+        <a href="{{ route('admin.tagihan', ['status' => $statusFilter]) }}" class="text-xs text-slate-400 hover:text-red-500 font-bold shrink-0 ml-1">Reset</a>
       @endif
     </form>
 

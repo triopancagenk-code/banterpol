@@ -119,8 +119,8 @@
             <tr>
                 <!-- Master Laporan Stok -->
                 <th class="th-cell" style="width: 90px;">Kode Barang</th>
-                <th class="th-cell" style="width: 250px;">Nama Barang</th>
                 <th class="th-cell" style="width: 85px;">Bulan</th>
+                <th class="th-cell" style="width: 250px;">Nama Barang</th>
                 <th class="th-cell" style="width: 85px;">Stok Awal</th>
                 <th class="th-cell" style="width: 90px;">Barang Masuk</th>
                 <th class="th-cell" style="width: 90px;">Barang Keluar</th>
@@ -166,8 +166,8 @@
                 <tr>
                     <!-- Master Material Data -->
                     <td class="data-cell text-center" style="mso-number-format:'\@';">{{ $m ? $m->code : '' }}</td>
-                    <td class="data-cell text-left">{{ $m ? $m->name : '' }}</td>
                     <td class="data-cell text-center">{{ $m ? ($m->display_month ?? $m->month ?? ($monthName ?? 'Oktober')) : '' }}</td>
+                    <td class="data-cell text-left">{{ $m ? $m->name : '' }}</td>
                     <td class="data-cell text-right" style="mso-number-format:'\#\,\#\#0\.0';">{{ $m ? \App\Models\Material::formatQty($m->computed_initial_stock ?? $m->initial_stock) : '' }}</td>
                     <td class="data-cell text-right" style="mso-number-format:'\#\,\#\#0\.0'; color: #166534;">{{ $m ? \App\Models\Material::formatQty($m->computed_total_in ?? $m->total_in) : '' }}</td>
                     <td class="data-cell text-right" style="mso-number-format:'\#\,\#\#0\.0'; color: #991b1b;">{{ $m ? \App\Models\Material::formatQty($m->computed_total_out ?? $m->total_out) : '' }}</td>
@@ -180,7 +180,7 @@
                     <td class="data-cell text-center" style="mso-number-format:'\@';">{{ $in ? ($in->transaction_date ? $in->transaction_date->format('d/m/Y') : $in->created_at->format('d/m/Y')) : '' }}</td>
                     <td class="data-cell text-left">{{ $in && $in->material ? $in->material->name : ($in ? '-' : '') }}</td>
                     <td class="data-cell text-right font-bold" style="mso-number-format:'\#\,\#\#0\.0'; color: #166534;">{{ $in ? \App\Models\Material::formatQty($in->amount) : '' }}</td>
-                    <td class="data-cell text-left">{{ $in ? str_replace(' (Barang Masuk)', '', $in->notes ?? '') : '' }}</td>
+                    <td class="data-cell text-left">{{ $in ? str_replace([' (Barang Masuk)', ' [Import]'], '', $in->notes ?? '') : '' }}</td>
 
                     <!-- Pembatas -->
                     <td style="border: none; background-color: #f8fafc;"></td>
@@ -189,7 +189,7 @@
                     <td class="data-cell text-center" style="mso-number-format:'\@';">{{ $out ? ($out->transaction_date ? $out->transaction_date->format('d/m/Y') : $out->created_at->format('d/m/Y')) : '' }}</td>
                     <td class="data-cell text-left">{{ $out && $out->material ? $out->material->name : ($out ? '-' : '') }}</td>
                     <td class="data-cell text-right font-bold" style="mso-number-format:'\#\,\#\#0\.0'; color: #991b1b;">{{ $out ? \App\Models\Material::formatQty($out->amount) : '' }}</td>
-                    <td class="data-cell text-left">{{ $out ? str_replace(' (Barang Keluar)', '', $out->notes ?? '') : '' }}</td>
+                    <td class="data-cell text-left">{{ $out ? str_replace([' (Barang Keluar)', ' [Import]'], '', $out->notes ?? '') : '' }}</td>
                 </tr>
             @endfor
             <!-- Total Baris Bawah -->

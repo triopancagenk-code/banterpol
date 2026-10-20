@@ -2319,6 +2319,69 @@ class AdminController extends Controller
         $categoryFilter = $request->input('category', 'all');
         $search = $request->input('q', '');
 
+        // Dukungan AJAX Live Autocomplete Suggestion (HANYA muncul jika memang ada data laporan masalah yang cocok)
+        if ($request->has('autocomplete') || $request->has('suggest')) {
+            $query = trim($request->input('q', ''));
+            if (empty($query)) {
+                return response()->json([]);
+            }
+            $lowerQ = strtolower($query);
+
+            $matched = collect($allTickets)->filter(function ($item) use ($lowerQ, $query, $statusFilter, $priorityFilter, $categoryFilter) {
+                // Filter status, priority, and category jika sedang aktif
+                if ($statusFilter !== 'all' && ($item['status'] ?? '') !== $statusFilter) {
+                    return false;
+                }
+                if ($priorityFilter !== 'all' && ($item['priority'] ?? '') !== $priorityFilter) {
+                    return false;
+                }
+                if ($categoryFilter !== 'all') {
+                    $catMatch = (isset($item['category']) && $item['category'] === $categoryFilter) ||
+                                (isset($item['type']) && stripos($item['type'], $categoryFilter) !== false);
+                    if (!$catMatch) return false;
+                }
+
+                $name = strtolower($item['customer_name'] ?? '');
+                $id = strtolower($item['id'] ?? '');
+                $phone = strtolower($item['customer_phone'] ?? '');
+                $odp = strtolower($item['odp'] ?? '');
+                $cat = strtolower($item['category'] ?? ($item['type'] ?? ''));
+
+                return str_starts_with($name, $lowerQ) ||
+                       str_starts_with($id, $lowerQ) ||
+                       str_starts_with($phone, $lowerQ) ||
+                       str_starts_with($odp, $lowerQ) ||
+                       stripos($name, $query) !== false ||
+                       stripos($id, $query) !== false ||
+                       stripos($phone, $query) !== false ||
+                       stripos($odp, $query) !== false ||
+                       stripos($cat, $query) !== false;
+            })
+            ->sortBy(function ($item) use ($lowerQ) {
+                $name = strtolower($item['customer_name'] ?? '');
+                $id = strtolower($item['id'] ?? '');
+                if (str_starts_with($name, $lowerQ)) return 1;
+                if (str_starts_with($id, $lowerQ)) return 2;
+                return 3;
+            })
+            ->take(8)
+            ->values()
+            ->map(function ($t) {
+                return [
+                    'id' => $t['id'],
+                    'customer_name' => $t['customer_name'] ?? '',
+                    'customer_phone' => $t['customer_phone'] ?? '',
+                    'odp' => $t['odp'] ?? '',
+                    'category' => $t['category'] ?? ($t['type'] ?? 'Kendala'),
+                    'status' => $t['status'] ?? 'Menunggu Respon',
+                    'priority' => $t['priority'] ?? 'Normal',
+                ];
+            })
+            ->all();
+
+            return response()->json($matched);
+        }
+
         $tickets = collect($allTickets)->filter(function ($item) use ($statusFilter, $priorityFilter, $categoryFilter, $search) {
             $matchStatus = ($statusFilter === 'all') || ($item['status'] === $statusFilter);
             $matchPriority = ($priorityFilter === 'all') || ($item['priority'] === $priorityFilter);

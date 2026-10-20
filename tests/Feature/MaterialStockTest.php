@@ -565,6 +565,204 @@ class MaterialStockTest extends TestCase
             $resOut->assertSee('Pengeluaran Drop Core Februari');
         }
     }
+
+    /**
+     * Menguji bahwa sistem membaca data Barang Masuk dan Barang Keluar secara akurat
+     * dengan aturan: Tanggal (urutan tanggal-bulan-tahun) -> Nama Barang -> Jumlah -> Catatan.
+     */
+    public function test_system_reads_incoming_and_outgoing_tables_accurately_with_dmy_order_and_zero_data_loss(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        // Data berkas CSV dengan format urutan 4 kolom:
+        // Masuk: [Tanggal, Nama Barang, Jumlah Masuk, Catatan]
+        // Keluar: [Tanggal, Nama Barang, Jumlah Keluar, Catatan]
+        $csvData = implode("\n", [
+            "LAPORAN STOK BARANG (OKTOBER 2026);;;;;;;BARANG MASUK;;;;;Barang Keluar;;;;;;",
+            ";;;;;;;;;;;;;;;;;;",
+            "Tgl Stok Awal;01/10/2026;;;;;;;;;;;;;;;",
+            "Tgl Closing;31/10/2026;;;;;;;;;;;;;;;",
+            ";;;;;;;;;;;;;;;;;;",
+            "Kode Barang;Nama Barang;Stok Awal;Barang Masuk;Barang Keluar;Stok Akhir;;Tgl;Nama Barang;Jumlah Masuk;Catatan;;Tgl;Nama Barang;Jumlah Keluar;Catatan;;;",
+            "M001;Kabel FO 24 Core;200;150;45;305;;19/10/2026;Kabel FO 24 Core;150;Pengadaan Proyek Baru;;22/10/2026;Kabel FO 24 Core;45;Pemasangan Jalur Utama;;;",
+            "M002;SFP Transceiver 10G;50;20;10;60;;25-10-2026;SFP Transceiver 10G;20;Dari Vendor Huawei;;28-10-2026;SFP Transceiver 10G;10;Penggantian Core Switch;;;",
+            ";;;;;;;;;;;;;;;;;;",
+            "TOTAL;TOTAL STOK;250;170;55;365;;TOTAL MASUK;;170;;;TOTAL KELUAR;;55;;;;",
+        ]);
+
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('stok_oktober_aturan_baru.csv', $csvData);
+
+        $response = $this->actingAs($admin)->post(route('admin.material.import-csv'), [
+            'csv_file' => $file,
+            'import_month' => 10,
+            'import_year' => 2026,
+            'replace_all' => 1,
+        ]);
+
+        $response->assertRedirect(route('admin.material.index', ['month' => 10, 'year' => 2026]));
+        $response->assertSessionHas('success');
+
+        // 1. Verifikasi data master material tersimpan akurat dan tidak ada baris 'TOTAL' yang dibuat sebagai material
+        $mat1 = Material::where('code', 'M001')->first();
+        $this->assertNotNull($mat1);
+        $this->assertEquals('Kabel FO 24 Core', $mat1->name);
+        $this->assertEquals(200, (float)$mat1->initial_stock);
+        $this->assertEquals(150, (float)$mat1->total_in);
+        $this->assertEquals(45, (float)$mat1->total_out);
+        $this->assertEquals(305, (float)$mat1->stock);
+
+        $this->assertNull(Material::where('name', 'like', '%TOTAL%')->first(), "Baris ringkasan TOTAL tidak boleh disimpan sebagai material master");
+
+        // 2. Verifikasi aturan 1: Barang Masuk dibaca mulai Tanggal (tanggal-bulan-tahun) -> Nama Barang -> Jumlah Masuk -> Catatan
+        $inMutations = \App\Models\MaterialMutation::where('type', 'in')->orderBy('id', 'asc')->get();
+        $this->assertCount(2, $inMutations);
+
+        $in1 = $inMutations->firstWhere('amount', 150);
+        $this->assertNotNull($in1);
+        $this->assertEquals('2026-10-19', $in1->transaction_date->toDateString(), "Urutan tanggal-bulan-tahun 19/10/2026 harus terbaca 2026-10-19");
+        $this->assertEquals($mat1->id, $in1->material_id);
+        $this->assertEquals('Pengadaan Proyek Baru', $in1->notes, "Catatan masuk harus tersimpan persis tanpa deformasi");
+
+        $in2 = $inMutations->firstWhere('amount', 20);
+        $this->assertNotNull($in2);
+        $this->assertEquals('2026-10-25', $in2->transaction_date->toDateString(), "Urutan tanggal-bulan-tahun 25-10-2026 harus terbaca 2026-10-25");
+        $this->assertEquals('Dari Vendor Huawei', $in2->notes);
+
+        // 3. Verifikasi aturan 2: Barang Keluar dibaca mulai Tanggal (tanggal-bulan-tahun) -> Nama Barang -> Jumlah Keluar -> Catatan
+        $outMutations = \App\Models\MaterialMutation::where('type', 'out')->orderBy('id', 'asc')->get();
+        $this->assertCount(2, $outMutations);
+
+        $out1 = $outMutations->firstWhere('amount', 45);
+        $this->assertNotNull($out1);
+        $this->assertEquals('2026-10-22', $out1->transaction_date->toDateString(), "Urutan tanggal-bulan-tahun 22/10/2026 harus terbaca 2026-10-22");
+        $this->assertEquals($mat1->id, $out1->material_id);
+        $this->assertEquals('Pemasangan Jalur Utama', $out1->notes, "Catatan keluar harus tersimpan persis tanpa deformasi");
+
+        $out2 = $outMutations->firstWhere('amount', 10);
+        $this->assertNotNull($out2);
+        $this->assertEquals('2026-10-28', $out2->transaction_date->toDateString(), "Urutan tanggal-bulan-tahun 28-10-2026 harus terbaca 2026-10-28");
+        $this->assertEquals('Penggantian Core Switch', $out2->notes);
+    }
+
+    /**
+     * Menguji ekspor dan re-impor berkas Excel (.xls) dan CSV (.csv) roundtrip
+     * dengan jaminan semua data dan catatan terbaca tanpa ada yang tertinggal.
+     */
+    public function test_roundtrip_export_and_import_excel_and_csv_retains_all_data_accurately(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $mat = Material::create([
+            'code' => 'T001',
+            'name' => 'Patchcore Kuning SC-UPC',
+            'category' => 'Patchcore',
+            'unit' => 'Pcs',
+            'month' => 'Oktober',
+            'year' => 2026,
+            'initial_stock' => 100,
+            'total_in' => 50,
+            'total_out' => 20,
+            'stock' => 130,
+            'min_stock' => 10,
+        ]);
+
+        \App\Models\MaterialMonthlyStock::create([
+            'material_id' => $mat->id,
+            'month' => 10,
+            'year' => 2026,
+            'month_name' => 'Oktober',
+            'initial_stock' => 100,
+            'total_in' => 50,
+            'total_out' => 20,
+            'final_stock' => 130,
+        ]);
+
+        \App\Models\MaterialMutation::create([
+            'material_id' => $mat->id,
+            'user_id' => $admin->id,
+            'type' => 'in',
+            'transaction_date' => '2026-10-15',
+            'amount' => 50,
+            'stock_before' => 100,
+            'stock_after' => 150,
+            'notes' => 'Penerimaan Pabrik Pusat',
+        ]);
+
+        \App\Models\MaterialMutation::create([
+            'material_id' => $mat->id,
+            'user_id' => $admin->id,
+            'type' => 'out',
+            'transaction_date' => '2026-10-20',
+            'amount' => 20,
+            'stock_before' => 150,
+            'stock_after' => 130,
+            'notes' => 'Instalasi Pelanggan VIP',
+        ]);
+
+        // 1. Uji Ekspor CSV dan Impor Kembali
+        $csvResponse = $this->actingAs($admin)->get(route('admin.material.export-csv', ['month' => 10, 'year' => 2026]));
+        $csvResponse->assertOk();
+        $csvContent = $csvResponse->streamedContent();
+
+        $this->assertStringContainsString('Patchcore Kuning SC-UPC', $csvContent);
+        $this->assertStringContainsString('Penerimaan Pabrik Pusat', $csvContent);
+        $this->assertStringContainsString('Instalasi Pelanggan VIP', $csvContent);
+        $this->assertStringContainsString('15/10/2026', $csvContent, "Format tanggal dalam ekspor CSV harus d/m/Y (tanggal-bulan-tahun)");
+        $this->assertStringContainsString('20/10/2026', $csvContent, "Format tanggal dalam ekspor CSV harus d/m/Y (tanggal-bulan-tahun)");
+
+        // Re-impor file CSV yang diekspor
+        $reimportCsvFile = \Illuminate\Http\UploadedFile::fake()->createWithContent('reimport_oktober.csv', $csvContent);
+        $reimportCsvRes = $this->actingAs($admin)->post(route('admin.material.import-csv'), [
+            'csv_file' => $reimportCsvFile,
+            'import_month' => 10,
+            'import_year' => 2026,
+            'replace_all' => 1,
+        ]);
+        $reimportCsvRes->assertRedirect();
+        $reimportCsvRes->assertSessionHas('success');
+
+        $matAfterCsv = Material::where('code', 'T001')->first();
+        $this->assertEquals(130, (float)$matAfterCsv->stock);
+        $this->assertEquals(50, (float)$matAfterCsv->total_in);
+        $this->assertEquals(20, (float)$matAfterCsv->total_out);
+
+        // 2. Uji Ekspor Excel (.xls) dan Impor Kembali
+        $excelResponse = $this->actingAs($admin)->get(route('admin.material.export', ['month' => 10, 'year' => 2026]));
+        $excelResponse->assertOk();
+        $excelContent = $excelResponse->streamedContent();
+
+        $this->assertStringContainsString('Patchcore Kuning SC-UPC', $excelContent);
+        $this->assertStringContainsString('Penerimaan Pabrik Pusat', $excelContent);
+        $this->assertStringContainsString('Instalasi Pelanggan VIP', $excelContent);
+        $this->assertStringContainsString('15/10/2026', $excelContent);
+        $this->assertStringContainsString('20/10/2026', $excelContent);
+
+        // Re-impor file Excel (.xls) yang diekspor
+        $reimportExcelFile = \Illuminate\Http\UploadedFile::fake()->createWithContent('reimport_oktober.xls', $excelContent);
+        $reimportExcelRes = $this->actingAs($admin)->post(route('admin.material.import-csv'), [
+            'csv_file' => $reimportExcelFile,
+            'import_month' => 10,
+            'import_year' => 2026,
+            'replace_all' => 1,
+        ]);
+        $reimportExcelRes->assertRedirect();
+        $reimportExcelRes->assertSessionHas('success');
+
+        $matAfterExcel = Material::where('code', 'T001')->first();
+        $this->assertEquals(130, (float)$matAfterExcel->stock);
+        $this->assertEquals(50, (float)$matAfterExcel->total_in);
+        $this->assertEquals(20, (float)$matAfterExcel->total_out);
+
+        $mutationInAfter = \App\Models\MaterialMutation::where('type', 'in')->first();
+        $this->assertNotNull($mutationInAfter);
+        $this->assertEquals('2026-10-15', $mutationInAfter->transaction_date->toDateString());
+        $this->assertEquals('Penerimaan Pabrik Pusat', $mutationInAfter->notes);
+
+        $mutationOutAfter = \App\Models\MaterialMutation::where('type', 'out')->first();
+        $this->assertNotNull($mutationOutAfter);
+        $this->assertEquals('2026-10-20', $mutationOutAfter->transaction_date->toDateString());
+        $this->assertEquals('Instalasi Pelanggan VIP', $mutationOutAfter->notes);
+    }
 }
 
 

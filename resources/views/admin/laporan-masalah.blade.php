@@ -41,7 +41,6 @@
     <div>
       <div class="flex items-center gap-2 flex-wrap">
         <h2 class="text-xl font-black text-slate-900 tracking-tight">Daftar Tiket Gangguan Jaringan</h2>
-        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-brand border border-red-200 uppercase tracking-wider">Trouble Tickets</span>
         <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 shadow-xs" title="Sistem otomatis membersihkan riwayat tiket berstatus Selesai yang telah berusia lebih dari 3 hari">
           <i class="fa-solid fa-clock-rotate-left text-emerald-600"></i>
           <span>Auto-Hapus 3 Hari (Tiket Selesai)</span>
@@ -53,21 +52,6 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2.5 shrink-0">
-      <!-- Live Server Time -->
-      <div class="hidden lg:flex items-center gap-2 bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl border border-slate-800 shadow-xs font-mono">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-slate-400 font-sans text-[10px]">Waktu Real-Time:</span>
-        <span class="font-bold text-emerald-300" x-text="liveDate + ' • ' + liveTime"></span>
-      </div>
-
-      <!-- Live Syncing Indicator & Refresh Button -->
-      <button type="button" @click="pollTickets()"
-              class="h-10 px-3.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-2 border border-slate-200/80 shadow-xs"
-              title="Sinkronisasi Data Real-Time Sekarang">
-        <i class="fa-solid fa-arrows-rotate text-brand" :class="isPolling ? 'fa-spin' : ''"></i>
-        <span>Sinkronisasi</span>
-      </button>
-
       <!-- Tombol Hapus Pilihan (Selalu Terlihat) -->
       <button type="button"
               @click="selectedIds.length > 0 ? confirmBulkDelete(false) : showToast('Silakan centang minimal satu tiket pada kolom kotak centang tabel.', 'error')"
@@ -93,98 +77,228 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- 3. STATISTIC KPI CARDS (Serupa Data Pelanggan) -->
+  <!-- 3. STATISTIC KPI CARDS                         -->
   <!-- ============================================== -->
-  <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-    
-    <!-- 1. Total Laporan -->
-    <a href="{{ route('admin.laporan', ['status' => 'all']) }}"
-       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between {{ $statusFilter === 'all' ? 'border-brand ring-2 ring-brand/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-      <div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Tiket</p>
-        <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="counts.all">{{ $counts['all'] }}</h3>
-        <span class="text-[10px] text-slate-500 font-medium">Laporan Gangguan Masuk</span>
-      </div>
-      <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg">
-        <i class="fa-solid fa-headset"></i>
-      </div>
-    </a>
+  <div class="w-full overflow-x-auto pb-1 sm:pb-0">
+    <div class="grid grid-cols-5 gap-3 sm:gap-4 min-w-[780px] lg:min-w-0">
+      
+      <!-- 1. Total Laporan -->
+      <a href="{{ route('admin.laporan', ['status' => 'all']) }}"
+         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $statusFilter === 'all' ? 'border-brand ring-2 ring-brand/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-2">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Tiket</p>
+          <h3 class="text-2xl font-black text-slate-900 mt-1" x-text="counts.all">{{ $counts['all'] }}</h3>
+          <span class="text-[10px] text-slate-500 font-medium truncate block">Laporan Gangguan Masuk</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-headset"></i>
+        </div>
+      </a>
 
-    <!-- 2. Menunggu Respon -->
-    <a href="{{ route('admin.laporan', ['status' => 'Menunggu Respon']) }}"
-       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between {{ $statusFilter === 'Menunggu Respon' ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-      <div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Menunggu Respon</p>
-        <h3 class="text-2xl font-black text-amber-600 mt-1" x-text="counts.menunggu">{{ $counts['menunggu'] }}</h3>
-        <span class="text-[10px] text-slate-500 font-medium">Antrian Perlu Ditangani</span>
-      </div>
-      <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
-        <i class="fa-regular fa-clock"></i>
-      </div>
-    </a>
+      <!-- 2. Menunggu Respon -->
+      <a href="{{ route('admin.laporan', ['status' => 'Menunggu Respon']) }}"
+         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $statusFilter === 'Menunggu Respon' ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-2">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Menunggu Respon</p>
+          <h3 class="text-2xl font-black text-amber-600 mt-1" x-text="counts.menunggu">{{ $counts['menunggu'] }}</h3>
+          <span class="text-[10px] text-slate-500 font-medium truncate block">Antrian Perlu Ditangani</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-regular fa-clock"></i>
+        </div>
+      </a>
 
-    <!-- 3. Sedang Ditangani -->
-    <a href="{{ route('admin.laporan', ['status' => 'Sedang Ditangani']) }}"
-       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between {{ $statusFilter === 'Sedang Ditangani' ? 'border-blue-600 ring-2 ring-blue-600/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-      <div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sedang Ditangani</p>
-        <h3 class="text-2xl font-black text-blue-600 mt-1" x-text="counts.proses">{{ $counts['proses'] }}</h3>
-        <span class="text-[10px] text-slate-500 font-medium">Teknisi Sedang Proses</span>
-      </div>
-      <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
-        <i class="fa-solid fa-person-digging"></i>
-      </div>
-    </a>
+      <!-- 3. Sedang Ditangani -->
+      <a href="{{ route('admin.laporan', ['status' => 'Sedang Ditangani']) }}"
+         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $statusFilter === 'Sedang Ditangani' ? 'border-blue-600 ring-2 ring-blue-600/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-2">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Sedang Ditangani</p>
+          <h3 class="text-2xl font-black text-blue-600 mt-1" x-text="counts.proses">{{ $counts['proses'] }}</h3>
+          <span class="text-[10px] text-slate-500 font-medium truncate block">Teknisi Sedang Proses</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-person-digging"></i>
+        </div>
+      </a>
 
-    <!-- 4. Selesai Ditangani -->
-    <a href="{{ route('admin.laporan', ['status' => 'Selesai']) }}"
-       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between {{ $statusFilter === 'Selesai' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-      <div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Selesai Normal</p>
-        <h3 class="text-2xl font-black text-emerald-600 mt-1" x-text="counts.selesai">{{ $counts['selesai'] }}</h3>
-        <span class="text-[10px] text-slate-500 font-medium">Koneksi Sudah Pulih</span>
-      </div>
-      <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
-        <i class="fa-solid fa-circle-check"></i>
-      </div>
-    </a>
+      <!-- 4. Selesai Ditangani -->
+      <a href="{{ route('admin.laporan', ['status' => 'Selesai']) }}"
+         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $statusFilter === 'Selesai' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-2">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Selesai Normal</p>
+          <h3 class="text-2xl font-black text-emerald-600 mt-1" x-text="counts.selesai">{{ $counts['selesai'] }}</h3>
+          <span class="text-[10px] text-slate-500 font-medium truncate block">Koneksi Sudah Pulih</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+      </a>
 
-    <!-- 5. Gangguan Kritis -->
-    <a href="{{ route('admin.laporan', ['priority' => 'Kritis']) }}"
-       class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between col-span-2 sm:col-span-2 lg:col-span-1 {{ $priorityFilter === 'Kritis' ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
-      <div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gangguan Kritis</p>
-        <h3 class="text-2xl font-black text-brand mt-1" x-text="counts.kritis">{{ $counts['kritis'] }}</h3>
-        <span class="text-[10px] text-slate-500 font-medium">Prioritas Darurat NOC</span>
-      </div>
-      <div class="w-10 h-10 rounded-xl bg-red-50 text-brand flex items-center justify-center text-lg">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-      </div>
-    </a>
+      <!-- 5. Gangguan Kritis -->
+      <a href="{{ route('admin.laporan', ['priority' => 'Kritis']) }}"
+         class="bg-white p-4 rounded-2xl border transition duration-150 shadow-xs flex items-center justify-between min-w-0 {{ $priorityFilter === 'Kritis' ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-200/80 hover:border-slate-300' }}">
+        <div class="min-w-0 pr-2">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Gangguan Kritis</p>
+          <h3 class="text-2xl font-black text-brand mt-1" x-text="counts.kritis">{{ $counts['kritis'] }}</h3>
+          <span class="text-[10px] text-slate-500 font-medium truncate block">Prioritas Darurat NOC</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-red-50 text-brand flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+      </a>
 
+    </div>
   </div>
 
   <!-- ============================================== -->
-  <!-- 4. SEARCH & FILTER BAR (4 Kolom Sesuai Pelanggan) -->
+  <!-- 4. SEARCH & FILTER BAR                         -->
   <!-- ============================================== -->
-  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
-    <form method="GET" action="{{ route('admin.laporan') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs w-fit max-w-full relative z-30" style="width: fit-content;">
+    <form method="GET" action="{{ route('admin.laporan') }}" class="flex items-end gap-3 flex-nowrap">
       
-      <!-- 1. Pencarian Laporan Masalah (lg:col-span-4) -->
-      <div class="sm:col-span-2 lg:col-span-4">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1">Pencarian Laporan Masalah</label>
+      <!-- 1. Pencarian Laporan Masalah with Live Autocomplete Suggestions -->
+      <div class="w-72 sm:w-80 shrink-0 relative"
+           x-data="{
+             searchVal: '{{ addslashes($search) }}',
+             suggestions: [],
+             showDropdown: false,
+             loading: false,
+             selectedIndex: -1,
+
+             async onInput() {
+               const val = this.searchVal.trim();
+               if (!val) {
+                 this.suggestions = [];
+                 this.showDropdown = false;
+                 this.selectedIndex = -1;
+                 return;
+               }
+               this.loading = true;
+               try {
+                 const form = $el.closest('form');
+                 const statusVal = form ? (form.querySelector('[name=status]')?.value || 'all') : 'all';
+                 const priorityVal = form ? (form.querySelector('[name=priority]')?.value || 'all') : 'all';
+                 const categoryVal = form ? (form.querySelector('[name=category]')?.value || 'all') : 'all';
+                 const res = await fetch(`{{ route('admin.laporan') }}?autocomplete=1&q=${encodeURIComponent(val)}&status=${encodeURIComponent(statusVal)}&priority=${encodeURIComponent(priorityVal)}&category=${encodeURIComponent(categoryVal)}`, {
+                   headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                 });
+                 if (res.ok) {
+                   this.suggestions = await res.json();
+                   this.showDropdown = this.suggestions.length > 0;
+                   this.selectedIndex = -1;
+                 }
+               } catch (err) {
+                 this.suggestions = [];
+               } finally {
+                 this.loading = false;
+               }
+             },
+
+             selectItem(item) {
+               this.searchVal = item.customer_name || item.id;
+               this.showDropdown = false;
+               $nextTick(() => {
+                 $el.closest('form').submit();
+               });
+             },
+
+             onKeyDown(e) {
+               if (!this.showDropdown || this.suggestions.length === 0) return;
+               if (e.key === 'ArrowDown') {
+                 e.preventDefault();
+                 this.selectedIndex = (this.selectedIndex + 1) % this.suggestions.length;
+               } else if (e.key === 'ArrowUp') {
+                 e.preventDefault();
+                 this.selectedIndex = (this.selectedIndex - 1 + this.suggestions.length) % this.suggestions.length;
+               } else if (e.key === 'Enter' && this.selectedIndex >= 0) {
+                 e.preventDefault();
+                 this.selectItem(this.suggestions[this.selectedIndex]);
+               } else if (e.key === 'Escape') {
+                 this.showDropdown = false;
+               }
+             },
+
+             highlightPrefix(name, prefix) {
+               if (!name) return '';
+               if (!prefix) return name;
+               const lowerName = name.toLowerCase();
+               const lowerPrefix = prefix.toLowerCase();
+               if (lowerName.startsWith(lowerPrefix)) {
+                 const matched = name.substring(0, prefix.length);
+                 const rest = name.substring(prefix.length);
+                 return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+               }
+               const idx = lowerName.indexOf(lowerPrefix);
+               if (idx !== -1) {
+                 const before = name.substring(0, idx);
+                 const matched = name.substring(idx, idx + prefix.length);
+                 const rest = name.substring(idx + prefix.length);
+                 return `${before}<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+               }
+               return name;
+             }
+           }"
+           @click.outside="showDropdown = false">
+        <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Pencarian Laporan Masalah</label>
         <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-          <input type="text" name="q" value="{{ $search }}"
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+          <input type="text" name="q"
+                 x-model="searchVal"
+                 @input.debounce.150ms="onInput()"
+                 @keydown="onKeyDown($event)"
+                 @focus="if (suggestions.length > 0) showDropdown = true"
+                 autocomplete="off"
                  placeholder="Cari ID Tiket, Nama, No. HP, Titik ODP, Kendala..."
-                 class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand transition">
+                 class="h-10 w-full pl-9 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand transition font-medium text-slate-800 placeholder:text-slate-400">
+
+          <!-- Spinner Loading -->
+          <div x-show="loading" style="display: none;" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+          </div>
+
+          <!-- Dropdown Autocomplete Awalan (Sesuai Omnibox Data Pelanggan) -->
+          <div x-show="showDropdown && suggestions.length > 0"
+               style="display: none;"
+               x-transition:enter="transition ease-out duration-100"
+               x-transition:enter-start="transform opacity-0 scale-98"
+               x-transition:enter-end="transform opacity-100 scale-100"
+               x-transition:leave="transition ease-in duration-75"
+               x-transition:leave-start="transform opacity-100 scale-100"
+               x-transition:leave-end="transform opacity-0 scale-98"
+               class="absolute left-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto w-full min-w-[340px] sm:min-w-[400px]">
+            
+            <div class="px-3.5 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-400 flex items-center justify-between">
+              <span>Hasil Pencarian Awalan "<span class="text-slate-700 font-extrabold" x-text="searchVal"></span>"</span>
+              <span class="text-[9px] text-slate-400">Pilih nama atau tekan Enter</span>
+            </div>
+
+            <template x-for="(item, idx) in suggestions" :key="item.id + '-' + idx">
+              <div @click="selectItem(item)"
+                   :class="selectedIndex === idx ? 'bg-red-50 text-brand' : 'hover:bg-slate-50 text-slate-700'"
+                   class="px-3.5 py-2.5 cursor-pointer flex items-center justify-between text-xs transition">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 text-[10px]">
+                    <i class="fa-solid fa-user"></i>
+                  </div>
+                  <div class="truncate">
+                    <span class="text-xs font-semibold" x-html="highlightPrefix(item.customer_name, searchVal)"></span>
+                    <span class="text-[10px] text-slate-400 ml-1.5" x-text="item.odp ? '• ' + item.odp : (item.category ? '• ' + item.category : '')"></span>
+                  </div>
+                </div>
+                <div class="text-right shrink-0 ml-2">
+                  <span class="text-[10px] text-brand font-mono font-bold block" x-text="item.id ? (item.id.startsWith('TCK') ? 'TIKET: ' + item.id : item.id) : ''"></span>
+                  <span class="text-[10px] text-slate-400 font-mono block" x-text="item.customer_phone || ''"></span>
+                </div>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
-      <!-- 2. Filter Status Tiket (lg:col-span-3) -->
-      <div class="sm:col-span-1 lg:col-span-3">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1">Status Tiket</label>
-        <select name="status" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
+      <!-- 2. Filter Status Tiket -->
+      <div class="w-52 shrink-0">
+        <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Status Tiket</label>
+        <select name="status" onchange="this.form.submit()" class="h-10 w-full text-xs px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer font-medium text-slate-800">
           <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status ({{ $counts['all'] }} Tiket)</option>
           <option value="Menunggu Respon" {{ $statusFilter === 'Menunggu Respon' ? 'selected' : '' }}>Menunggu Respon ({{ $counts['menunggu'] }})</option>
           <option value="Sedang Ditangani" {{ $statusFilter === 'Sedang Ditangani' ? 'selected' : '' }}>Sedang Ditangani ({{ $counts['proses'] }})</option>
@@ -192,10 +306,10 @@
         </select>
       </div>
 
-      <!-- 3. Tingkat Prioritas (lg:col-span-2) -->
-      <div class="sm:col-span-1 lg:col-span-2">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1">Tingkat Prioritas</label>
-        <select name="priority" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
+      <!-- 3. Tingkat Prioritas -->
+      <div class="w-40 shrink-0">
+        <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Tingkat Prioritas</label>
+        <select name="priority" onchange="this.form.submit()" class="h-10 w-full text-xs px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer font-medium text-slate-800">
           <option value="all" {{ $priorityFilter === 'all' ? 'selected' : '' }}>Semua Prioritas</option>
           <option value="Kritis" {{ $priorityFilter === 'Kritis' ? 'selected' : '' }}>Kritis ({{ $counts['kritis'] }})</option>
           <option value="Tinggi" {{ $priorityFilter === 'Tinggi' ? 'selected' : '' }}>Tinggi</option>
@@ -203,25 +317,27 @@
         </select>
       </div>
 
-      <!-- 4. Kategori Kendala & Reset (lg:col-span-3) -->
-      <div class="sm:col-span-2 lg:col-span-3 flex items-end gap-2">
-        <div class="flex-1 min-w-0">
-          <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori Kendala</label>
-          <select name="category" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
-            <option value="all" {{ ($categoryFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Kendala</option>
-            <option value="LOS" {{ ($categoryFilter ?? '') === 'LOS' ? 'selected' : '' }}>LOS / Lampu Merah</option>
-            <option value="Lambat" {{ ($categoryFilter ?? '') === 'Lambat' ? 'selected' : '' }}>Koneksi Lambat</option>
-            <option value="WiFi" {{ ($categoryFilter ?? '') === 'WiFi' ? 'selected' : '' }}>WiFi Lemah / Putus</option>
-            <option value="Kabel" {{ ($categoryFilter ?? '') === 'Kabel' ? 'selected' : '' }}>Kabel Putus / Fisik</option>
-          </select>
-        </div>
-        @if($search || $statusFilter !== 'all' || $priorityFilter !== 'all' || ($categoryFilter ?? 'all') !== 'all')
-          <a href="{{ route('admin.laporan') }}" class="py-2 px-3 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 border border-slate-200" title="Reset Semua Filter">
+      <!-- 4. Kategori Kendala -->
+      <div class="w-44 shrink-0">
+        <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Kategori Kendala</label>
+        <select name="category" onchange="this.form.submit()" class="h-10 w-full text-xs px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer font-medium text-slate-800">
+          <option value="all" {{ ($categoryFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Kendala</option>
+          <option value="LOS" {{ ($categoryFilter ?? '') === 'LOS' ? 'selected' : '' }}>LOS / Lampu Merah</option>
+          <option value="Lambat" {{ ($categoryFilter ?? '') === 'Lambat' ? 'selected' : '' }}>Koneksi Lambat</option>
+          <option value="WiFi" {{ ($categoryFilter ?? '') === 'WiFi' ? 'selected' : '' }}>WiFi Lemah / Putus</option>
+          <option value="Kabel" {{ ($categoryFilter ?? '') === 'Kabel' ? 'selected' : '' }}>Kabel Putus / Fisik</option>
+        </select>
+      </div>
+
+      <!-- 5. Reset Filter -->
+      @if($search || $statusFilter !== 'all' || $priorityFilter !== 'all' || ($categoryFilter ?? 'all') !== 'all')
+        <div class="shrink-0">
+          <a href="{{ route('admin.laporan') }}" class="h-10 px-3.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap" title="Reset Semua Filter">
             <i class="fa-solid fa-arrow-rotate-left text-[11px]"></i>
             <span>Reset</span>
           </a>
-        @endif
-      </div>
+        </div>
+      @endif
 
     </form>
   </div>
