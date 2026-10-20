@@ -180,36 +180,36 @@
       </p>
     </div>
 
-    <!-- 4 Tombol Aksi: 2 Susun (2x2 Grid) Responsif di Semua Perangkat -->
-    <div class="grid grid-cols-2 gap-2 sm:gap-2.5 w-full sm:w-fit shrink-0">
+    <!-- 4 Tombol Aksi: 2 Susun (2x2 Grid) dengan Ukuran Sama & Container Menyesuaikan Lebar Isi -->
+    <div class="grid grid-cols-2 gap-2 sm:gap-2.5 w-fit shrink-0" style="width: fit-content;">
       <!-- 1. Tambah Pelanggan -->
       <button type="button" @click="openCreateModal = true"
-              class="w-full sm:w-44 md:w-52 h-10 px-2 sm:px-3.5 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+              class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-brand hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
         <i class="fa-solid fa-user-plus text-xs"></i>
         <span>Tambah Pelanggan</span>
       </button>
 
       <!-- 2. Import Excel -->
       <button type="button" @click="openImportModal = true"
-              class="w-full sm:w-44 md:w-52 h-10 px-2 sm:px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+              class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
         <i class="fa-solid fa-file-import text-xs"></i>
         <span>Import Excel</span>
       </button>
 
       <!-- 3. Export Excel -->
       <a href="{{ route('admin.pelanggan.export', request()->query()) }}"
-         class="w-full sm:w-44 md:w-52 h-10 px-2 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+         class="w-44 sm:w-52 h-10 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
         <i class="fa-solid fa-file-excel text-xs"></i>
         <span>Export Excel (.xls)</span>
       </a>
 
       <!-- 4. Hapus Semua / Hapus Terpilih -->
-      <div class="w-full sm:w-44 md:w-52 h-10">
+      <div class="w-44 sm:w-52 h-10">
         <button type="button"
                 x-show="selectedIds.length > 0"
                 style="display: none;"
                 @click="confirmBulkDelete(false)"
-                class="w-full h-full px-2 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
+                class="w-full h-full px-2.5 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm whitespace-nowrap">
           <i class="fa-solid fa-trash-can text-xs"></i>
           <span>Hapus (<span x-text="selectedIds.length"></span>)</span>
         </button>
@@ -218,7 +218,7 @@
                 x-show="selectedIds.length === 0"
                 @click="confirmBulkDelete(true)"
                 @if($stats['total'] == 0) disabled @endif
-                class="w-full h-full px-2 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                class="w-full h-full px-2.5 sm:px-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                 title="Hapus Semua Data Pelanggan Sekaligus">
           <i class="fa-solid fa-trash-arrow-up text-xs"></i>
           <span>Hapus Semua</span>
