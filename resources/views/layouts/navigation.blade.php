@@ -128,8 +128,8 @@
                   class="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-black focus:outline-none py-1">
 
             <!-- Tampilan Foto Profil Dinamis di Navbar -->
-            @if(auth()->user()->avatar)
-              <img src="{{ \Illuminate\Support\Str::startsWith(auth()->user()->avatar, ['http://', 'https://']) ? auth()->user()->avatar : asset('storage/' . auth()->user()->avatar) }}" alt="{{ auth()->user()->name }}" class="w-8 h-8 rounded-full object-cover border border-gray-300">
+            @if(auth()->user()->avatar_url)
+              <img src="{{ auth()->user()->avatar_url }}" alt="{{ auth()->user()->name }}" class="w-8 h-8 rounded-full object-cover border border-gray-300" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name) }}&color=DC2626&background=FEE2E2';">
             @else
               <div class="w-8 h-8 rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600">
                 <i class="fa-regular fa-user text-xs"></i>

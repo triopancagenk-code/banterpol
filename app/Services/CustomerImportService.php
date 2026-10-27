@@ -2,23 +2,74 @@
 
 namespace App\Services;
 
+use App\Imports\CustomerImport;
 use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 use ZipArchive;
 
 class CustomerImportService
 {
     /**
-     * Parsing dan impor file Excel / CSV ke database pelanggan (orders).
+     * Parsing dan impor file Excel / CSV ke database pelanggan (orders) menggunakan Laravel-Excel.
      *
      * @param UploadedFile $file
      * @param bool $updateExisting
      * @return array
      */
     public static function import(UploadedFile $file, bool $updateExisting = true): array
+    {
+        @ini_set('memory_limit', '2048M');
+        @ini_set('max_execution_time', '0');
+        @set_time_limit(0);
+        @ini_set('pcre.backtrack_limit', '100000000');
+
+        DB::beginTransaction();
+        try {
+            $customerImport = new CustomerImport($updateExisting);
+            Excel::import($customerImport, $file);
+
+            $result = $customerImport->getResults();
+
+            if ($result['success']) {
+                DB::commit();
+            } else {
+                DB::rollBack();
+            }
+
+            return $result;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error saat import pelanggan menggunakan Laravel-Excel: ' . $e->getMessage());
+
+            // Fallback ke legacy parser jika format file non-standar (misal HTML table dinamai .xls)
+            try {
+                return self::legacyImport($file, $updateExisting);
+            } catch (\Throwable $legacyError) {
+                return [
+                    'success' => false,
+                    'message' => 'Gagal membaca atau memproses berkas Excel: ' . $e->getMessage(),
+                    'imported' => 0,
+                    'updated' => 0,
+                    'skipped' => 0,
+                    'errors' => [$e->getMessage()],
+                    'sheets' => [],
+                ];
+            }
+        }
+    }
+
+    /**
+     * Fallback parsing legacy untuk berkas berformat khusus non-standar
+     *
+     * @param UploadedFile $file
+     * @param bool $updateExisting
+     * @return array
+     */
+    public static function legacyImport(UploadedFile $file, bool $updateExisting = true): array
     {
         // Alokasi memori dan batas waktu tak terbatas agar mampu menangani impor data dalam jumlah sangat besar
         @ini_set('memory_limit', '2048M');
@@ -723,56 +774,55 @@ class CustomerImportService
     }
 
     /**
-     * Download Template File Excel (.xls dengan UTF-8 BOM & XML meta)
-     * Format ini kompatibel 100% dibuka langsung di Microsoft Excel, LibreOffice, dan Google Sheets.
+     * Download Template File Excel (.xlsx / .xls)
      */
-    public static function downloadTemplate()
+    public static function downloadTemplate(string $format = 'xlsx')
     {
+        $format = strtolower($format);
+        $templatePath = base_path('template data pelanggan fix.xlsx');
+        if (!file_exists($templatePath)) {
+            $templatePath = base_path('template.xlsx');
+        }
+
+        if (($format === 'xlsx' || $format === 'excel') && file_exists($templatePath)) {
+            return response()->download($templatePath, 'Template_Import_Pelanggan_Banterpool.xlsx', [
+                'Cache-Control' => 'max-age=0, no-cache, must-revalidate, proxy-revalidate',
+            ]);
+        }
+
         $filename = 'Template_Import_Pelanggan_Banterpool.xls';
         $now = now('Asia/Jakarta')->translatedFormat('d F Y, H:i');
 
         $sampleData = [
             [
-                'order_number' => 'PLG-2026-0501',
-                'id_card_number' => '3302190102850001',
                 'customer_name' => 'Bambang Sudarsono',
-                'birth_place' => 'Banyumas',
-                'birth_date' => '1985-02-01',
+                'pppoe' => 'bambang_sudarsono',
+                'id_card_number' => '3302190102850001',
                 'customer_phone' => '081234567890',
                 'customer_email' => 'bambang.sudarsono@gmail.com',
-                'package_name' => 'Paket 20 Mbps',
-                'speed' => '20 Mbps',
+                'package_name' => '20 Mbps',
                 'price' => '110000',
                 'address' => 'Batuanten RT 01/RW 02, Kec. Cilongok, Kab. Banyumas',
-                'status' => 'Selesai',
             ],
             [
-                'order_number' => 'PLG-2026-0502',
-                'id_card_number' => '3302191506920002',
                 'customer_name' => 'Siti Nurhaliza',
-                'birth_place' => 'Purwokerto',
-                'birth_date' => '1992-06-15',
+                'pppoe' => 'siti_nurhaliza',
+                'id_card_number' => '3302191506920002',
                 'customer_phone' => '085712345678',
                 'customer_email' => 'siti.nurhaliza92@gmail.com',
-                'package_name' => 'Paket 30 Mbps',
-                'speed' => '30 Mbps',
+                'package_name' => '30 Mbps',
                 'price' => '165000',
                 'address' => 'Panusupan RT 03/RW 01, Kec. Cilongok, Kab. Banyumas',
-                'status' => 'Selesai',
             ],
             [
-                'order_number' => '',
-                'id_card_number' => '3302192008980003',
                 'customer_name' => 'Rahmat Hidayat',
-                'birth_place' => 'Banyumas',
-                'birth_date' => '1998-08-20',
+                'pppoe' => 'rahmat_hidayat',
+                'id_card_number' => '3302192008980003',
                 'customer_phone' => '087812345678',
                 'customer_email' => 'rahmat.hidayat@gmail.com',
-                'package_name' => 'Paket 50 Mbps',
-                'speed' => '50 Mbps',
+                'package_name' => '50 Mbps',
                 'price' => '220000',
                 'address' => 'Jatisaba RT 02/RW 05, Kec. Cilongok, Kab. Banyumas',
-                'status' => 'Menunggu Konfirmasi',
             ],
         ];
 
@@ -787,68 +837,56 @@ class CustomerImportService
     }
 
     /**
-     * Download Template File CSV
+     * Download Template File CSV (Format 9 Kolom Resmi template data pelanggan fix.xlsx)
      */
     public static function downloadCsvTemplate()
     {
         $filename = 'Template_Import_Pelanggan_Banterpool.csv';
         $headers = [
-            'No. Pelanggan',
-            'No. KTP / NIK',
-            'Nama Lengkap Pelanggan',
-            'Tempat Lahir',
-            'Tanggal Lahir',
-            'No. Handphone (WA)',
-            'Alamat Email',
-            'Jenis Layanan (Paket)',
-            'Kecepatan',
-            'Harga (Rp)',
+            'No',
+            'Nama Pemohon',
+            'PPOE',
+            'No KTP',
+            'No Handphone',
+            'Email',
+            'Jenis Layanan',
+            'Harga',
             'Alamat',
-            'Status Berlangganan',
         ];
 
         $rows = [
             [
-                'PLG-2026-0501',
-                "'3302190102850001",
+                '1',
                 'Bambang Sudarsono',
-                'Banyumas',
-                '1985-02-01',
+                'bambang_sudarsono',
+                "'3302190102850001",
                 '081234567890',
                 'bambang.sudarsono@gmail.com',
-                'Paket 20 Mbps',
                 '20 Mbps',
                 '110000',
                 'Batuanten RT 01/RW 02, Kec. Cilongok, Kab. Banyumas',
-                'Selesai',
             ],
             [
-                'PLG-2026-0502',
-                "'3302191506920002",
+                '2',
                 'Siti Nurhaliza',
-                'Purwokerto',
-                '1992-06-15',
+                'siti_nurhaliza',
+                "'3302191506920002",
                 '085712345678',
                 'siti.nurhaliza92@gmail.com',
-                'Paket 30 Mbps',
                 '30 Mbps',
                 '165000',
                 'Panusupan RT 03/RW 01, Kec. Cilongok, Kab. Banyumas',
-                'Selesai',
             ],
             [
-                '',
-                "'3302192008980003",
+                '3',
                 'Rahmat Hidayat',
-                'Banyumas',
-                '1998-08-20',
+                'rahmat_hidayat',
+                "'3302192008980003",
                 '087812345678',
                 'rahmat.hidayat@gmail.com',
-                'Paket 50 Mbps',
                 '50 Mbps',
                 '220000',
                 'Jatisaba RT 02/RW 05, Kec. Cilongok, Kab. Banyumas',
-                'Menunggu Konfirmasi',
             ],
         ];
 
@@ -1750,7 +1788,7 @@ class CustomerImportService
     /**
      * Parse format tanggal yang fleksibel (YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, teks bahasa Indonesia, atau angka serial Excel)
      */
-    protected static function parseDate(?string $dateStr): ?string
+    public static function parseDate(?string $dateStr): ?string
     {
         if (empty($dateStr)) {
             return null;

@@ -1576,7 +1576,31 @@ class MaterialController extends Controller
         }
 
         // Fallback cerdas berdasarkan struktur kolom
-        if ($totalCols >= 17 && (strtolower(trim((string)($headerCols[1] ?? ''))) === 'bulan' || strtolower(trim((string)($headerCols[2] ?? ''))) === 'bulan' || $stokCols['month'] !== null)) {
+        if ($totalCols >= 18 && empty($headerCols[3]) && (strtolower(trim((string)($headerCols[1] ?? ''))) === 'bulan' || strtolower(trim((string)($headerCols[2] ?? ''))) === 'bulan' || $stokCols['month'] !== null)) {
+            // Berkas Excel Template Resmi Banterpool 18 Kolom (dengan kolom spacer D, I, N)
+            if ($stokCols['code'] === null) $stokCols['code'] = 0;
+            if (strtolower(trim((string)($headerCols[1] ?? ''))) === 'bulan') {
+                if ($stokCols['month'] === null) $stokCols['month'] = 1;
+                if ($stokCols['name'] === null) $stokCols['name'] = 2;
+            } else {
+                if ($stokCols['name'] === null) $stokCols['name'] = 1;
+                if ($stokCols['month'] === null) $stokCols['month'] = 2;
+            }
+            if ($stokCols['initial_stock'] === null) $stokCols['initial_stock'] = 4;
+            if ($stokCols['total_in'] === null) $stokCols['total_in'] = 5;
+            if ($stokCols['total_out'] === null) $stokCols['total_out'] = 6;
+            if ($stokCols['stock'] === null) $stokCols['stock'] = 7;
+
+            if ($inCols['date'] === null) $inCols['date'] = 9;
+            if ($inCols['name'] === null) $inCols['name'] = 10;
+            if ($inCols['amount'] === null) $inCols['amount'] = 11;
+            if ($inCols['notes'] === null) $inCols['notes'] = 12;
+
+            if ($outCols['date'] === null) $outCols['date'] = 14;
+            if ($outCols['name'] === null) $outCols['name'] = 15;
+            if ($outCols['amount'] === null) $outCols['amount'] = 16;
+            if ($outCols['notes'] === null) $outCols['notes'] = 17;
+        } elseif ($totalCols >= 17 && (strtolower(trim((string)($headerCols[1] ?? ''))) === 'bulan' || strtolower(trim((string)($headerCols[2] ?? ''))) === 'bulan' || $stokCols['month'] !== null)) {
             // Berkas Excel / CSV Export Banterpool (17 kolom dengan kolom Bulan)
             if ($stokCols['code'] === null) $stokCols['code'] = 0;
             if (strtolower(trim((string)($headerCols[1] ?? ''))) === 'bulan') {
@@ -2057,12 +2081,24 @@ class MaterialController extends Controller
             echo "\xEF\xBB\xBF";
             $delimiter = ';';
 
-            echo "LAPORAN STOK BARANG ({$monthName} {$selectedYear});;;;;;;BARANG MASUK;;;;;Barang Keluar;;;;;;\r\n";
-            echo ";;;;;;;;;;;;;;;;;;\r\n";
-            echo "Tgl Stok Awal;{$tglAwal};;;;;;;;;;;;;;;\r\n";
-            echo "Tgl Closing;{$tglClosing};;;;;;;;;;;;;;;\r\n";
-            echo ";;;;;;;;;;;;;;;;;;\r\n";
-            echo "Kode Barang;Bulan;Nama Barang;Stok Awal;Barang Masuk;Barang Keluar;Stok Akhir;;Tgl;Nama Barang;Jumlah Masuk;Catatan;;Tgl;Nama Barang;Jumlah Keluar;Catatan;;;\r\n";
+            $row1 = [
+                '',
+                "LAPORAN STOK BARANG ({$monthName} {$selectedYear})",
+                '',
+                '', '', '', '', '', '',
+                'BARANG MASUK',
+                '',
+                '', '', '',
+                'Barang Keluar',
+                '',
+                ''
+            ];
+            echo implode($delimiter, $row1) . "\r\n";
+            echo str_repeat(';', 16) . "\r\n";
+            echo "Tgl Stok Awal;{$tglAwal}" . str_repeat(';', 15) . "\r\n";
+            echo "Tgl Closing;{$tglClosing}" . str_repeat(';', 15) . "\r\n";
+            echo str_repeat(';', 16) . "\r\n";
+            echo "Kode Barang;Bulan;Nama Barang;Stok Awal;Barang Masuk;Barang Keluar;Stok Akhir;;Tgl;Nama Barang;Jumlah Masuk;Catatan;;Tgl;Nama Barang;Jumlah Keluar;Catatan\r\n";
 
             for ($i = 0; $i < $maxRows; $i++) {
                 $mat = $materials->get($i);
@@ -2098,8 +2134,7 @@ class MaterialController extends Controller
                     [''],
                     $inCols,
                     [''],
-                    $outCols,
-                    ['', '', '']
+                    $outCols
                 );
 
                 echo implode($delimiter, $row) . "\r\n";
@@ -2108,6 +2143,40 @@ class MaterialController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    /**
+     * Unduh Template Excel (.xlsx) atau CSV (.csv) untuk Stok Barang
+     */
+    public function downloadTemplate(Request $request)
+    {
+        $format = strtolower($request->input('format', 'xlsx'));
+        $monthInput = $request->input('month', '10');
+        $yearInput = (int) $request->input('year', 2026);
+        $selectedMonth = $monthInput === 'all' ? 10 : (int) $monthInput;
+        $selectedYear = $yearInput ?: 2026;
+        $monthName = self::MONTHS[$selectedMonth] ?? 'Oktober';
+
+        if ($format === 'csv') {
+            return $this->exportCsv($request);
+        }
+
+        $templatePath = base_path('template data stok barang udah fix.xlsx');
+        if (!file_exists($templatePath)) {
+            $templatePath = base_path('template_stok.xlsx');
+        }
+        if (!file_exists($templatePath)) {
+            $templatePath = base_path('template data stok barang fix.xlsx');
+        }
+
+        if (file_exists($templatePath)) {
+            $filename = 'Template_Stok_Barang_Banterpool_' . Str::slug($monthName) . '_' . $selectedYear . '.xlsx';
+            return response()->download($templatePath, $filename, [
+                'Cache-Control' => 'max-age=0, no-cache, must-revalidate, proxy-revalidate',
+            ]);
+        }
+
+        return $this->export($request);
     }
 
     /**

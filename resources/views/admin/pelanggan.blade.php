@@ -1376,10 +1376,10 @@
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <a href="{{ route('admin.pelanggan.template', ['format' => 'xls']) }}"
+            <a href="{{ route('admin.pelanggan.template', ['format' => 'xlsx']) }}"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 hover:bg-blue-100 text-blue-700 text-xs font-bold shadow-2xs transition">
               <i class="fa-solid fa-file-excel text-emerald-600"></i>
-              <span>Format .xls</span>
+              <span>Format .xlsx</span>
             </a>
             <a href="{{ route('admin.pelanggan.template', ['format' => 'csv']) }}"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 hover:bg-blue-100 text-blue-700 text-xs font-bold shadow-2xs transition">
@@ -1462,42 +1462,54 @@
                     class="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-700 transition">
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-table-list text-slate-400"></i>
-                <span>Lihat Format Kolom yang Didukung</span>
+                <span>Lihat Format Kolom Resmi (9 Kolom)</span>
               </div>
               <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform"
                  :class="openGuide ? 'rotate-180' : ''"></i>
             </button>
 
-            <div x-show="openGuide" class="p-3.5 text-[11px] text-slate-600 space-y-2 border-t border-slate-200 bg-white">
-              <p class="font-semibold text-slate-800">Kolom yang dikenali secara otomatis:</p>
-              <div class="grid grid-cols-2 gap-2">
+            <div x-show="openGuide" class="p-3.5 text-[11px] text-slate-600 space-y-2.5 border-t border-slate-200 bg-white">
+              <p class="font-semibold text-slate-800">Format Kolom Resmi Template Data Pelanggan:</p>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">&bull; Nama Lengkap <span class="text-red-500 font-normal">*Wajib</span></p>
-                  <p class="text-[10px] text-slate-500">Header: nama_lengkap, nama, customer_name</p>
+                  <p class="font-bold text-slate-900">1. No</p>
+                  <p class="text-[10px] text-slate-500">Nomor urut baris</p>
                 </div>
                 <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">&bull; Alamat Pemasangan <span class="text-red-500 font-normal">*Wajib</span></p>
-                  <p class="text-[10px] text-slate-500">Header: alamat_lengkap, alamat, address</p>
+                  <p class="font-bold text-slate-900">2. Nama Pemohon <span class="text-red-500 font-normal">*Wajib</span></p>
+                  <p class="text-[10px] text-slate-500">Nama lengkap pelanggan</p>
                 </div>
                 <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">&bull; No. KTP / NIK</p>
-                  <p class="text-[10px] text-slate-500">Header: no_ktp, nik, id_card_number</p>
+                  <p class="font-bold text-slate-900">3. PPOE</p>
+                  <p class="text-[10px] text-slate-500">Username PPPoE (opsional)</p>
                 </div>
                 <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">&bull; No. Handphone (WA)</p>
-                  <p class="text-[10px] text-slate-500">Header: no_handphone, no_hp, telepon, wa</p>
+                  <p class="font-bold text-slate-900">4. No KTP</p>
+                  <p class="text-[10px] text-slate-500">NIK 16 digit angka</p>
                 </div>
                 <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">&bull; Paket & Kecepatan</p>
-                  <p class="text-[10px] text-slate-500">Header: paket, speed (20, 30, atau 50 Mbps)</p>
+                  <p class="font-bold text-slate-900">5. No Handphone <span class="text-red-500 font-normal">*Wajib</span></p>
+                  <p class="text-[10px] text-slate-500">Nomor WhatsApp aktif</p>
                 </div>
                 <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">&bull; TTL & Status</p>
-                  <p class="text-[10px] text-slate-500">Header: tempat_lahir, tanggal_lahir, status</p>
+                  <p class="font-bold text-slate-900">6. Email</p>
+                  <p class="text-[10px] text-slate-500">Alamat surel pelanggan</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">7. Jenis Layanan</p>
+                  <p class="text-[10px] text-slate-500">Paket internet (20/30/50 Mbps)</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">8. Harga</p>
+                  <p class="text-[10px] text-slate-500">Tarif iuran bulanan (Rp)</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">9. Alamat <span class="text-red-500 font-normal">*Wajib</span></p>
+                  <p class="text-[10px] text-slate-500">Alamat domisili/pemasangan</p>
                 </div>
               </div>
               <p class="text-[10px] text-slate-400 italic">
-                Tips: Berkas hasil "Export Excel" dari halaman ini juga dapat langsung diimpor kembali tanpa perlu mengubah format kolom!
+                Tips: Berkas hasil "Export Excel" dari halaman ini juga menggunakan format 9 kolom resmi ini dan dapat langsung diimpor kembali!
               </p>
             </div>
           </div>

@@ -98,6 +98,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('/stok-material/mutasi/{id}', [MaterialController::class, 'destroyMutation'])->name('material.mutation.destroy');
     Route::get('/stok-material/export', [MaterialController::class, 'export'])->name('material.export');
     Route::get('/stok-material/export-csv', [MaterialController::class, 'exportCsv'])->name('material.export-csv');
+    Route::get('/stok-material/template', [MaterialController::class, 'downloadTemplate'])->name('material.template');
     Route::get('/stok-material/mutasi', [MaterialController::class, 'mutations'])->name('material.mutations');
 });
 

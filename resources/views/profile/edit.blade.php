@@ -54,8 +54,8 @@
           <div class="relative">
             <!-- Tampilan Foto Default / Foto dari Storage -->
             <template x-if="!photoPreview">
-              @if($user->avatar)
-                <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" class="w-24 h-24 rounded-full object-cover border-2 border-brand shadow-sm">
+              @if($user->avatar_url)
+                <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="w-24 h-24 rounded-full object-cover border-2 border-brand shadow-sm" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&color=DC2626&background=FEE2E2';">
               @else
                 <div class="w-24 h-24 rounded-full bg-gray-100 border-2 border-gray-300 flex items-center justify-center text-gray-400 text-3xl">
                   <i class="fa-regular fa-user"></i>
@@ -128,9 +128,15 @@
     <div class="border border-black rounded-2xl p-6 sm:p-8 bg-white shadow-sm">
       <div class="border-b border-gray-100 pb-4 mb-6">
         <h2 class="text-base font-black text-black flex items-center gap-2">
-          <i class="fa-solid fa-key text-brand"></i> Perbarui Kata Sandi
+          <i class="fa-solid fa-key text-brand"></i> {{ $user->hasSetPassword() ? 'Perbarui Kata Sandi' : 'Buat Kata Sandi Baru' }}
         </h2>
-        <p class="text-xs text-gray-400 mt-0.5">Pastikan akun Anda menggunakan kata sandi yang kuat dan aman.</p>
+        <p class="text-xs text-gray-400 mt-0.5">
+          @if($user->hasSetPassword())
+            Pastikan akun Anda menggunakan kata sandi yang kuat dan aman.
+          @else
+            Akun Anda terhubung melalui Google dan belum memiliki kata sandi mandiri. Silakan buat kata sandi baru untuk masuk menggunakan email dan kata sandi.
+          @endif
+        </p>
       </div>
 
       <form method="post" action="{{ route('password.update') }}" class="space-y-4">
@@ -138,14 +144,16 @@
         @method('put')
 
         <div class="space-y-4">
-          <div>
-            <label for="current_password" class="block text-xs font-bold text-black mb-1">Kata Sandi Saat Ini</label>
-            <input type="password" id="current_password" name="current_password" autocomplete="current-password"
-                   class="w-full sm:w-1/2 px-3.5 py-2.5 border border-gray-300 rounded-xl text-xs focus:ring-brand focus:border-brand">
-            @error('current_password', 'updatePassword')
-              <p class="text-[10px] text-red-600 mt-1 font-semibold">{{ $message }}</p>
-            @enderror
-          </div>
+          @if($user->hasSetPassword())
+            <div>
+              <label for="current_password" class="block text-xs font-bold text-black mb-1">Kata Sandi Saat Ini</label>
+              <input type="password" id="current_password" name="current_password" autocomplete="current-password"
+                     class="w-full sm:w-1/2 px-3.5 py-2.5 border border-gray-300 rounded-xl text-xs focus:ring-brand focus:border-brand">
+              @error('current_password', 'updatePassword')
+                <p class="text-[10px] text-red-600 mt-1 font-semibold">{{ $message }}</p>
+              @enderror
+            </div>
+          @endif
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -170,7 +178,7 @@
 
         <div class="pt-4 flex justify-end">
           <button type="submit" class="bg-brand hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition">
-            Ubah Kata Sandi
+            {{ $user->hasSetPassword() ? 'Ubah Kata Sandi' : 'Simpan Kata Sandi' }}
           </button>
         </div>
       </form>

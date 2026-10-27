@@ -84,9 +84,9 @@ class GoogleAuthController extends Controller
             $user = User::where('email', $email)->first();
 
             if ($user) {
-                // Sambungkan akun yang sudah ada ke google_id
+                // Sambungkan akun yang sudah ada ke google_id dan sinkronkan foto profil Google
                 $user->google_id = $googleId;
-                if ($googleUser->getAvatar() && empty($user->avatar)) {
+                if ($googleUser->getAvatar()) {
                     $user->avatar = $googleUser->getAvatar();
                 }
                 $user->save();
@@ -101,11 +101,13 @@ class GoogleAuthController extends Controller
                     'is_active' => true,
                     'avatar' => $googleUser->getAvatar() ?: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
                     'password' => Hash::make(Str::random(32)),
+                    'password_set_at' => null,
                     'email_verified_at' => now(),
                 ]);
             }
         } else {
-            if ($googleUser->getAvatar() && empty($user->avatar)) {
+            // Selalu perbarui foto profil langsung otomatis sama dengan profil Google
+            if ($googleUser->getAvatar()) {
                 $user->avatar = $googleUser->getAvatar();
                 $user->save();
             }

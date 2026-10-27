@@ -231,6 +231,16 @@
             <i class="fa-solid fa-file-csv text-blue-600"></i>
             <span>Export CSV (.csv) - {{ $monthName }}</span>
           </a>
+          <a href="{{ route('admin.material.template', ['format' => 'xlsx', 'month' => $selectedMonth, 'year' => $selectedYear]) }}"
+             class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-bold transition border-t border-slate-100 mt-1">
+            <i class="fa-solid fa-file-excel text-emerald-600"></i>
+            <span>Unduh Template (.xlsx)</span>
+          </a>
+          <a href="{{ route('admin.material.template', ['format' => 'csv', 'month' => $selectedMonth, 'year' => $selectedYear]) }}"
+             class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-bold transition">
+            <i class="fa-solid fa-file-csv text-blue-600"></i>
+            <span>Unduh Template (.csv)</span>
+          </a>
           <a href="{{ route('admin.material.mutations') }}"
              class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 font-bold transition border-t border-slate-100 mt-1">
             <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
@@ -1932,10 +1942,15 @@
             Jika keterangan berkas tidak lengkap (misal: kode barang kosong, stok kosong, atau catatan tidak diisi), sistem akan otomatis melengkapi, mengenerate kode barang unik, menghitung saldo akhir, serta mengelompokkan seluruh data ke 1 periode bulan yang dipilih.
           </p>
         </div>
-        <div class="pt-0.5">
-          <a href="{{ route('admin.material.export-csv', ['month' => $selectedMonth, 'year' => $selectedYear]) }}" class="text-[11px] font-bold text-blue-800 hover:underline flex items-center gap-1">
-            <i class="fa-solid fa-download text-[10px]"></i>
-            <span>Unduh Contoh Berkas CSV Template ({{ $monthName }} {{ $selectedYear }})</span>
+        <div class="pt-0.5 flex flex-wrap items-center gap-3">
+          <a href="{{ route('admin.material.template', ['format' => 'xlsx', 'month' => $selectedMonth, 'year' => $selectedYear]) }}" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1.5">
+            <i class="fa-solid fa-file-excel text-[11px] text-emerald-600"></i>
+            <span>Unduh Template Excel (.xlsx)</span>
+          </a>
+          <span class="text-slate-300">|</span>
+          <a href="{{ route('admin.material.template', ['format' => 'csv', 'month' => $selectedMonth, 'year' => $selectedYear]) }}" class="text-[11px] font-bold text-blue-700 hover:text-blue-900 hover:underline flex items-center gap-1.5">
+            <i class="fa-solid fa-file-csv text-[11px] text-blue-600"></i>
+            <span>Unduh Template CSV (.csv)</span>
           </a>
         </div>
       </div>

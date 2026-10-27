@@ -763,6 +763,52 @@ class MaterialStockTest extends TestCase
         $this->assertEquals('2026-10-20', $mutationOutAfter->transaction_date->toDateString());
         $this->assertEquals('Instalasi Pelanggan VIP', $mutationOutAfter->notes);
     }
+
+    public function test_template_download_and_17_column_format(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        // 1. Download template xlsx
+        $resXlsx = $this->actingAs($admin)->get(route('admin.material.template', ['format' => 'xlsx', 'month' => 10, 'year' => 2026]));
+        $resXlsx->assertStatus(200);
+        $resXlsx->assertHeader('content-disposition');
+
+        // 2. Download template csv (verify 17 columns)
+        $resCsv = $this->actingAs($admin)->get(route('admin.material.template', ['format' => 'csv', 'month' => 10, 'year' => 2026]));
+        $resCsv->assertStatus(200);
+        $csvLines = explode("\r\n", trim($resCsv->streamedContent()));
+        $this->assertGreaterThan(5, count($csvLines));
+        $headerCols = explode(';', $csvLines[5]);
+        $this->assertCount(17, $headerCols);
+        $this->assertEquals('Kode Barang', $headerCols[0]);
+        $this->assertEquals('Bulan', $headerCols[1]);
+        $this->assertEquals('Nama Barang', $headerCols[2]);
+        $this->assertEquals('Stok Awal', $headerCols[3]);
+        $this->assertEquals('Barang Masuk', $headerCols[4]);
+        $this->assertEquals('Barang Keluar', $headerCols[5]);
+        $this->assertEquals('Stok Akhir', $headerCols[6]);
+        $this->assertEquals('', $headerCols[7]); // spacer
+        $this->assertEquals('Tgl', $headerCols[8]);
+        $this->assertEquals('Nama Barang', $headerCols[9]);
+        $this->assertEquals('Jumlah Masuk', $headerCols[10]);
+        $this->assertEquals('Catatan', $headerCols[11]);
+        $this->assertEquals('', $headerCols[12]); // spacer
+        $this->assertEquals('Tgl', $headerCols[13]);
+        $this->assertEquals('Nama Barang', $headerCols[14]);
+        $this->assertEquals('Jumlah Keluar', $headerCols[15]);
+        $this->assertEquals('Catatan', $headerCols[16]);
+
+        // 3. Export Excel 17 columns layout check
+        $resExport = $this->actingAs($admin)->get(route('admin.material.export', ['month' => 10, 'year' => 2026]));
+        $resExport->assertStatus(200);
+        $this->assertStringContainsString('Laporan_Stok_Barang_oktober_202', $resExport->streamedContent());
+        $this->assertStringContainsString('LAPORAN STOK BARANG', $resExport->streamedContent());
+        $this->assertStringContainsString('BARANG MASUK', $resExport->streamedContent());
+        $this->assertStringContainsString('Barang Keluar', $resExport->streamedContent());
+        $this->assertStringContainsString('#D0CECE', $resExport->streamedContent());
+    }
 }
 
 

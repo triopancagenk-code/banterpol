@@ -48,6 +48,9 @@ class GoogleAuthTest extends TestCase
         $this->assertNotNull($user);
         $this->assertEquals('google-unique-id-12345', $user->google_id);
         $this->assertEquals('customer', $user->role);
+        $this->assertEquals('https://lh3.googleusercontent.com/avatar.jpg', $user->avatar);
+        $this->assertNull($user->password_set_at);
+        $this->assertFalse($user->hasSetPassword());
         $response->assertRedirect(route('home', absolute: false));
     }
 
@@ -57,6 +60,7 @@ class GoogleAuthTest extends TestCase
             'email' => 'existing@test.com',
             'google_id' => null,
             'role' => 'customer',
+            'avatar' => null,
         ]);
 
         $mockSocialiteUser = Mockery::mock(SocialiteUser::class);
@@ -76,6 +80,36 @@ class GoogleAuthTest extends TestCase
         $this->assertAuthenticatedAs($existingUser);
         $existingUser->refresh();
         $this->assertEquals('google-id-existing', $existingUser->google_id);
+        $this->assertEquals('https://lh3.googleusercontent.com/avatar2.jpg', $existingUser->avatar);
+    }
+
+    public function test_google_callback_updates_avatar_for_returning_google_user(): void
+    {
+        $returningUser = User::factory()->create([
+            'email' => 'returning@test.com',
+            'google_id' => 'google-returning-123',
+            'role' => 'customer',
+            'avatar' => 'https://lh3.googleusercontent.com/old-avatar.jpg',
+            'password_set_at' => null,
+        ]);
+
+        $mockSocialiteUser = Mockery::mock(SocialiteUser::class);
+        $mockSocialiteUser->shouldReceive('getId')->andReturn('google-returning-123');
+        $mockSocialiteUser->shouldReceive('getName')->andReturn('Returning User');
+        $mockSocialiteUser->shouldReceive('getNickname')->andReturn(null);
+        $mockSocialiteUser->shouldReceive('getEmail')->andReturn('returning@test.com');
+        $mockSocialiteUser->shouldReceive('getAvatar')->andReturn('https://lh3.googleusercontent.com/new-avatar.jpg');
+
+        $provider = Mockery::mock('Laravel\Socialite\Two\GoogleProvider');
+        $provider->shouldReceive('user')->andReturn($mockSocialiteUser);
+
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $response = $this->get(route('auth.google.callback'));
+
+        $this->assertAuthenticatedAs($returningUser);
+        $returningUser->refresh();
+        $this->assertEquals('https://lh3.googleusercontent.com/new-avatar.jpg', $returningUser->avatar);
     }
 
     public function test_google_callback_recovers_from_invalid_state_exception(): void

@@ -1744,7 +1744,7 @@ class AdminController extends Controller
         ]);
 
         $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
-        
+
         $packageName = !empty($validated['package_name']) ? $validated['package_name'] : 'Paket 20 Mbps';
         $speed = '20 Mbps';
         if (str_contains($packageName, '50')) {
@@ -1879,7 +1879,7 @@ class AdminController extends Controller
     {
         $order = Order::findOrFail($id);
         $name = $order->customer_name;
-        
+
         // Hapus tagihan terkait jika ada
         Bill::where('order_id', $order->id)->delete();
         $order->delete();
@@ -2047,11 +2047,11 @@ class AdminController extends Controller
      */
     public function downloadTemplatePelanggan(Request $request)
     {
-        $format = strtolower($request->input('format', 'xls'));
+        $format = strtolower($request->input('format', 'xlsx'));
         if ($format === 'csv') {
             return CustomerImportService::downloadCsvTemplate();
         }
-        return CustomerImportService::downloadTemplate();
+        return CustomerImportService::downloadTemplate($format);
     }
 
     /**
@@ -2130,7 +2130,7 @@ class AdminController extends Controller
         $packages = Package::where('is_active', true)->get();
 
         return view('admin.tagihan', compact(
-            'bills', 'statusFilter', 'monthFilter', 'search', 'counts', 
+            'bills', 'statusFilter', 'monthFilter', 'search', 'counts',
             'availableMonths', 'rekapNominal', 'rekapCount',
             'registeredCustomers', 'packages'
         ));
@@ -2525,7 +2525,7 @@ class AdminController extends Controller
     public function deleteLaporan(Request $request, $id)
     {
         $allTickets = Cache::get('trouble_tickets') ?? session('admin_tickets') ?? $this->getTicketsData();
-        
+
         foreach ($allTickets as $t) {
             if ($t['id'] === $id) {
                 self::deleteTicketAttachmentFile($t['attachment_url'] ?? null);
@@ -2676,7 +2676,7 @@ class AdminController extends Controller
     public function mrtg(Request $request)
     {
         $mrtgData = $this->getMrtgData();
-        
+
         $selectedIf = $request->input('interface') ?? $request->input('var-Interface') ?? 'if-core-uplink';
         $selectedInstance = $request->input('instance') ?? $request->input('var-instance') ?? '192.168.36.1';
         $selectedSimpleQueue = $request->input('queuesimple_name') ?? $request->input('var-queuesimple_name') ?? '$__all';

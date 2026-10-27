@@ -197,9 +197,10 @@
         <div class="relative" x-data="{ open: false }">
           <button @click="open = !open" @click.away="open = false"
                   class="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-800 transition focus:outline-none">
-            @if(auth()->user()->avatar)
-              <img src="{{ \Illuminate\Support\Str::startsWith(auth()->user()->avatar, ['http://', 'https://']) ? auth()->user()->avatar : asset('storage/' . auth()->user()->avatar) }}"
-                   alt="{{ auth()->user()->name }}" class="w-8 h-8 rounded-full object-cover border border-slate-600">
+            @if(auth()->user()->avatar_url)
+              <img src="{{ auth()->user()->avatar_url }}"
+                   alt="{{ auth()->user()->name }}" class="w-8 h-8 rounded-full object-cover border border-slate-600"
+                   onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name) }}&color=F59E0B&background=78350F';">
             @else
               <div class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-xs font-black">
                 {{ substr(auth()->user()->name, 0, 1) }}

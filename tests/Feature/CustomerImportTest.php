@@ -50,9 +50,16 @@ class CustomerImportTest extends TestCase
 
     public function test_admin_can_download_excel_template(): void
     {
-        $response = $this->actingAs($this->admin)->get(route('admin.pelanggan.template'));
+        $response = $this->actingAs($this->admin)->get(route('admin.pelanggan.template', ['format' => 'xls']));
         $response->assertStatus(200);
         $response->assertHeader('Content-Disposition', 'attachment; filename=Template_Import_Pelanggan_Banterpool.xls');
+
+        $responseXlsx = $this->actingAs($this->admin)->get(route('admin.pelanggan.template', ['format' => 'xlsx']));
+        $responseXlsx->assertStatus(200);
+        $this->assertTrue(
+            str_contains((string)$responseXlsx->headers->get('Content-Disposition'), 'Template_Import_Pelanggan_Banterpool.xlsx') ||
+            str_contains((string)$responseXlsx->headers->get('Content-Disposition'), 'Template_Import_Pelanggan_Banterpool.xls')
+        );
     }
 
     public function test_admin_can_download_csv_template(): void
@@ -1126,6 +1133,32 @@ XML;
             'customer_phone' => '-',
             'address' => '-',
             'status' => 'Selesai',
+        ]);
+    }
+
+    public function test_admin_can_import_customers_with_nine_column_template(): void
+    {
+        $csvContent = "No,Nama Pemohon,PPOE,No KTP,No Handphone,Email,Jenis Layanan,Harga,Alamat\n"
+            . "1,Agus Pratama,agus_pppoe,3302191111900001,081299998888,agus@example.com,20 Mbps,110000,Desa Batuanten RT 01/RW 02\n";
+
+        $file = UploadedFile::fake()->createWithContent('pelanggan_9kolom.csv', $csvContent);
+
+        $response = $this->actingAs($this->admin)->post(route('admin.pelanggan.import'), [
+            'file' => $file,
+            'update_existing' => '1',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('orders', [
+            'customer_name' => 'Agus Pratama',
+            'pppoe' => 'agus_pppoe',
+            'id_card_number' => '3302191111900001',
+            'customer_phone' => '081299998888',
+            'customer_email' => 'agus@example.com',
+            'package_name' => '20 Mbps',
+            'price' => 110000,
         ]);
     }
 }
