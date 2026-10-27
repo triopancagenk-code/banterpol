@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -27,5 +28,37 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
+    public function test_user_cannot_register_with_existing_email_or_phone(): void
+    {
+        User::factory()->create([
+            'email' => 'existing@example.com',
+            'phone' => '081234567890',
+        ]);
+
+        $response = $this->post('/register', [
+            'name' => 'New User',
+            'email' => 'existing@example.com',
+            'phone' => '089876543210',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertSessionHasErrors([
+            'email' => 'akun sudah terdaftar',
+        ]);
+
+        $responsePhone = $this->post('/register', [
+            'name' => 'Another User',
+            'email' => 'another@example.com',
+            'phone' => '081234567890',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $responsePhone->assertSessionHasErrors([
+            'phone' => 'akun sudah terdaftar',
+        ]);
     }
 }

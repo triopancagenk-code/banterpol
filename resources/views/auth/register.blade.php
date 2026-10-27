@@ -23,7 +23,7 @@
 
     <!-- Flash Error -->
     @if ($errors->any())
-      <div class="mb-3 text-xs text-red-600 text-left">
+      <div class="mb-3 text-xs text-red-600 text-left bg-red-50 p-2.5 rounded-lg border border-red-200">
         @foreach ($errors->all() as $error)
           <p>• {{ $error }}</p>
         @endforeach
