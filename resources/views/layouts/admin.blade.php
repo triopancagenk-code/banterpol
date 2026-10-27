@@ -271,6 +271,16 @@
           <span class="bg-emerald-500/20 text-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase">POV</span>
         </a>
 
+        <!-- 8. Portal Daily Report -->
+        <a href="{{ route('daily-report.index') }}"
+           class="flex items-center justify-between px-3.5 py-3 rounded-xl transition duration-150 text-blue-300 hover:bg-slate-800 hover:text-blue-200 border border-blue-500/20 bg-blue-500/10">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-file-invoice text-base w-5 text-center text-blue-400"></i>
+            <span class="font-bold">Portal Daily Report</span>
+          </div>
+          <span class="bg-blue-500/20 text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-500/30 uppercase">POV</span>
+        </a>
+
       </nav>
 
       <!-- Sidebar Footer: Switcher & Profile -->

@@ -629,6 +629,16 @@
                 </div>
               </template>
 
+              <!-- Material Lapangan yang Digunakan Teknisi -->
+              <template x-if="selectedOrder.material_used">
+                <div class="bg-blue-50/80 p-2.5 rounded-xl border border-blue-200/80 text-xs">
+                  <span class="font-bold text-blue-900 flex items-center gap-1.5 mb-1">
+                    <i class="fa-solid fa-boxes-stacked text-blue-600"></i> Penggunaan Material Teknisi:
+                  </span>
+                  <p class="text-slate-800 font-semibold" x-text="selectedOrder.material_used"></p>
+                </div>
+              </template>
+
               <div class="flex items-center gap-1.5 text-[11px] text-slate-500 italic">
                 <i class="fa-solid fa-link text-brand"></i>
                 <span>Status pemasangan diperbarui langsung oleh teknisi lapangan dari portal penugasan teknisi.</span>

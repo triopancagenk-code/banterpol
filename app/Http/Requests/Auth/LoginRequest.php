@@ -48,6 +48,11 @@ class LoginRequest extends FormRequest
         // Check credentials with input directly (supports email: 'admin' or 'admin@banterpool.net' or normal email)
         $authenticated = Auth::attempt(['email' => $loginInput, 'password' => $password], $this->boolean('remember'));
 
+        if (!$authenticated && (strtolower($loginInput) === 'admindaily' || strtolower($loginInput) === 'admindaily@banterpool.net')) {
+            $authenticated = Auth::attempt(['email' => 'admindaily', 'password' => $password], $this->boolean('remember'))
+                || Auth::attempt(['email' => 'admindaily@banterpool.net', 'password' => $password], $this->boolean('remember'));
+        }
+
         if (!$authenticated && ($loginInput === 'admin' || $loginInput === 'admin@banterpol.net')) {
             $authenticated = Auth::attempt(['email' => 'admin@banterpool.net', 'password' => $password], $this->boolean('remember'));
         }

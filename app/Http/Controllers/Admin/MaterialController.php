@@ -473,7 +473,7 @@ class MaterialController extends Controller
         $incomingMutations = $incomingQuery->orderBy('transaction_date', 'desc')->latest('id')->paginate(30, ['*'], 'page_in')->withQueryString();
 
         // Query Tab Barang Keluar (Difilter per bulan terpilih)
-        $outgoingQuery = MaterialMutation::where('type', 'out')->with(['material', 'user']);
+        $outgoingQuery = MaterialMutation::where('type', 'out')->with(['material', 'user', 'order']);
         if ($isMonthly) {
             $outgoingQuery->where(function ($q) use ($startDate, $endDate) {
                 $q->whereBetween('transaction_date', [$startDate, $endDate])
@@ -489,6 +489,11 @@ class MaterialController extends Controller
 
             $outgoingQuery->where(function ($q) use ($trimmedSearch, $lowerSearch, $upperSearch) {
                 $q->where('notes', 'like', "%{$trimmedSearch}%")
+                  ->orWhereHas('order', function ($oq) use ($trimmedSearch) {
+                      $oq->where('order_number', 'like', "%{$trimmedSearch}%")
+                         ->orWhere('customer_name', 'like', "%{$trimmedSearch}%")
+                         ->orWhere('technician', 'like', "%{$trimmedSearch}%");
+                  })
                   ->orWhereHas('material', function ($mq) use ($trimmedSearch, $lowerSearch, $upperSearch) {
                       $mq->where('name', 'like', "{$trimmedSearch}%")
                          ->orWhere('name', 'like', "{$lowerSearch}%")

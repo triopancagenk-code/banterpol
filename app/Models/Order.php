@@ -41,6 +41,7 @@ class Order extends Model
         'ont_sn',
         'opm_dbm',
         'technician_notes',
+        'material_used',
         'installed_at',
         'pppoe',
     ];
@@ -138,6 +139,11 @@ class Order extends Model
     public function bills()
     {
         return $this->hasMany(Bill::class);
+    }
+
+    public function materialMutations()
+    {
+        return $this->hasMany(MaterialMutation::class);
     }
 
     /**

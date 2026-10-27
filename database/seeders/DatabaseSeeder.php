@@ -40,6 +40,19 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // Akun Portal Daily Report
+        User::updateOrCreate(
+            ['email' => 'admindaily'],
+            [
+                'name' => 'Budi Setiawan',
+                'phone' => '081234567890',
+                'role' => 'technician',
+                'is_active' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('admindaily'),
+            ]
+        );
+
         User::updateOrCreate(
             ['email' => 'root@gmail.com'],
             [

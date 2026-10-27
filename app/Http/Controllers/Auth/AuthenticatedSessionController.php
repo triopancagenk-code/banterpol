@@ -28,6 +28,11 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if (strtolower(Auth::user()->email) === 'admindaily' || strtolower(Auth::user()->email) === 'admindaily@banterpool.net') {
+            $request->session()->forget('url.intended');
+            return redirect()->route('daily-report.index');
+        }
+
         if (Auth::user()->isAdmin()) {
             return redirect()->intended(route('admin.dashboard', absolute: false));
         }

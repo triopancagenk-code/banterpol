@@ -13,6 +13,7 @@ class MaterialMutation extends Model
     protected $fillable = [
         'material_id',
         'user_id',
+        'order_id',
         'type', // 'in', 'out', 'adjustment'
         'transaction_date',
         'amount',
@@ -36,6 +37,11 @@ class MaterialMutation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
     }
 
     public function getTypeLabelAttribute(): string

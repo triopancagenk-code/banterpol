@@ -907,12 +907,29 @@
                     <span class="text-[10px] text-slate-400 ml-1">{{ $out->material->unit ?? 'Unit' }}</span>
                   </td>
 
-                  <!-- Catatan (e.g. Okta_ThreeFive, Bagas_ThreeFive) -->
+                  <!-- Catatan (e.g. Okta_ThreeFive, Bagas_ThreeFive / Tiket Teknisi) -->
                   <td class="py-3 px-4 text-center text-slate-800">
-                    <span class="inline-block px-2 py-0.5 rounded-lg bg-slate-100 font-semibold text-slate-700 border border-slate-200 text-[11px]">
-                      <i class="fa-solid fa-user-gear text-[10px] text-slate-400 mr-1"></i>
-                      {{ str_replace(' (Barang Keluar)', '', $out->notes) }}
-                    </span>
+                    @if($out->order)
+                      <div class="inline-flex flex-col items-center gap-1">
+                        <a href="{{ route('admin.pesanan', ['q' => $out->order->order_number]) }}"
+                           class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-extrabold text-[10px] transition"
+                           title="Lihat Detail Pesanan">
+                          <i class="fa-solid fa-wrench text-amber-600"></i>
+                          <span>Tiket: {{ $out->order->order_number }}</span>
+                        </a>
+                        <span class="text-[11px] font-bold text-slate-800">
+                          {{ $out->order->customer_name }}
+                        </span>
+                        <span class="text-[10px] text-slate-500">
+                          Teknisi: <strong class="text-slate-700">{{ $out->order->technician ?: ($out->user->name ?? 'Teknisi') }}</strong>
+                        </span>
+                      </div>
+                    @else
+                      <span class="inline-block px-2 py-0.5 rounded-lg bg-slate-100 font-semibold text-slate-700 border border-slate-200 text-[11px]">
+                        <i class="fa-solid fa-user-gear text-[10px] text-slate-400 mr-1"></i>
+                        {{ str_replace(' (Barang Keluar)', '', $out->notes) }}
+                      </span>
+                    @endif
                   </td>
 
                   <!-- Aksi: Edit & Hapus -->

@@ -12,6 +12,49 @@
         opmDbmVal: '',
         odpVal: '',
         notesVal: '',
+        materialList: [{ type: '', qty: '' }],
+        categoriesList: {{ Js::from($categories) }},
+
+        get formattedMaterialUsed() {
+            return this.materialList
+                .filter(i => i.type && i.type.trim() !== '')
+                .map(i => {
+                    const cleanType = i.type.trim();
+                    const cleanQty = (i.qty || '').trim();
+                    if (cleanQty) {
+                        return cleanType + ' (' + cleanQty + ')';
+                    }
+                    return cleanType;
+                })
+                .join(', ');
+        },
+
+        addMaterialRow() {
+            this.materialList.push({ type: '', qty: '' });
+        },
+
+        removeMaterialRow(index) {
+            if (this.materialList.length > 1) {
+                this.materialList.splice(index, 1);
+            } else {
+                this.materialList = [{ type: '', qty: '' }];
+            }
+        },
+
+        getMaterialPlaceholder(type) {
+            const t = (type || '').toLowerCase();
+            if (t.includes('drop') || t.includes('dc')) return 'Contoh: 85 Meter';
+            if (t.includes('lan') || t.includes('utp')) return 'Contoh: 10 Meter';
+            if (t.includes('smuft') || t.includes('smurf') || t.includes('sleeve')) return 'Contoh: 2 Pcs';
+            if (t.includes('modem') || t.includes('ont')) return 'Contoh: 1 Unit';
+            if (t.includes('power') || t.includes('adaptor') || t.includes('poe')) return 'Contoh: 1 Unit';
+            if (t.includes('ties') || t.includes('tist')) return 'Contoh: 10 Pcs';
+            if (t.includes('patchcord') || t.includes('pigtail')) return 'Contoh: 1 Pcs';
+            if (t.includes('clamp') || t.includes('klamp')) return 'Contoh: 2 Pcs';
+            if (t.includes('solasi') || t.includes('raber') || t.includes('foam')) return 'Contoh: 1 Roll';
+            if (t.includes('roset') || t.includes('konektor') || t.includes('adapter')) return 'Contoh: 1 Pcs';
+            return 'Jumlah / Rincian...';
+        },
 
         editOrder(order) {
             this.selectedOrder = order;
@@ -20,6 +63,45 @@
             this.opmDbmVal = order.opm_dbm || '';
             this.odpVal = order.assigned_odp || '';
             this.notesVal = order.technician_notes || '';
+
+            if (order.material_used && order.material_used.trim() !== '') {
+                const parts = order.material_used.split(/,\s*(?![^()]*\))/);
+                const list = [];
+                const allOpts = [...this.categoriesList, 'Drop core per meter', 'Smurf', 'Modem', 'Adaptor', 'Dll'];
+
+                parts.forEach(part => {
+                    const p = part.trim();
+                    if (!p) return;
+
+                    let matched = false;
+                    for (const opt of allOpts) {
+                        if (p.toLowerCase().startsWith(opt.toLowerCase())) {
+                            let remainder = p.substring(opt.length).trim();
+                            remainder = remainder.replace(/^[:\s\-]+/, '');
+                            remainder = remainder.replace(/^\((.*)\)$/, '$1');
+                            
+                            let finalType = opt;
+                            if (opt === 'Drop core per meter') finalType = 'Kabel Drop & Fiber Optik';
+                            else if (opt === 'Smurf') finalType = 'Protection Sleeve (Smuft)';
+                            else if (opt === 'Modem') finalType = 'Modem & ONT GPON';
+                            else if (opt === 'Adaptor') finalType = 'Power & Adaptor';
+
+                            list.push({ type: finalType, qty: remainder.trim() });
+                            matched = true;
+                            break;
+                        }
+                    }
+
+                    if (!matched) {
+                        list.push({ type: this.categoriesList[0] || 'Kabel Drop & Fiber Optik', qty: p });
+                    }
+                });
+
+                this.materialList = list.length > 0 ? list : [{ type: '', qty: '' }];
+            } else {
+                this.materialList = [{ type: '', qty: '' }];
+            }
+
             this.openModal = true;
         }
      }">
@@ -211,6 +293,12 @@
                   <span class="font-mono text-[10px] text-slate-700 bg-white px-1.5 py-0.5 rounded border border-slate-200">{{ $order->ont_sn }}</span>
                 </div>
               @endif
+              @if($order->material_used)
+                <div class="flex items-start justify-between text-[11px] gap-2 pt-1 border-t border-slate-200/60">
+                  <span class="text-slate-500 shrink-0"><i class="fa-solid fa-boxes-stacked text-amber-500 mr-1"></i>Material:</span>
+                  <span class="font-semibold text-slate-800 text-right">{{ $order->material_used }}</span>
+                </div>
+              @endif
             </div>
 
             @if($order->admin_notes)
@@ -340,6 +428,47 @@
               <option value="Selesai">Selesai (Aktivasi Berhasil - Resmi Masuk Data Pelanggan)</option>
               <option value="Kendala Lapangan">Kendala Lapangan (ODP Penuh / Jalur Terhalang)</option>
             </select>
+          </div>
+
+          <!-- Penggunaan Material -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block font-bold text-slate-700">Penggunaan Material</label>
+              <button type="button" @click="addMaterialRow()"
+                      class="text-[11px] font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 transition">
+                <i class="fa-solid fa-plus-circle"></i>
+                <span>Tambah Material</span>
+              </button>
+            </div>
+
+            <div class="space-y-2">
+              <template x-for="(item, index) in materialList" :key="index">
+                <div class="flex items-center gap-2">
+                  <div class="flex-1">
+                    <select x-model="item.type"
+                            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold focus:ring-amber-500 focus:border-amber-500">
+                      <option value="">-- Pilih Kategori Material --</option>
+                      @foreach($categories as $cat)
+                        <option value="{{ $cat }}">{{ $cat }}</option>
+                      @endforeach
+                    </select>
+                  </div>
+                  <div class="w-36 sm:w-44">
+                    <input type="text" x-model="item.qty"
+                           :placeholder="getMaterialPlaceholder(item.type)"
+                           class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs focus:ring-amber-500 focus:border-amber-500">
+                  </div>
+                  <button type="button" x-show="materialList.length > 1" @click="removeMaterialRow(index)"
+                          class="text-slate-400 hover:text-red-500 p-2 text-xs transition" title="Hapus Material">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </div>
+              </template>
+            </div>
+
+            <input type="hidden" name="material_used" :value="formattedMaterialUsed">
+            <input type="hidden" name="material_items" :value="JSON.stringify(materialList)">
+            <span class="text-[10px] text-slate-400 mt-1 block">Catat material yang terpakai di lapangan (misal: panjang kabel drop core, modem, adaptor, smurf).</span>
           </div>
 
           <!-- ODP Port -->

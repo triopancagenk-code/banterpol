@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Technician;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Material;
 use App\Services\BillingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -140,7 +141,32 @@ class TechnicianController extends Controller
             'all_total' => $allCount,
         ];
 
-        return view('technician.pemasangan', compact('orders', 'counts', 'statusFilter', 'search', 'scope', 'isTechnician'));
+        $categories = Material::select('category')->distinct()->orderBy('category')->pluck('category')->filter()->values();
+        if ($categories->isEmpty()) {
+            $categories = collect([
+                'Adapter & Konektor Optik',
+                'Aksesoris & Bracket',
+                'Clamp & Aksesoris',
+                'Joint Closure',
+                'Kabel Drop & Fiber Optik',
+                'Kabel LAN & UTP',
+                'Kabel Ties',
+                'Material Optik & Jaringan',
+                'Material Pembantu & Instalasi',
+                'Media Converter (HTB)',
+                'Modem & ONT GPON',
+                'ODP & Box Pasif',
+                'Patchcord & Pigtail',
+                'Perangkat Jaringan & Switch',
+                'Power & Adaptor',
+                'Protection Sleeve (Smuft)',
+                'Router & AP Wireless',
+                'Splitter Optik',
+                'Tiang & Bracket',
+            ]);
+        }
+
+        return view('technician.pemasangan', compact('orders', 'counts', 'statusFilter', 'search', 'scope', 'isTechnician', 'categories'));
     }
 
     /**
@@ -169,6 +195,16 @@ class TechnicianController extends Controller
             $order->technician_notes = $request->input('technician_notes');
         }
 
+        if ($request->has('material_used')) {
+            $val = $request->input('material_used');
+            if (is_array($val)) {
+                $val = implode(', ', array_filter($val));
+            }
+            $order->material_used = $val;
+        } elseif ($request->has('material_type')) {
+            $order->material_used = $request->input('material_type');
+        }
+
         if ($status === 'Selesai') {
             $order->installed_at = now();
             if (empty($order->technician)) {
@@ -186,6 +222,16 @@ class TechnicianController extends Controller
         }
 
         $order->save();
+
+        // Sinkronisasi mutasi Barang Keluar (Admin POV) dengan penggunaan material teknisi
+        if ($request->has('material_used') || $request->has('material_items') || $request->has('material_type')) {
+            \App\Services\MaterialUsageSyncService::syncOrderMaterials(
+                $order,
+                $order->material_used,
+                $request->input('material_items'),
+                auth()->id() ?: $order->technician_id
+            );
+        }
 
         if ($status === 'Selesai') {
             BillingService::generateBillForOrder($order);
