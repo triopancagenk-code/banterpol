@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\DailyReport;
 use App\Models\Order;
 use App\Models\Material;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DailyReportController extends Controller
@@ -17,6 +20,18 @@ class DailyReportController extends Controller
      */
     public function index(Request $request)
     {
+        // Auto-heal: Jika tabel belum ada di server hosting / produksi, jalankan migrasi otomatis
+        if (!Schema::hasTable('daily_reports')) {
+            try {
+                Artisan::call('migrate', ['--force' => true]);
+                if (!User::where('email', 'admindaily')->exists()) {
+                    Artisan::call('db:seed', ['--class' => 'AdminDailySeeder', '--force' => true]);
+                }
+            } catch (\Throwable $e) {
+                // Log atau lanjutkan
+            }
+        }
+
         $search = $request->input('q', '');
         $jobTypeFilter = $request->input('job_type', 'all');
         $tab = $request->input('tab', 'jobs'); // 'jobs' or 'cash'

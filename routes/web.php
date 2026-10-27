@@ -136,6 +136,24 @@ Route::prefix('daily-report')->name('daily-report.')->middleware(['auth'])->grou
     Route::get('/export', [\App\Http\Controllers\Technician\DailyReportController::class, 'export'])->name('export');
 });
 
+// Helper migrasi cepat untuk server produksi (bisa diakses via browser)
+Route::get('/migrate-db', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'AdminDailySeeder', '--force' => true]);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Migrasi dan seeder berhasil dijalankan di server!',
+            'output' => trim(\Illuminate\Support\Facades\Artisan::output()),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+});
+
 // ==========================================
 // RUTE PORTAL KOLEKTOR LAPANGAN
 // ==========================================
