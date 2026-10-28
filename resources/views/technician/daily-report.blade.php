@@ -414,6 +414,16 @@
       0%, 100% { opacity: 1; }
       50% { opacity: .35; }
     }
+
+    /* ── Responsive Table / Cards Toggle (Anti-Hidden on Desktop) ── */
+    @media (max-width: 767px) {
+      .desktop-table-view { display: none !important; }
+      .mobile-cards-view { display: block !important; }
+    }
+    @media (min-width: 768px) {
+      .desktop-table-view { display: block !important; }
+      .mobile-cards-view { display: none !important; }
+    }
   </style>
   <script>
     function dailyReportApp() {
@@ -749,6 +759,7 @@
           const selected = this.catalog
             .filter(i => i.checked && Number(i.qty) > 0)
             .map(i => ({
+              material_id: i.material_id || null,
               name: i.name,
               category: i.category,
               price: Number(i.price),
@@ -1691,7 +1702,7 @@
       <div x-show="activeTab === 'jobs'">
         
         <!-- Mobile Card View (HP: screen < 768px) -->
-        <div class="md:hidden space-y-3">
+        <div class="mobile-cards-view space-y-3">
           @forelse($reports as $r)
             <div class="p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-white shadow-2xs space-y-2.5 transition hover:border-gray-300">
               
@@ -1811,7 +1822,7 @@
         </div>
 
         <!-- Tablet & Desktop Table View (screen >= 768px) -->
-        <div class="hidden md:block overflow-x-auto w-full rounded-xl border border-gray-100 shadow-2xs">
+        <div class="desktop-table-view overflow-x-auto w-full rounded-xl border border-gray-100 shadow-2xs">
           <table class="tbl min-w-[780px]">
             <thead>
               <tr>
@@ -1931,7 +1942,7 @@
       <div x-show="activeTab === 'cash'" x-cloak>
         
         <!-- Mobile Card View (HP: screen < 768px) -->
-        <div class="md:hidden space-y-3">
+        <div class="mobile-cards-view space-y-3">
           @forelse($cashTransactions as $c)
             <div class="p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-white shadow-2xs space-y-2.5 transition hover:border-gray-300">
               
@@ -2002,7 +2013,7 @@
         </div>
 
         <!-- Tablet & Desktop Table View (screen >= 768px) -->
-        <div class="hidden md:block overflow-x-auto w-full rounded-xl border border-gray-100 shadow-2xs">
+        <div class="desktop-table-view overflow-x-auto w-full rounded-xl border border-gray-100 shadow-2xs">
           <table class="tbl min-w-[780px]">
           <thead>
             <tr>

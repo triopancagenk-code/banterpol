@@ -61,17 +61,17 @@ class DailyReport extends Model
 
     public function getFormattedMaterialCostAttribute(): string
     {
-        return 'Rp ' . number_format($this->material_total_cost, 0, ',', '.');
+        return 'Rp ' . number_format((float)($this->material_total_cost ?? 0), 0, ',', '.');
     }
 
     public function getFormattedServicePriceAttribute(): string
     {
-        return 'Rp ' . number_format($this->service_price, 0, ',', '.');
+        return 'Rp ' . number_format((float)($this->service_price ?? 0), 0, ',', '.');
     }
 
     public function getFormattedCashAttribute(): string
     {
-        return 'Rp ' . number_format($this->cash_amount, 0, ',', '.');
+        return 'Rp ' . number_format((float)($this->cash_amount ?? 0), 0, ',', '.');
     }
 
     public function getMaterialsSummaryTextAttribute(): string

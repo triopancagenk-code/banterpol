@@ -7,6 +7,7 @@ use App\Models\DailyReport;
 use App\Models\Order;
 use App\Models\Material;
 use App\Models\MaterialMutation;
+use App\Models\MaterialMonthlyStock;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -510,6 +511,115 @@ class DailyReportController extends Controller
 
         $report = DailyReport::create($reportData);
 
+        // =========================================================================
+        // SINKRONISASI STOK BARANG KELUAR KE POV ADMIN (Material & MaterialMutation)
+        // =========================================================================
+        if (!empty($materialsArray)) {
+            $reportDateStr = $validated['report_date'] ?? now()->toDateString();
+            $txCarbon = Carbon::parse($reportDateStr);
+            $monthNum = (int)$txCarbon->month;
+            $yearNum = (int)$txCarbon->year;
+            $monthNameStr = \App\Http\Controllers\Admin\MaterialController::MONTHS[$monthNum] ?? $txCarbon->format('F');
+
+            foreach ($materialsArray as $item) {
+                $matQty = (float)($item['qty'] ?? 0);
+                if ($matQty <= 0) {
+                    continue;
+                }
+
+                $matName = trim($item['name'] ?? '');
+                if (empty($matName)) {
+                    continue;
+                }
+
+                $material = null;
+                if (!empty($item['material_id'])) {
+                    $material = Material::find($item['material_id']);
+                }
+                if (!$material && !empty($matName)) {
+                    $material = Material::where('name', $matName)->first();
+                }
+                if (!$material && !empty($matName)) {
+                    $material = Material::whereRaw('LOWER(name) = ?', [strtolower($matName)])->first();
+                }
+                if (!$material && !empty($matName)) {
+                    $lowerName = strtolower($matName);
+                    $material = Material::where(function ($q) use ($lowerName) {
+                        $q->whereRaw('LOWER(name) LIKE ?', ["%{$lowerName}%"])
+                          ->orWhereRaw('? LIKE CONCAT("%", LOWER(name), "%")', [$lowerName]);
+                    })->first();
+                }
+
+                // Jika material belum terdaftar di master inventaris, buat otomatis agar tercatat di POV Admin
+                if (!$material && !empty($matName)) {
+                    $cat = !empty($item['category']) ? trim($item['category']) : 'Material Pembantu & Instalasi';
+                    $u = !empty($item['unit']) ? trim($item['unit']) : 'pcs';
+                    $p = (float)($item['price'] ?? 0);
+                    $nextNum = Material::count() + 1;
+                    $code = 'BRG-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
+                    $material = Material::create([
+                        'code' => $code,
+                        'name' => $matName,
+                        'category' => $cat,
+                        'unit' => $u,
+                        'unit_price' => $p,
+                        'initial_stock' => 0,
+                        'stock' => 0,
+                        'min_stock' => 5,
+                        'total_in' => 0,
+                        'total_out' => 0,
+                        'month' => $monthNameStr,
+                    ]);
+                }
+
+                if ($material) {
+                    $notesOut = "Pemakaian Daily Report Teknisi: {$validated['job_type']} - {$validated['customer_name']} (" . ($validated['partner_company'] ?? 'Mitra') . ")";
+
+                    try {
+                        // 1. Kurangi stok dan catat mutasi tipe 'out'
+                        $mutation = $material->reduceStock(
+                            $matQty,
+                            $notesOut,
+                            auth()->id(),
+                            $reportDateStr,
+                            true // allowNegative
+                        );
+
+                        // 2. Hubungkan mutasi dengan order/laporan jika kolom order_id tersedia
+                        if (!empty($orderId) && Schema::hasColumn('material_mutations', 'order_id')) {
+                            $mutation->update(['order_id' => $orderId]);
+                        }
+
+                        // 3. Perbarui snapshot MaterialMonthlyStock
+                        $mStock = MaterialMonthlyStock::where('material_id', $material->id)
+                            ->where('month', $monthNum)
+                            ->where('year', $yearNum)
+                            ->first();
+
+                        if ($mStock) {
+                            $mStock->total_out = (float)$mStock->total_out + $matQty;
+                            $mStock->final_stock = (float)$mStock->initial_stock + (float)$mStock->total_in - $mStock->total_out;
+                            $mStock->save();
+                        } else {
+                            MaterialMonthlyStock::create([
+                                'material_id' => $material->id,
+                                'month' => $monthNum,
+                                'year' => $yearNum,
+                                'month_name' => $monthNameStr,
+                                'initial_stock' => (float)$material->stock + $matQty,
+                                'total_in' => 0,
+                                'total_out' => $matQty,
+                                'final_stock' => (float)$material->stock,
+                            ]);
+                        }
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('Gagal sinkron stok keluar: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+
         $successMsg = $isBanterpol
             ? "Laporan {$report->job_type} untuk {$report->customer_name} berhasil disimpan dan otomatis masuk ke Data Pelanggan Admin!"
             : "Laporan {$report->job_type} untuk {$report->customer_name} berhasil disimpan dan disinkronkan!";
@@ -537,6 +647,46 @@ class DailyReportController extends Controller
     {
         $report = DailyReport::findOrFail($id);
         $name = $report->customer_name;
+
+        // Rollback stok material jika laporan ini mencatat pemakaian material
+        if (!empty($report->materials_json)) {
+            $materialsArray = is_array($report->materials_json) ? $report->materials_json : json_decode($report->materials_json, true);
+            if (is_array($materialsArray)) {
+                $txCarbon = Carbon::parse($report->report_date ?? now());
+                $monthNum = (int)$txCarbon->month;
+                $yearNum = (int)$txCarbon->year;
+
+                foreach ($materialsArray as $item) {
+                    $qty = (float)($item['qty'] ?? 0);
+                    if ($qty <= 0) continue;
+                    $mat = null;
+                    if (!empty($item['material_id'])) {
+                        $mat = Material::find($item['material_id']);
+                    }
+                    if (!$mat && !empty($item['name'])) {
+                        $mat = Material::where('name', trim($item['name']))->first();
+                    }
+                    if ($mat) {
+                        try {
+                            $mat->update([
+                                'stock' => (float)$mat->stock + $qty,
+                                'total_out' => max(0, (float)($mat->total_out ?? 0) - $qty),
+                            ]);
+                            $mStock = MaterialMonthlyStock::where('material_id', $mat->id)
+                                ->where('month', $monthNum)
+                                ->where('year', $yearNum)
+                                ->first();
+                            if ($mStock) {
+                                $mStock->total_out = max(0, (float)$mStock->total_out - $qty);
+                                $mStock->final_stock = (float)$mStock->initial_stock + (float)$mStock->total_in - $mStock->total_out;
+                                $mStock->save();
+                            }
+                        } catch (\Throwable $e) {}
+                    }
+                }
+            }
+        }
+
         $report->delete();
 
         return redirect()->back()->with('success', "Laporan untuk {$name} berhasil dihapus.");
@@ -689,6 +839,38 @@ class DailyReportController extends Controller
             auth()->id(),
             $transactionDate
         );
+
+        // 3. Perbarui atau buat snapshot bulanan di MaterialMonthlyStock (POV Admin)
+        try {
+            $txCarbon = Carbon::parse($transactionDate);
+            $monthNum = (int)$txCarbon->month;
+            $yearNum = (int)$txCarbon->year;
+            $monthNameStr = \App\Http\Controllers\Admin\MaterialController::MONTHS[$monthNum] ?? $txCarbon->format('F');
+
+            $mStock = MaterialMonthlyStock::where('material_id', $material->id)
+                ->where('month', $monthNum)
+                ->where('year', $yearNum)
+                ->first();
+
+            if ($mStock) {
+                $mStock->total_in = (float)$mStock->total_in + $qty;
+                $mStock->final_stock = (float)$mStock->initial_stock + $mStock->total_in - (float)$mStock->total_out;
+                $mStock->save();
+            } else {
+                MaterialMonthlyStock::create([
+                    'material_id' => $material->id,
+                    'month' => $monthNum,
+                    'year' => $yearNum,
+                    'month_name' => $monthNameStr,
+                    'initial_stock' => max(0, (float)$material->stock - $qty),
+                    'total_in' => $qty,
+                    'total_out' => 0,
+                    'final_stock' => (float)$material->stock,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal sync MaterialMonthlyStock masuk: ' . $e->getMessage());
+        }
 
         $now = Carbon::now();
         $startOfMonth = $now->copy()->startOfMonth()->toDateString();

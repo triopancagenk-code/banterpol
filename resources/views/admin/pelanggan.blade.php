@@ -591,7 +591,7 @@
 
               <!-- 3. No KTP -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
-                @if($customer->id_card_number)
+                @if(!empty($customer->id_card_number) && $customer->id_card_number !== '-')
                   <div class="inline-flex items-center justify-center gap-1">
                     <span class="font-mono text-xs font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200">
                       {{ $customer->id_card_number }}
