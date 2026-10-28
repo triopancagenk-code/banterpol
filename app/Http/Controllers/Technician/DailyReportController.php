@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\DailyReport;
 use App\Models\Order;
 use App\Models\Material;
+use App\Models\MaterialMutation;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -103,16 +105,116 @@ class DailyReportController extends Controller
             ->orderBy('name')
             ->get();
 
-        $defaultCatalog = [
-            ['key' => 'dropcore', 'name' => 'Kabel Dropcore (DC 1C)', 'category' => 'Kabel Drop & Fiber Optik', 'price' => 2500, 'unit' => 'm', 'default_qty' => 85, 'checked' => true],
-            ['key' => 'fast_connector', 'name' => 'Fast Connector', 'category' => 'Adapter & Konektor Optik', 'price' => 7500, 'unit' => 'pcs', 'default_qty' => 2, 'checked' => true],
-            ['key' => 'ont_modem', 'name' => 'ONT / Modem', 'category' => 'Modem & ONT GPON', 'price' => 350000, 'unit' => 'unit', 'default_qty' => 1, 'checked' => false],
-            ['key' => 'patchcord', 'name' => 'Patchcord FO', 'category' => 'Patchcord & Pigtail', 'price' => 15000, 'unit' => 'pcs', 'default_qty' => 1, 'checked' => false],
-            ['key' => 'sleeve', 'name' => 'Sleeve Splicing (Smuft)', 'category' => 'Protection Sleeve (Smuft)', 'price' => 500, 'unit' => 'pcs', 'default_qty' => 2, 'checked' => false],
-            ['key' => 'roset', 'name' => 'Roset FO', 'category' => 'Material Pembantu & Instalasi', 'price' => 12000, 'unit' => 'pcs', 'default_qty' => 1, 'checked' => true],
-            ['key' => 'splitter_1_2', 'name' => 'PLC Splitter 1:2', 'category' => 'Splitter Optik', 'price' => 35000, 'unit' => 'pcs', 'default_qty' => 1, 'checked' => false],
-            ['key' => 'splitter_1_4', 'name' => 'PLC Splitter 1:4', 'category' => 'Splitter Optik', 'price' => 45000, 'unit' => 'pcs', 'default_qty' => 1, 'checked' => false],
-        ];
+        // 3b. Katalog Material Dinamis Mengikuti Log Barang Masuk Bulan Sekarang (POV Log Stok Admin)
+        $now = Carbon::now();
+        $startOfMonth = $now->copy()->startOfMonth()->toDateString();
+        $endOfMonth = $now->copy()->endOfMonth()->toDateString();
+        $currentMonthName = (\App\Http\Controllers\Admin\MaterialController::MONTHS[(int)$now->format('n')] ?? $now->format('F')) . ' ' . $now->format('Y');
+
+        $incomingMutations = MaterialMutation::where('type', 'in')
+            ->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->whereBetween('transaction_date', [$startOfMonth, $endOfMonth])
+                  ->orWhere(function ($s) use ($startOfMonth, $endOfMonth) {
+                      $s->whereNull('transaction_date')->whereBetween(DB::raw('DATE(created_at)'), [$startOfMonth, $endOfMonth]);
+                  });
+            })
+            ->with('material')
+            ->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $defaultCatalog = [];
+        if ($incomingMutations->isNotEmpty()) {
+            // Hitung total stok barang masuk per material_id di bulan sekarang
+            $incomingStockTotals = [];
+            foreach ($incomingMutations as $mut) {
+                if (!$mut->material_id) continue;
+                $incomingStockTotals[$mut->material_id] = ($incomingStockTotals[$mut->material_id] ?? 0) + (float)$mut->amount;
+            }
+
+            $seenMaterials = [];
+            $priceEstimates = [
+                'dc 1c' => 2500,
+                'drop core' => 2500,
+                'dropcore' => 2500,
+                'kabel drop' => 2500,
+                'fast connector' => 7500,
+                'roset' => 12000,
+                'modem' => 350000,
+                'zte f672y' => 350000,
+                'zte f670l' => 350000,
+                'f672' => 350000,
+                'f670' => 350000,
+                'router' => 250000,
+                'zte f609' => 250000,
+                'f609' => 250000,
+                'adaptor' => 25000,
+                'adapter' => 25000,
+                'patchcord' => 15000,
+                'sleeve' => 500,
+                'splitter 1:2' => 35000,
+                'splitter 1:4' => 45000,
+                'splitter 1:8' => 55000,
+            ];
+
+            foreach ($incomingMutations as $mut) {
+                $mat = $mut->material;
+                if (!$mat) {
+                    continue;
+                }
+                $matId = $mat->id;
+                if (isset($seenMaterials[$matId])) {
+                    continue;
+                }
+                $seenMaterials[$matId] = true;
+
+                $name = trim($mat->name);
+                $category = $mat->category ?: 'Material Pembantu & Instalasi';
+                $unit = $mat->unit ?: 'pcs';
+                $lowerName = strtolower($name);
+
+                $price = (float) $mat->unit_price;
+                if ($price <= 0) {
+                    foreach ($priceEstimates as $pattern => $estPrice) {
+                        if (str_contains($lowerName, $pattern)) {
+                            $price = $estPrice;
+                            break;
+                        }
+                    }
+                }
+
+                $maxQty = isset($incomingStockTotals[$matId]) ? (float)$incomingStockTotals[$matId] : null;
+
+                $isCable = str_contains($lowerName, 'drop') || str_contains($lowerName, 'dc') || strtolower($unit) === 'meter' || strtolower($unit) === 'm';
+                $defaultQty = $isCable ? min(85, $maxQty ?: 85) : min(1, $maxQty ?: 1);
+
+                $defaultCatalog[] = [
+                    'key' => 'mat_' . $matId,
+                    'material_id' => $matId,
+                    'name' => $name,
+                    'category' => $category,
+                    'price' => $price,
+                    'unit' => $unit,
+                    'default_qty' => $defaultQty,
+                    'max_qty' => $maxQty,
+                    'checked' => true,
+                ];
+            }
+        }
+
+        // Fallback jika belum ada mutasi barang masuk pada bulan ini
+        if (empty($defaultCatalog)) {
+            $defaultCatalog = [
+                ['key' => 'dropcore', 'name' => 'Kabel Dropcore (DC 1C)', 'category' => 'Kabel Drop & Fiber Optik', 'price' => 2500, 'unit' => 'm', 'default_qty' => 85, 'max_qty' => null, 'checked' => true],
+                ['key' => 'fast_connector', 'name' => 'Fast Connector', 'category' => 'Adapter & Konektor Optik', 'price' => 7500, 'unit' => 'pcs', 'default_qty' => 2, 'max_qty' => null, 'checked' => true],
+                ['key' => 'ont_modem', 'name' => 'ONT / Modem', 'category' => 'Modem & ONT GPON', 'price' => 350000, 'unit' => 'unit', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
+                ['key' => 'patchcord', 'name' => 'Patchcord FO', 'category' => 'Patchcord & Pigtail', 'price' => 15000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
+                ['key' => 'sleeve', 'name' => 'Sleeve Splicing (Smuft)', 'category' => 'Protection Sleeve (Smuft)', 'price' => 500, 'unit' => 'pcs', 'default_qty' => 2, 'max_qty' => null, 'checked' => false],
+                ['key' => 'roset', 'name' => 'Roset FO', 'category' => 'Material Pembantu & Instalasi', 'price' => 12000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => true],
+                ['key' => 'splitter_1_2', 'name' => 'PLC Splitter 1:2', 'category' => 'Splitter Optik', 'price' => 35000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
+                ['key' => 'splitter_1_4', 'name' => 'PLC Splitter 1:4', 'category' => 'Splitter Optik', 'price' => 45000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
+            ];
+        }
 
         if (!auth()->user()->isTechnician() && !auth()->user()->isAdmin() && strtolower(auth()->user()->email) !== 'admindaily') {
             abort(403, 'Akses ditolak. Halaman ini khusus untuk Tim Lapangan dan Administrator Banterpool.');
@@ -161,7 +263,8 @@ class DailyReportController extends Controller
             'stockMaterials',
             'partners',
             'jobTypes',
-            'recentOrders'
+            'recentOrders',
+            'currentMonthName'
         ));
     }
 
@@ -197,6 +300,36 @@ class DailyReportController extends Controller
         if (!empty($validated['materials_json'])) {
             $decoded = json_decode($validated['materials_json'], true);
             if (is_array($decoded)) {
+                // Batasi qty material agar tidak melebihi total stok barang masuk bulan ini
+                $reportDate = Carbon::parse($validated['report_date'] ?? now());
+                $startOfMonth = $reportDate->copy()->startOfMonth()->toDateString();
+                $endOfMonth = $reportDate->copy()->endOfMonth()->toDateString();
+
+                foreach ($decoded as &$item) {
+                    if (empty($item['name'])) continue;
+                    $matName = trim($item['name']);
+                    $mat = Material::where('name', $matName)->first();
+                    if ($mat) {
+                        $totalMasuk = (float) MaterialMutation::where('material_id', $mat->id)
+                            ->where('type', 'in')
+                            ->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                                $q->whereBetween('transaction_date', [$startOfMonth, $endOfMonth])
+                                  ->orWhere(function ($s) use ($startOfMonth, $endOfMonth) {
+                                      $s->whereNull('transaction_date')->whereBetween(DB::raw('DATE(created_at)'), [$startOfMonth, $endOfMonth]);
+                                  });
+                            })
+                            ->sum('amount');
+
+                        if ($totalMasuk > 0 && (float)($item['qty'] ?? 0) > $totalMasuk) {
+                            $item['qty'] = $totalMasuk;
+                            if (isset($item['price'])) {
+                                $item['total'] = (float)$item['price'] * $totalMasuk;
+                            }
+                        }
+                    }
+                }
+                unset($item);
+
                 $materialsArray = $decoded;
             }
         }
@@ -319,5 +452,113 @@ class DailyReportController extends Controller
 
             fclose($handle);
         }, 200, $headers);
+    }
+
+    /**
+     * Tambah Barang Secara Manual dari Daily Report & Catat ke Stok Masuk Dashboard Admin
+     */
+    public function storeMaterialMasuk(Request $request)
+    {
+        $validated = $request->validate([
+            'material_id' => 'nullable',
+            'name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:100',
+            'unit' => 'nullable|string|max:50',
+            'price' => 'nullable|numeric|min:0',
+            'qty' => 'required|numeric|min:0.01',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $name = trim($validated['name']);
+        $category = trim($validated['category'] ?? '') ?: 'Material Pembantu & Instalasi';
+        $unit = trim($validated['unit'] ?? '') ?: 'pcs';
+        $price = (float)($validated['price'] ?? 0);
+        $qty = (float)$validated['qty'];
+        $technicianName = auth()->user()->name ?? 'Teknisi';
+        $notes = !empty($validated['notes']) ? trim($validated['notes']) : "Input Manual Daily Report ({$technicianName})";
+
+        // 1. Cari atau buat record Material di tabel materials
+        $material = null;
+        if (!empty($validated['material_id'])) {
+            $material = Material::find($validated['material_id']);
+        }
+        if (!$material) {
+            $material = Material::where('name', $name)->first();
+        }
+
+        if (!$material) {
+            $prefix = match (strtoupper(substr($category, 0, 3))) {
+                'TIA' => 'A',
+                'KAB', 'FIB', 'DRO' => 'KBL-',
+                'MOD', 'ONT' => 'ONT-',
+                'ROU', 'AP ' => 'RTR-',
+                default => 'BRG-',
+            };
+            $nextNum = Material::count() + 1;
+            $code = $prefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
+            $now = Carbon::now();
+            $monthNumber = (int)$now->format('n');
+            $currentMonth = \App\Http\Controllers\Admin\MaterialController::MONTHS[$monthNumber] ?? 'Oktober';
+
+            $material = Material::create([
+                'code' => $code,
+                'name' => $name,
+                'category' => $category,
+                'unit' => $unit,
+                'unit_price' => $price,
+                'initial_stock' => 0,
+                'stock' => 0,
+                'min_stock' => 5,
+                'total_in' => 0,
+                'total_out' => 0,
+                'month' => $currentMonth,
+            ]);
+        } else {
+            if ($material->unit_price <= 0 && $price > 0) {
+                $material->unit_price = $price;
+                $material->save();
+            }
+        }
+
+        // 2. Tambahkan Mutasi Barang Masuk (type = 'in') untuk Bulan Sekarang
+        $transactionDate = Carbon::now()->toDateString();
+        $mutation = $material->addStock(
+            $qty,
+            $notes,
+            auth()->id(),
+            $transactionDate
+        );
+
+        $now = Carbon::now();
+        $startOfMonth = $now->copy()->startOfMonth()->toDateString();
+        $endOfMonth = $now->copy()->endOfMonth()->toDateString();
+        $totalMasukBulanIni = (float) MaterialMutation::where('material_id', $material->id)
+            ->where('type', 'in')
+            ->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->whereBetween('transaction_date', [$startOfMonth, $endOfMonth])
+                  ->orWhere(function ($s) use ($startOfMonth, $endOfMonth) {
+                      $s->whereNull('transaction_date')->whereBetween(DB::raw('DATE(created_at)'), [$startOfMonth, $endOfMonth]);
+                  });
+            })
+            ->sum('amount');
+
+        return response()->json([
+            'success' => true,
+            'message' => "Barang \"{$material->name}\" sebanyak +{$qty} {$material->unit} berhasil didaftarkan ke Log Barang Masuk Dashboard Admin untuk periode saat ini.",
+            'material' => [
+                'key' => 'mat_' . $material->id,
+                'material_id' => $material->id,
+                'code' => $material->code,
+                'name' => $material->name,
+                'category' => $material->category,
+                'unit' => $material->unit,
+                'price' => (float)$material->unit_price ?: $price,
+                'qty' => $qty,
+                'max_qty' => $totalMasukBulanIni ?: $qty,
+                'checked' => true,
+            ],
+            'mutation' => $mutation,
+        ]);
     }
 }

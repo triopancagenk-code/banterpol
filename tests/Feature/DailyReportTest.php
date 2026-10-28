@@ -179,4 +179,182 @@ class DailyReportTest extends TestCase
 
         $response->assertRedirect(route('daily-report.index'));
     }
+
+    public function test_daily_report_catalog_follows_incoming_materials_of_current_month(): void
+    {
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'name' => 'Budi Setiawan',
+        ]);
+
+        $mat1 = \App\Models\Material::create([
+            'code' => 'TEST-RTR',
+            'name' => 'Router ZTE F609',
+            'category' => 'Router & AP Wireless',
+            'unit' => 'Unit',
+            'unit_price' => 0,
+            'stock' => 10,
+        ]);
+
+        $mat2 = \App\Models\Material::create([
+            'code' => 'TEST-ADP',
+            'name' => 'Adaptor 12v',
+            'category' => 'Power & Adaptor',
+            'unit' => 'Unit',
+            'unit_price' => 0,
+            'stock' => 10,
+        ]);
+
+        \App\Models\MaterialMutation::create([
+            'material_id' => $mat1->id,
+            'user_id' => $technician->id,
+            'type' => 'in',
+            'amount' => 4,
+            'transaction_date' => now()->toDateString(),
+            'notes' => 'Barang Masuk Uji Coba',
+        ]);
+
+        \App\Models\MaterialMutation::create([
+            'material_id' => $mat2->id,
+            'user_id' => $technician->id,
+            'type' => 'in',
+            'amount' => 4,
+            'transaction_date' => now()->toDateString(),
+            'notes' => 'Barang Masuk Uji Coba',
+        ]);
+
+        $response = $this->actingAs($technician)->get('/daily-report');
+
+        $response->assertStatus(200);
+        $response->assertSee('Router ZTE F609');
+        $response->assertSee('Adaptor 12v');
+        $response->assertSee('Barang Masuk:');
+    }
+
+    public function test_manual_material_added_from_daily_report_is_registered_to_admin_incoming_stock_for_current_month(): void
+    {
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'name' => 'Budi Setiawan',
+        ]);
+
+        $postData = [
+            'name' => 'Kabel LAN Cat6 50M',
+            'category' => 'Kabel LAN & UTP',
+            'unit' => 'Roll',
+            'price' => 150000,
+            'qty' => 5,
+        ];
+
+        $response = $this->actingAs($technician)->postJson('/daily-report/tambah-barang-masuk', $postData);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'material' => [
+                'name' => 'Kabel LAN Cat6 50M',
+                'category' => 'Kabel LAN & UTP',
+                'unit' => 'Roll',
+                'price' => 150000,
+                'qty' => 5,
+            ]
+        ]);
+
+        // Pastikan material dibuat di tabel materials
+        $this->assertDatabaseHas('materials', [
+            'name' => 'Kabel LAN Cat6 50M',
+            'category' => 'Kabel LAN & UTP',
+            'unit' => 'Roll',
+        ]);
+
+        $material = \App\Models\Material::where('name', 'Kabel LAN Cat6 50M')->first();
+
+        // Pastikan tercatat sebagai mutasi barang masuk (type = 'in') bulan ini
+        $mutation = \App\Models\MaterialMutation::where('material_id', $material->id)->first();
+        $this->assertNotNull($mutation);
+        $this->assertEquals('in', $mutation->type);
+        $this->assertEquals(5, (float)$mutation->amount);
+        $this->assertEquals(now()->toDateString(), $mutation->transaction_date->toDateString());
+
+        // Verifikasi admin dapat melihat barang masuk ini di dashboard stok admin tab masuk
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $adminResponse = $this->actingAs($admin)->get('/admin/stok-material?tab=masuk');
+        $adminResponse->assertStatus(200);
+        $adminResponse->assertSee('Kabel LAN Cat6 50M');
+    }
+
+    public function test_daily_report_material_qty_cannot_exceed_incoming_stock_of_current_month(): void
+    {
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'name' => 'Budi Setiawan',
+        ]);
+
+        $adaptor = \App\Models\Material::create([
+            'code' => 'TEST-ADP-12V',
+            'name' => 'Adaptor 12v',
+            'category' => 'Power & Adaptor',
+            'unit' => 'Unit',
+            'unit_price' => 25000,
+            'stock' => 7,
+        ]);
+
+        // Simulasikan 2 transaksi barang masuk untuk Adaptor 12v di bulan berjalan (3 + 4 = 7 unit)
+        \App\Models\MaterialMutation::create([
+            'material_id' => $adaptor->id,
+            'user_id' => $technician->id,
+            'type' => 'in',
+            'amount' => 3,
+            'transaction_date' => now()->toDateString(),
+            'notes' => 'Pak Mono',
+        ]);
+        \App\Models\MaterialMutation::create([
+            'material_id' => $adaptor->id,
+            'user_id' => $technician->id,
+            'type' => 'in',
+            'amount' => 4,
+            'transaction_date' => now()->toDateString(),
+            'notes' => 'Aris',
+        ]);
+
+        // 1. Cek di halaman daily-report: Adaptor 12v memiliki batas maksimal 7
+        $response = $this->actingAs($technician)->get('/daily-report');
+        $response->assertStatus(200);
+        $response->assertSee('Adaptor 12v');
+
+        $defaultCatalog = $response->viewData('defaultCatalog');
+        $this->assertNotEmpty($defaultCatalog);
+        $adaptorInCatalog = collect($defaultCatalog)->firstWhere('name', 'Adaptor 12v');
+        $this->assertNotNull($adaptorInCatalog);
+        $this->assertEquals(7, $adaptorInCatalog['max_qty']);
+
+        // 2. Jika teknisi submit laporan dengan qty 12 (melebihi stok masuk 7)
+        $postData = [
+            'report_date' => now()->toDateString(),
+            'technician_name' => 'Budi Setiawan',
+            'partner_company' => 'BANTERPOL',
+            'job_type' => 'Pasang Baru (PSB / Installation)',
+            'customer_name' => 'Bpk Herman / CST-109',
+            'materials_json' => json_encode([
+                ['name' => 'Adaptor 12v', 'price' => 25000, 'qty' => 12, 'unit' => 'Unit', 'total' => 300000],
+            ]),
+            'material_total_cost' => 175000,
+            'transaction_type' => 'Biaya Pasang Baru (PSB)',
+            'cash_amount' => 250000,
+            'payment_method' => 'Tunai (Cash)',
+            'cash_deposit_status' => 'Belum Disetor',
+        ];
+
+        $storeResponse = $this->actingAs($technician)->post('/daily-report', $postData);
+        $storeResponse->assertRedirect('/daily-report');
+
+        // Laporan tersimpan dengan qty yang dibatasi maksimal 7 unit
+        $report = \App\Models\DailyReport::latest('id')->first();
+        $this->assertNotNull($report);
+        $savedMaterials = $report->materials_json;
+        $this->assertEquals(7, (float)$savedMaterials[0]['qty']);
+    }
 }

@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="id" class="h-full" style="color-scheme: dark;">
+<html lang="id" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>ISP Field Technician Portal — Daily Report</title>
+  <title>WiFi Banterpool — Daily Report Teknisi & Sinkronisasi Stok</title>
 
-  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <!-- Google Fonts: Poppins (Banterpool Standard) & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -21,21 +21,19 @@
     [x-cloak] { display: none !important; }
 
     :root {
-      color-scheme: dark;
-      --bg:        #090d16;
-      --surface:   #0f172a;
-      --surface-2: #141f36;
-      --border:    rgba(255, 255, 255, 0.08);
-      --border-md: rgba(255, 255, 255, 0.14);
-      --text:      #f1f5f9;
-      --subtle:    #94a3b8;
-      --muted:     #64748b;
-      --accent:    #3b82f6;
-      --accent-hover: #2563eb;
-      --green:     #10b981;
-      --amber:     #f59e0b;
-      --red:       #ef4444;
-      --indigo:    #818cf8;
+      color-scheme: light;
+      --brand:       #D31818;
+      --brand-hover: #b01010;
+      --brand-50:    #fff1f1;
+      --brand-100:   #ffe1e1;
+      --bg:          #ffffff;
+      --surface:     #ffffff;
+      --surface-2:   #f8fafc;
+      --border:      #e2e8f0;
+      --border-md:   #cbd5e1;
+      --text:        #0f172a;
+      --text-muted:  #64748b;
+      --subtle:      #94a3b8;
     }
 
     html, body {
@@ -45,69 +43,106 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
     }
 
-    /* ── Dropdown Text Visibility & Styling ── */
+    /* ── Latar Belakang Gelombang Garis Merah Banterpool ── */
+    .bg-wave-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bg-wave-pattern {
+      position: absolute;
+      top: 0;
+      left: -15%;
+      width: 130%;
+      height: 260%;
+      background-image: url('{{ asset('image/bg-red-wave.jpg') }}');
+      background-size: cover;
+      background-position: center top;
+      background-repeat: repeat-y;
+      opacity: 0.30;
+      pointer-events: none;
+      will-change: transform;
+      transform-origin: center center;
+      transition: opacity 0.3s ease;
+    }
+
+    .bg-wave-glow {
+      position: absolute;
+      inset: -10%;
+      background: radial-gradient(circle at 70% 30%, rgba(211, 24, 24, 0.06) 0%, rgba(239, 68, 68, 0.02) 40%, transparent 70%);
+      pointer-events: none;
+      will-change: transform;
+    }
+
+    /* ── Custom Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* ── Dropdown Text Styling (Light Theme) ── */
     select,
-    select.inp,
-    select.input-dark {
-      background-color: #0f172a !important;
-      color: #f8fafc !important;
+    select.inp {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
       appearance: none;
       -webkit-appearance: none;
       -moz-appearance: none;
     }
 
     select option,
-    select.inp option,
-    select.input-dark option {
-      background-color: #0f172a !important;
-      color: #f8fafc !important;
+    select.inp option {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
       padding: 10px 14px;
     }
 
     select optgroup {
-      background-color: #090d16 !important;
-      color: #94a3b8 !important;
+      background-color: #f8fafc !important;
+      color: #64748b !important;
       font-weight: 700;
     }
 
-    /* ── Custom Scrollbar ── */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 9999px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
-
     /* ── Card Styling ── */
     .card {
-      background: var(--surface);
+      background: #ffffff;
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 18px;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
     }
-    .card-lg { border-radius: 22px; }
+    .card-lg { border-radius: 24px; }
 
     /* ── Inputs ── */
     .inp {
       width: 100%;
-      background: #0b1222;
-      border: 1px solid var(--border-md);
-      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
       padding: 10px 14px;
-      color: #f8fafc;
+      color: #0f172a;
       font-size: 13px;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Poppins', sans-serif;
       transition: border-color .15s, box-shadow .15s, background-color .15s;
       outline: none;
     }
     .inp:focus {
-      border-color: var(--accent);
-      background-color: #0d162a;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      border-color: var(--brand);
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(211, 24, 24, 0.15);
     }
-    .inp::placeholder { color: #64748b; }
+    .inp::placeholder { color: #94a3b8; }
 
     /* ── Labels ── */
     .lbl {
@@ -116,7 +151,7 @@
       gap: 6px;
       font-size: 11px;
       font-weight: 700;
-      color: #94a3b8;
+      color: #475569;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       margin-bottom: 6px;
@@ -128,7 +163,7 @@
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #94a3b8;
+      color: var(--brand);
       display: flex;
       align-items: center;
       gap: 10px;
@@ -138,44 +173,46 @@
       content: '';
       flex: 1;
       height: 1px;
-      background: var(--border);
+      background: #e2e8f0;
     }
 
     /* ── Metric Card ── */
     .metric-card {
-      background: var(--surface);
+      background: #ffffff;
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
+      border-radius: 20px;
+      padding: 22px;
       position: relative;
       overflow: hidden;
-      transition: border-color .2s, transform .15s;
+      box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.04);
+      transition: border-color .2s, transform .15s, box-shadow .2s;
     }
     .metric-card:hover {
-      border-color: rgba(255, 255, 255, 0.16);
-      transform: translateY(-1px);
+      border-color: #cbd5e1;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
     }
 
     /* ── Table ── */
     .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
     .tbl thead th {
-      padding: 12px 14px;
+      padding: 13px 14px;
       text-align: left;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: .08em;
-      color: #94a3b8;
+      letter-spacing: .06em;
+      color: #64748b;
       border-bottom: 1px solid var(--border);
-      background: #090e1a;
+      background: #f8fafc;
     }
     .tbl tbody td {
-      padding: 13px 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 14px 14px;
+      border-bottom: 1px solid #f1f5f9;
       vertical-align: middle;
-      color: #cbd5e1;
+      color: #334155;
     }
-    .tbl tbody tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    .tbl tbody tr:hover td { background: rgba(255, 241, 241, 0.35); }
     .tbl tbody tr:last-child td { border-bottom: none; }
 
     /* ── Badges ── */
@@ -188,56 +225,71 @@
       font-size: 10px;
       font-weight: 700;
     }
-    .badge-green { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.25); }
-    .badge-amber { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.25); }
-    .badge-blue  { background: rgba(59, 130, 246, 0.12); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.25); }
-    .badge-slate { background: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.25); }
-    .badge-indigo { background: rgba(129, 140, 248, 0.12); color: #a5b4fc; border: 1px solid rgba(129, 140, 248, 0.25); }
+    .badge-brand { background: #fff1f1; color: var(--brand); border: 1px solid #fecaca; }
+    .badge-green { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+    .badge-amber { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+    .badge-blue  { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+    .badge-slate { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
 
     /* ── Buttons ── */
     .btn-primary {
-      background: var(--accent);
+      background: var(--brand);
       color: #ffffff;
       border: none;
       border-radius: 12px;
       padding: 12px 24px;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
-      transition: background .15s, transform .1s;
+      box-shadow: 0 6px 18px -2px rgba(211, 24, 24, 0.32);
+      transition: background .15s, transform .1s, box-shadow .15s;
     }
-    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:hover {
+      background: var(--brand-hover);
+      box-shadow: 0 8px 22px -2px rgba(211, 24, 24, 0.42);
+    }
     .btn-primary:active { transform: scale(.98); }
 
     .btn-ghost {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-md);
-      color: #cbd5e1;
-      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      color: #334155;
+      border-radius: 12px;
       padding: 8px 14px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: background .15s, color .15s, border-color .15s;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      transition: background .15s, color .15s, border-color .15s, box-shadow .15s;
     }
-    .btn-ghost:hover { background: rgba(255, 255, 255, 0.09); color: #ffffff; border-color: rgba(255, 255, 255, 0.25); }
+    .btn-ghost:hover {
+      background: #f8fafc;
+      color: #0f172a;
+      border-color: #cbd5e1;
+    }
 
     .icon-btn {
-      width: 36px; height: 36px;
-      border-radius: 10px;
+      width: 38px; height: 38px;
+      border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-md);
-      color: #94a3b8;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      color: #64748b;
       cursor: pointer;
-      transition: background .15s, color .15s;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      transition: background .15s, color .15s, border-color .15s, transform .1s;
     }
-    .icon-btn:hover { background: rgba(255, 255, 255, 0.1); color: #ffffff; }
+    .icon-btn:hover {
+      background: #f8fafc;
+      color: var(--brand);
+      border-color: rgba(211, 24, 24, 0.35);
+      transform: translateY(-1px);
+    }
 
     /* ── Tabs ── */
     .tab-btn {
-      padding: 10px 6px;
-      font-size: 12px;
+      padding: 12px 8px;
+      font-size: 13px;
       font-weight: 700;
       color: #64748b;
       background: none;
@@ -247,23 +299,25 @@
       display: flex; align-items: center; gap: 8px;
       transition: color .15s, border-color .15s;
     }
-    .tab-btn.active { color: #ffffff; border-bottom-color: var(--accent); }
+    .tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
 
     /* ── Material Item Card ── */
     .mat-card {
-      background: #0c1322;
+      background: #ffffff;
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 12px 14px;
-      transition: border-color .15s, background-color .15s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      transition: border-color .15s, background-color .15s, box-shadow .15s;
     }
     .mat-card:hover {
-      border-color: rgba(255, 255, 255, 0.14);
-      background-color: #0f182d;
+      border-color: #cbd5e1;
+      background-color: #fdfdfd;
     }
     .mat-card.checked {
-      border-color: rgba(59, 130, 246, 0.35);
-      background-color: rgba(59, 130, 246, 0.05);
+      border-color: rgba(211, 24, 24, 0.4);
+      background-color: rgba(255, 241, 241, 0.55);
+      box-shadow: 0 2px 8px rgba(211, 24, 24, 0.06);
     }
 
     .dot-pulse {
@@ -275,10 +329,9 @@
       50% { opacity: .35; }
     }
   </style>
-</head>
-
-<body class="flex flex-col min-h-screen"
-      x-data="{
+  <script>
+    function dailyReportApp() {
+      return {
         openSettings: false,
         openUserMenu: false,
         openAddMaterialModal: false,
@@ -289,7 +342,7 @@
 
         // Form fields
         reportDate: '{{ now()->format('Y-m-d') }}',
-        technicianName: '{{ auth()->user()->name ?? 'Budi Setiawan' }}',
+        technicianName: '{{ addslashes(auth()->user()->name ?? 'Budi Setiawan') }}',
         partnerCompany: 'BANTERPOL',
         jobType: 'Pasang Baru (PSB / Installation)',
         customerName: 'Bpk Herman / CST-109',
@@ -310,11 +363,83 @@
         stockCategories: {{ Js::from($stockCategories) }},
         stockMaterials: {{ Js::from($stockMaterials) }},
 
-        // Active filter category in catalog
-        selectedCategoryFilter: 'all',
+        // Mengelompokkan item katalog langsung per kategori secara vertikal mengikuti urutan stok barang (POV Admin)
+        get categorizedCatalog() {
+          const groups = {};
+          this.catalog.forEach(item => {
+            const cat = item.category || 'Material Pembantu & Instalasi';
+            if (!groups[cat]) {
+              groups[cat] = [];
+            }
+            groups[cat].push(item);
+          });
+
+          const result = [];
+          // 1. Urutkan berdasarkan urutan kategori pada stok barang (POV Admin)
+          if (Array.isArray(this.stockCategories)) {
+            this.stockCategories.forEach(cat => {
+              if (groups[cat] && groups[cat].length > 0) {
+                result.push({
+                  name: cat,
+                  items: groups[cat]
+                });
+                delete groups[cat];
+              }
+            });
+          }
+
+          // 2. Kategori lainnya jika ada item kustom
+          Object.keys(groups).forEach(cat => {
+            if (groups[cat] && groups[cat].length > 0) {
+              result.push({
+                name: cat,
+                items: groups[cat]
+              });
+            }
+          });
+
+          return result;
+        },
+
+        // Helper Icon Tiap Kategori
+        getCategoryIcon(cat) {
+          const map = {
+            'Adapter & Konektor Optik': 'fa-solid fa-circle-nodes text-blue-600',
+            'Aksesoris & Bracket': 'fa-solid fa-wrench text-slate-600',
+            'Clamp & Aksesoris': 'fa-solid fa-paperclip text-amber-600',
+            'Joint Closure': 'fa-solid fa-box-archive text-emerald-600',
+            'Kabel Drop & Fiber Optik': 'fa-solid fa-lines-leaning text-brand',
+            'Kabel LAN & UTP': 'fa-solid fa-network-wired text-indigo-600',
+            'Kabel Ties': 'fa-solid fa-link text-slate-500',
+            'Material Optik & Jaringan': 'fa-solid fa-diagram-project text-cyan-600',
+            'Material Pembantu & Instalasi': 'fa-solid fa-toolbox text-orange-600',
+            'Media Converter (HTB)': 'fa-solid fa-arrows-rotate text-purple-600',
+            'Modem & ONT GPON': 'fa-solid fa-wifi text-brand',
+            'ODP & Box Pasif': 'fa-solid fa-server text-teal-600',
+            'Patchcord & Pigtail': 'fa-solid fa-wave-square text-rose-600',
+            'Perangkat Jaringan & Switch': 'fa-solid fa-ethernet text-blue-700',
+            'Power & Adaptor': 'fa-solid fa-bolt text-amber-500',
+            'Protection Sleeve (Smuft)': 'fa-solid fa-shield-halved text-emerald-700',
+            'Router & AP Wireless': 'fa-solid fa-tower-broadcast text-brand',
+            'Splitter Optik': 'fa-solid fa-sitemap text-indigo-500',
+            'Tiang & Bracket': 'fa-solid fa-monument text-slate-700',
+          };
+          return map[cat] || 'fa-solid fa-boxes-stacked text-gray-600';
+        },
+
+        // Buka modal tambah barang dengan kategori langsung terpilih
+        openAddForCategory(categoryName) {
+          this.newMat.category = categoryName;
+          this.newMat.materialId = '';
+          this.newMat.name = '';
+          this.newMat.unit = 'pcs';
+          this.newMat.price = 0;
+          this.newMat.qty = 1;
+          this.openAddMaterialModal = true;
+        },
 
         // Form tambah barang baru (manual / dari stok admin)
-        addMode: 'stock', // 'stock' or 'custom'
+        addMode: 'stock',
         newMat: {
           category: '',
           materialId: '',
@@ -324,19 +449,35 @@
           qty: 1
         },
 
-        // Material Catalog List
+        // Material Catalog List (Dinamis dari Barang Masuk Bulan Sekarang)
         catalog: {{ Js::from(collect($defaultCatalog)->map(function($i) {
             return [
                 'key' => $i['key'],
+                'material_id' => $i['material_id'] ?? null,
                 'name' => $i['name'],
                 'category' => $i['category'],
                 'price' => (float)$i['price'],
                 'unit' => $i['unit'],
                 'qty' => (float)$i['default_qty'],
+                'max_qty' => isset($i['max_qty']) && $i['max_qty'] !== null ? (float)$i['max_qty'] : null,
                 'checked' => (bool)$i['checked'],
                 'isEditing' => false,
             ];
         })) }},
+
+        // Validasi & batasi Qty agar tidak melebihi stok barang masuk bulan ini
+        validateItemQty(item) {
+          if (item.max_qty !== undefined && item.max_qty !== null) {
+            const max = Number(item.max_qty);
+            if (Number(item.qty) > max) {
+              item.qty = max;
+              alert('Jumlah ' + item.name + ' tidak boleh melebihi stok barang masuk bulan ini (Maks. ' + max + ' ' + item.unit + ')!');
+            }
+          }
+          if (Number(item.qty) < 0) {
+            item.qty = 0;
+          }
+        },
 
         // Total Biaya Material
         get totalMaterialCost() {
@@ -351,14 +492,6 @@
         // Format Rupiah
         rp(v) {
           return 'Rp ' + Number(v || 0).toLocaleString('id-ID');
-        },
-
-        // Filtered catalog by category
-        get filteredCatalog() {
-          if (this.selectedCategoryFilter === 'all') {
-            return this.catalog;
-          }
-          return this.catalog.filter(i => i.category === this.selectedCategoryFilter);
         },
 
         // Filtered stock materials based on selected newMat.category
@@ -380,44 +513,124 @@
           }
         },
 
-        // Tambah Barang ke Katalog (Manual / Dari Stok)
-        submitAddMaterial() {
-          if (!this.newMat.name.trim()) {
+        isSubmittingMaterial: false,
+
+        // Tambah Barang ke Katalog (Manual / Dari Stok) & Sinkron ke Log Barang Masuk Admin Bulan Ini
+        async submitAddMaterial() {
+          if (!this.newMat.name || !this.newMat.name.trim()) {
             alert('Nama barang tidak boleh kosong.');
             return;
           }
-          if (Number(this.newMat.qty) <= 0) {
-            this.newMat.qty = 1;
+          const qty = Number(this.newMat.qty) || 1;
+          if (qty <= 0) {
+            alert('Jumlah (Qty) harus lebih dari 0.');
+            return;
           }
 
-          const newKey = 'item_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-          this.catalog.push({
-            key: newKey,
-            name: this.newMat.name.trim(),
-            category: this.newMat.category || 'Material Pembantu & Instalasi',
-            price: Number(this.newMat.price) || 0,
-            unit: this.newMat.unit || 'pcs',
-            qty: Number(this.newMat.qty) || 1,
-            checked: true,
-            isEditing: false
-          });
+          this.isSubmittingMaterial = true;
 
-          // Reset newMat
-          this.newMat = {
-            category: '',
-            materialId: '',
-            name: '',
-            unit: 'pcs',
-            price: 0,
-            qty: 1
-          };
-          this.openAddMaterialModal = false;
+          try {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const res = await fetch('{{ route('daily-report.tambah-barang-masuk') }}', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': token || ''
+              },
+              body: JSON.stringify({
+                material_id: this.newMat.materialId || null,
+                name: this.newMat.name.trim(),
+                category: this.newMat.category || '',
+                unit: this.newMat.unit || 'pcs',
+                price: Number(this.newMat.price) || 0,
+                qty: qty,
+                notes: 'Input Manual Daily Report (' + (this.technicianName || 'Teknisi') + ')'
+              })
+            });
+
+            const data = await res.json();
+            if (data && data.success && data.material) {
+              const existingIndex = this.catalog.findIndex(i => 
+                (data.material.material_id && i.material_id === data.material.material_id) || 
+                (i.name.toLowerCase() === data.material.name.toLowerCase())
+              );
+
+              if (existingIndex !== -1) {
+                this.catalog[existingIndex].qty = Number(this.catalog[existingIndex].qty) + qty;
+                this.catalog[existingIndex].max_qty = Number(data.material.max_qty || (Number(this.catalog[existingIndex].max_qty || 0) + qty));
+                this.catalog[existingIndex].checked = true;
+                if (data.material.price > 0) {
+                  this.catalog[existingIndex].price = Number(data.material.price);
+                }
+              } else {
+                this.catalog.push({
+                  key: data.material.key || ('mat_' + Date.now()),
+                  material_id: data.material.material_id,
+                  name: data.material.name,
+                  category: data.material.category,
+                  price: Number(data.material.price) || 0,
+                  unit: data.material.unit || 'pcs',
+                  qty: qty,
+                  max_qty: Number(data.material.max_qty) || qty,
+                  checked: true,
+                  isEditing: false
+                });
+              }
+
+              if (data.material.category && !this.stockCategories.includes(data.material.category)) {
+                this.stockCategories.push(data.material.category);
+              }
+
+              // Reset form & tutup modal
+              this.newMat = {
+                category: '',
+                materialId: '',
+                name: '',
+                unit: 'pcs',
+                price: 0,
+                qty: 1
+              };
+              this.openAddMaterialModal = false;
+            } else {
+              alert(data.message || 'Gagal menambahkan barang.');
+            }
+          } catch (err) {
+            console.error('Error adding material:', err);
+            // Fallback lokal jika offline
+            const newKey = 'item_' + Date.now();
+            this.catalog.push({
+              key: newKey,
+              material_id: this.newMat.materialId || null,
+              name: this.newMat.name.trim(),
+              category: this.newMat.category || 'Material Pembantu & Instalasi',
+              price: Number(this.newMat.price) || 0,
+              unit: this.newMat.unit || 'pcs',
+              qty: qty,
+              checked: true,
+              isEditing: false
+            });
+            this.openAddMaterialModal = false;
+          } finally {
+            this.isSubmittingMaterial = false;
+          }
         },
 
-        // Hapus item dari katalog
-        deleteMaterial(index) {
-          if (confirm('Hapus barang ini dari daftar laporan?')) {
-            this.catalog.splice(index, 1);
+        // Hapus item dari katalog berdasarkan key
+        deleteMaterial(itemToDelete) {
+          const targetName = itemToDelete && itemToDelete.name ? itemToDelete.name : 'barang';
+          if (confirm("Hapus barang '" + targetName + "' dari daftar laporan?")) {
+            const key = typeof itemToDelete === 'object' ? itemToDelete.key : null;
+            if (key) {
+              const idx = this.catalog.findIndex(i => i.key === key);
+              if (idx !== -1) {
+                this.catalog.splice(idx, 1);
+                return;
+              }
+            }
+            if (typeof itemToDelete === 'number') {
+              this.catalog.splice(itemToDelete, 1);
+            }
           }
         },
 
@@ -495,55 +708,69 @@
           this.openSettings = false;
           alert('Pengaturan Webhook Spreadsheet tersimpan!');
         }
-      }"
+      };
+    }
+  </script>
+</head>
+
+<body class="flex flex-col min-h-screen relative selection:bg-brand selection:text-white"
+      x-data="dailyReportApp()"
       @fullscreenchange.window="isFullscreen = !!document.fullscreenElement">
 
   <!-- ============================================== -->
-  <!-- 1. TOPBAR / HEADER NAVIGATION                  -->
+  <!-- BACKGROUND GELOMBANG MERAH INTERAKTIF          -->
   <!-- ============================================== -->
-  <header class="sticky top-0 z-40 border-b border-white/[0.08]" style="background: rgba(9, 13, 22, 0.92); backdrop-filter: blur(16px);">
+  <div class="bg-wave-container" aria-hidden="true">
+    <div id="bgWavePattern" class="bg-wave-pattern"></div>
+    <div id="bgWaveGlow" class="bg-wave-glow"></div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 1. TOPBAR / HEADER NAVIGATION (BANTERPOOL THEME) -->
+  <!-- ============================================== -->
+  <header class="sticky top-0 z-40 border-b border-gray-200/80 bg-white/90 backdrop-blur-md shadow-xs">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 gap-4">
 
-      <!-- Left Branding -->
-      <div class="flex items-center gap-3 shrink-0">
-        <div class="w-9 h-9 rounded-xl flex items-center justify-center bg-blue-600/20 border border-blue-500/30 text-blue-400 shadow-sm">
-          <i class="fa-solid fa-wifi text-sm"></i>
+      <!-- Left Branding: Banterpool Logo & Slogan -->
+      <a href="{{ route('daily-report.index') }}" class="flex items-center gap-3 shrink-0">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 border border-red-200/80 text-brand shadow-xs">
+          <i class="fa-solid fa-wifi text-lg"></i>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="font-bold text-sm sm:text-base text-white tracking-tight">
-              ISP Field <span class="text-blue-400">Technician</span> Portal
-            </h1>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600/20 text-blue-300 border border-blue-500/30">
-              v2.6
+            <span class="font-extrabold text-base sm:text-lg text-black tracking-tight">
+              BANTER<span class="text-brand">POOL</span>
+            </span>
+            <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-50 text-brand border border-red-200">
+              DAILY REPORT
             </span>
           </div>
-          <p class="text-[11px] text-slate-400 hidden sm:block">
-            Daily Report &amp; Sinkronisasi Stok Barang Lapangan
+          <p class="text-[11px] text-gray-500 hidden sm:block font-medium">
+            ISP Field <span class="text-brand font-semibold">Technician</span> Portal &bull; Sinkronisasi Stok &amp; Kas
           </p>
         </div>
-      </div>
+      </a>
 
       <!-- Right Action Controls -->
       <div class="flex items-center gap-2.5">
         
         <!-- Google Sheets Demo Mode Badge -->
         <button type="button" @click="openSettings = true"
-                class="hidden md:flex items-center gap-2 btn-ghost text-xs"
+                class="hidden md:flex items-center gap-2 btn-ghost text-xs bg-amber-50/70 text-amber-800 border-amber-200 hover:bg-amber-100"
                 title="Status Sinkronisasi Spreadsheet">
-          <span class="dot-pulse bg-amber-400"></span>
+          <span class="dot-pulse bg-amber-500"></span>
           <span>Google Sheets: Demo Mode</span>
         </button>
 
         <!-- Sync Button -->
         <button type="button" @click="refreshSync()" class="icon-btn" title="Sinkronkan dengan Database & Stok">
-          <i class="fa-solid fa-rotate text-xs" :class="isSyncing ? 'fa-spin text-blue-400' : ''"></i>
+          <i class="fa-solid fa-rotate text-xs" :class="isSyncing ? 'fa-spin text-brand' : ''"></i>
         </button>
 
         <!-- Fullscreen Button -->
         <button type="button" @click="toggleFullscreen()" class="icon-btn hidden sm:flex"
                 :title="isFullscreen ? 'Keluar Mode Layar Penuh' : 'Mode Layar Penuh (Fullscreen)'">
-          <i class="fa-solid text-xs" :class="isFullscreen ? 'fa-compress text-blue-400' : 'fa-expand'"></i>
+          <i class="fa-solid text-xs" :class="isFullscreen ? 'fa-compress text-brand' : 'fa-expand'"></i>
         </button>
 
         <!-- Settings Button -->
@@ -554,8 +781,7 @@
         <!-- User Menu Avatar Dropdown -->
         <div class="relative" @click.outside="openUserMenu = false">
           <button type="button" @click="openUserMenu = !openUserMenu"
-                  class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-sm border border-white/10 transition"
-                  style="background: linear-gradient(135deg, #2563eb, #6366f1);"
+                  class="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-md shadow-brand/20 bg-brand hover:bg-[#b01010] transition"
                   title="Menu Pengguna & Switch POV">
             {{ strtoupper(substr(auth()->user()->name ?? 'TK', 0, 2)) }}
           </button>
@@ -565,33 +791,39 @@
                x-transition:enter="transition ease-out duration-100"
                x-transition:enter-start="opacity-0 scale-95"
                x-transition:enter-end="opacity-100 scale-100"
-               class="absolute right-0 top-11 w-64 card p-2 z-50 text-xs shadow-2xl divide-y divide-white/[0.06]">
+               class="absolute right-0 top-12 w-64 card p-2 z-50 text-xs shadow-2xl divide-y divide-gray-100">
             
-            <div class="px-3 py-2">
-              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Masuk Sebagai</span>
-              <span class="font-bold text-white block truncate text-sm">{{ auth()->user()->name }}</span>
-              <span class="text-[11px] text-slate-400 font-mono block truncate">{{ auth()->user()->email }}</span>
+            <div class="px-3 py-2.5">
+              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Masuk Sebagai</span>
+              <span class="font-extrabold text-gray-900 block truncate text-sm">{{ auth()->user()->name }}</span>
+              <span class="text-[11px] text-gray-500 font-mono block truncate">{{ auth()->user()->email }}</span>
             </div>
 
             <div class="py-1.5 space-y-0.5">
               @if(auth()->user()->isAdmin())
                 <a href="{{ route('admin.dashboard') }}"
-                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-white transition">
-                  <i class="fa-solid fa-shield-halved w-4 text-center text-rose-400"></i>
-                  <span class="font-medium">Panel NOC Admin</span>
+                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-brand transition font-medium">
+                  <i class="fa-solid fa-shield-halved w-4 text-center text-brand"></i>
+                  <span>Panel NOC Admin</span>
                 </a>
               @endif
 
               <a href="{{ route('teknisi.dashboard') }}"
-                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-amber-300 transition">
-                <i class="fa-solid fa-screwdriver-wrench w-4 text-center text-amber-400"></i>
-                <span class="font-medium">Portal Teknisi Lapangan</span>
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition font-medium">
+                <i class="fa-solid fa-screwdriver-wrench w-4 text-center text-amber-500"></i>
+                <span>Portal Teknisi Lapangan</span>
               </a>
 
               <a href="{{ route('kolektor.dashboard') }}"
-                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-emerald-300 transition">
-                <i class="fa-solid fa-money-bill-wave w-4 text-center text-emerald-400"></i>
-                <span class="font-medium">Portal Kolektor Lapangan</span>
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition font-medium">
+                <i class="fa-solid fa-money-bill-wave w-4 text-center text-emerald-600"></i>
+                <span>Portal Kolektor Lapangan</span>
+              </a>
+
+              <a href="{{ route('home') }}"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-brand transition font-medium">
+                <i class="fa-solid fa-house w-4 text-center text-brand"></i>
+                <span>Beranda WiFi Banterpool</span>
               </a>
             </div>
 
@@ -599,7 +831,7 @@
               <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition text-left font-medium">
+                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-brand hover:bg-red-50 transition text-left font-bold">
                   <i class="fa-solid fa-arrow-right-from-bracket w-4 text-center"></i>
                   <span>Keluar / Logout</span>
                 </button>
@@ -616,32 +848,34 @@
   <!-- ============================================== -->
   <!-- 2. MAIN CONTENT CONTAINER                      -->
   <!-- ============================================== -->
-  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10">
 
     <!-- Flash Messages -->
     @if(session('success'))
-      <div class="flex items-center gap-3 p-4 rounded-xl text-sm bg-emerald-950/60 border border-emerald-500/30 text-emerald-300"
+      <div class="flex items-center gap-3 p-4 rounded-2xl text-sm bg-emerald-50 border border-emerald-200 text-emerald-800 shadow-xs"
            x-data="{ show: true }" x-show="show">
-        <i class="fa-solid fa-circle-check text-emerald-400 shrink-0 text-base"></i>
-        <span class="flex-1 font-medium">{{ session('success') }}</span>
-        <button type="button" @click="show = false" class="text-emerald-400 hover:text-white">
+        <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-circle-check text-base"></i>
+        </div>
+        <span class="flex-1 font-semibold">{{ session('success') }}</span>
+        <button type="button" @click="show = false" class="text-emerald-500 hover:text-emerald-800">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
     @endif
 
     @if($errors->any())
-      <div class="p-4 rounded-xl text-sm bg-rose-950/60 border border-rose-500/30 text-rose-300"
+      <div class="p-4 rounded-2xl text-sm bg-red-50 border border-red-200 text-red-800 shadow-xs"
            x-data="{ show: true }" x-show="show">
         <div class="flex items-center justify-between mb-2">
-          <span class="font-bold flex items-center gap-2 text-rose-400">
+          <span class="font-extrabold flex items-center gap-2 text-brand">
             <i class="fa-solid fa-triangle-exclamation"></i> Mohon periksa kembali formulir:
           </span>
-          <button type="button" @click="show = false" class="text-rose-400 hover:text-white">
+          <button type="button" @click="show = false" class="text-red-500 hover:text-brand">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
-        <ul class="space-y-1 list-disc list-inside text-xs text-rose-200">
+        <ul class="space-y-1 list-disc list-inside text-xs text-red-700">
           @foreach($errors->all() as $error)
             <li>{{ $error }}</li>
           @endforeach
@@ -650,72 +884,72 @@
     @endif
 
     <!-- ============================================== -->
-    <!-- 3. KPI METRIC CARDS                            -->
+    <!-- 3. KPI METRIC CARDS (CLEAN BANTERPOOL AESTHETICS) -->
     <!-- ============================================== -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
 
-      <!-- Total Pekerjaan Hari Ini -->
+      <!-- Card 1: Total Pekerjaan Hari Ini -->
       <div class="metric-card">
         <div class="flex items-center justify-between mb-3">
           <span class="lbl mb-0">Total Pekerjaan Hari Ini</span>
-          <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-400">
-            <i class="fa-solid fa-briefcase text-xs"></i>
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center bg-red-50 text-brand border border-red-100 shadow-xs">
+            <i class="fa-solid fa-briefcase text-sm"></i>
           </div>
         </div>
         <div class="flex items-baseline justify-between mt-2">
-          <span class="text-3xl font-extrabold text-white tracking-tight">{{ $totalJobsToday }}</span>
-          <span class="text-xs font-bold text-blue-400 flex items-center gap-1">
+          <span class="text-3xl sm:text-4xl font-black text-black tracking-tight leading-none">{{ $totalJobsToday }}</span>
+          <span class="text-xs font-bold text-brand bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
             <i class="fa-solid fa-arrow-trend-up text-[10px]"></i> +{{ $totalJobsToday }}
           </span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-2">Order instalasi &amp; tiket lapangan</p>
+        <p class="text-[11px] text-gray-500 mt-2 font-medium">Order instalasi &amp; tiket lapangan</p>
       </div>
 
-      <!-- Kas Terkumpul (Teknisi) -->
+      <!-- Card 2: Kas Terkumpul (Teknisi) -->
       <div class="metric-card">
         <div class="flex items-center justify-between mb-3">
           <span class="lbl mb-0">Kas Terkumpul (Teknisi)</span>
-          <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-400">
-            <i class="fa-solid fa-wallet text-xs"></i>
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-xs">
+            <i class="fa-solid fa-wallet text-sm"></i>
           </div>
         </div>
         <div class="flex items-baseline justify-between mt-2">
-          <span class="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight">
+          <span class="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight leading-none">
             Rp {{ number_format($cashCollectedToday, 0, ',', '.') }}
           </span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-2">Tunai, QRIS &amp; transfer hari ini</p>
+        <p class="text-[11px] text-gray-500 mt-2 font-medium">Tunai, QRIS &amp; transfer hari ini</p>
       </div>
 
-      <!-- Perlu Penyetoran / Pending -->
+      <!-- Card 3: Perlu Penyetoran / Pending -->
       <div class="metric-card">
         <div class="flex items-center justify-between mb-3">
           <span class="lbl mb-0">Perlu Penyetoran / Pending</span>
-          <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-amber-500/10 text-amber-400">
-            <i class="fa-regular fa-clock text-xs"></i>
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-xs">
+            <i class="fa-regular fa-clock text-sm"></i>
           </div>
         </div>
         <div class="flex items-baseline justify-between mt-2">
-          <span class="text-3xl font-extrabold text-white tracking-tight">{{ $pendingDepositCount }}</span>
-          <span class="badge badge-amber">Belum Setor</span>
+          <span class="text-3xl sm:text-4xl font-black text-black tracking-tight leading-none">{{ $pendingDepositCount }}</span>
+          <span class="badge badge-amber font-bold">Belum Setor</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-2">Menunggu konfirmasi setor ke admin</p>
+        <p class="text-[11px] text-gray-500 mt-2 font-medium">Menunggu konfirmasi setor ke admin</p>
       </div>
 
-      <!-- Est. Biaya Material (Hari Ini) -->
+      <!-- Card 4: Est. Biaya Material (Hari Ini) -->
       <div class="metric-card">
         <div class="flex items-center justify-between mb-3">
           <span class="lbl mb-0">Est. Biaya Material (Hari Ini)</span>
-          <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-indigo-500/10 text-indigo-400">
-            <i class="fa-solid fa-boxes-stacked text-xs"></i>
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center bg-red-50 text-brand border border-red-100 shadow-xs">
+            <i class="fa-solid fa-boxes-stacked text-sm"></i>
           </div>
         </div>
         <div class="flex items-baseline justify-between mt-2">
-          <span class="text-2xl sm:text-3xl font-extrabold text-indigo-300 tracking-tight">
+          <span class="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-none">
             Rp {{ number_format($materialCostToday, 0, ',', '.') }}
           </span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-2">Estimasi pemakaian material harian</p>
+        <p class="text-[11px] text-gray-500 mt-2 font-medium">Estimasi pemakaian material harian</p>
       </div>
 
     </div>
@@ -726,13 +960,15 @@
     <div class="card card-lg p-6 sm:p-8">
 
       <!-- Form Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/[0.08] mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-200 mb-6">
         <div>
-          <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2.5">
-            <i class="fa-solid fa-pen-to-square text-blue-400"></i>
+          <h2 class="text-lg sm:text-xl font-black text-black flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm shadow-xs border border-red-100">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </span>
             <span>Input Laporan & Pembukuan</span>
           </h2>
-          <p class="text-xs text-slate-400 mt-0.5">
+          <p class="text-xs text-gray-500 mt-1 font-medium">
             Pencatatan aktivitas pekerjaan, kredensial ONT, biaya material & kas lapangan
           </p>
         </div>
@@ -742,18 +978,18 @@
           @if($recentOrders->isNotEmpty())
             <div class="relative" x-data="{ openPick: false }">
               <button type="button" @click="openPick = !openPick"
-                      class="btn-ghost flex items-center gap-2 text-xs">
-                <i class="fa-solid fa-bolt text-amber-400"></i>
+                      class="btn-ghost flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-brand hover:border-brand/40">
+                <i class="fa-solid fa-bolt text-brand"></i>
                 <span>Pilih Tiket Pemasangan</span>
                 <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
               </button>
               <div x-show="openPick" @click.outside="openPick = false" x-cloak
-                   class="absolute right-0 z-30 mt-2 w-72 card p-2 text-xs divide-y divide-white/[0.06] max-h-64 overflow-y-auto shadow-2xl">
+                   class="absolute right-0 z-30 mt-2 w-80 card p-2 text-xs divide-y divide-gray-100 max-h-72 overflow-y-auto shadow-2xl">
                 @foreach($recentOrders as $ro)
                   <button type="button" @click="autofillFromOrder({{ Js::from($ro) }}); openPick = false"
-                          class="w-full text-left p-2.5 rounded-lg hover:bg-white/5 transition flex flex-col gap-0.5">
-                    <span class="font-bold text-white">{{ $ro->order_number }} — {{ $ro->customer_name }}</span>
-                    <span class="text-[10px] text-slate-400 truncate">{{ $ro->address }}</span>
+                          class="w-full text-left p-2.5 rounded-xl hover:bg-red-50/60 transition flex flex-col gap-0.5 group">
+                    <span class="font-extrabold text-gray-900 group-hover:text-brand">{{ $ro->order_number }} — {{ $ro->customer_name }}</span>
+                    <span class="text-[10px] text-gray-500 truncate">{{ $ro->address }}</span>
                   </button>
                 @endforeach
               </div>
@@ -773,54 +1009,52 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label class="lbl">
-              <i class="fa-regular fa-calendar text-slate-400"></i> Hari & Tanggal
+              <i class="fa-regular fa-calendar text-brand"></i> Hari & Tanggal
             </label>
-            <input type="date" name="report_date" x-model="reportDate" required class="inp">
+            <input type="date" name="report_date" x-model="reportDate" required class="inp font-medium">
           </div>
 
           <div>
             <label class="lbl">
-              <i class="fa-solid fa-helmet-safety text-slate-400"></i> Nama Teknisi
+              <i class="fa-solid fa-helmet-safety text-brand"></i> Nama Teknisi
             </label>
-            <input type="text" name="technician_name" x-model="technicianName" required placeholder="Nama Teknisi Lapangan" class="inp">
+            <input type="text" name="technician_name" x-model="technicianName" required placeholder="Nama Teknisi Lapangan" class="inp font-medium">
           </div>
         </div>
 
-        <!-- Baris 2: Mitra Perusahaan & Tipe Pekerjaan (Dropdown Fixed Visibility) -->
+        <!-- Baris 2: Mitra Perusahaan & Tipe Pekerjaan -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label class="lbl">
-              <i class="fa-solid fa-building text-slate-400"></i> Perusahaan / PT Mitra (ISP)
+              <i class="fa-solid fa-building text-brand"></i> Perusahaan / PT Mitra (ISP)
             </label>
             <div class="relative">
               <select name="partner_company" x-model="partnerCompany" required
-                      class="inp pr-9 font-medium"
-                      style="background-color: #0f172a; color: #f8fafc;">
+                      class="inp pr-9 font-semibold text-gray-800">
                 @foreach($partners as $p)
-                  <option value="{{ $p }}" class="bg-slate-900 text-slate-100 py-1.5" style="background-color: #0f172a; color: #f8fafc;">
+                  <option value="{{ $p }}">
                     {{ $p }}
                   </option>
                 @endforeach
               </select>
-              <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+              <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
             </div>
           </div>
 
           <div>
             <label class="lbl">
-              <i class="fa-solid fa-wrench text-slate-400"></i> Tipe Pekerjaan
+              <i class="fa-solid fa-wrench text-brand"></i> Tipe Pekerjaan
             </label>
             <div class="relative">
               <select name="job_type" x-model="jobType" required
-                      class="inp pr-9 font-medium"
-                      style="background-color: #0f172a; color: #f8fafc;">
+                      class="inp pr-9 font-semibold text-gray-800">
                 @foreach($jobTypes as $jt)
-                  <option value="{{ $jt }}" class="bg-slate-900 text-slate-100 py-1.5" style="background-color: #0f172a; color: #f8fafc;">
+                  <option value="{{ $jt }}">
                     {{ $jt }}
                   </option>
                 @endforeach
               </select>
-              <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+              <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
             </div>
           </div>
         </div>
@@ -830,36 +1064,36 @@
         <!-- ========================================== -->
         <div class="pt-2">
           <p class="section-title">
-            <i class="fa-regular fa-id-card text-blue-400"></i>
+            <i class="fa-regular fa-id-card text-brand"></i>
             <span>Informasi Pelanggan & Kredensial</span>
           </p>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label class="lbl">Nama Pelanggan / ID</label>
-              <input type="text" name="customer_name" x-model="customerName" required placeholder="Bpk Herman / CST-109" class="inp">
+              <input type="text" name="customer_name" x-model="customerName" required placeholder="Bpk Herman / CST-109" class="inp font-semibold">
             </div>
 
             <div>
               <label class="lbl">Nomor HP / WhatsApp</label>
-              <input type="text" name="customer_phone" x-model="customerPhone" placeholder="08xxxxxxxxxx" class="inp">
+              <input type="text" name="customer_phone" x-model="customerPhone" placeholder="08xxxxxxxxxx" class="inp font-medium">
             </div>
 
             <div class="sm:col-span-2">
               <label class="lbl">Alamat Lengkap</label>
-              <input type="text" name="customer_address" x-model="customerAddress" placeholder="Jl. Merdeka No. 45, Purwokerto" class="inp">
+              <input type="text" name="customer_address" x-model="customerAddress" placeholder="Jl. Merdeka No. 45, Purwokerto" class="inp font-medium">
             </div>
 
             <div>
               <label class="lbl">Secret PPPoE (Username)</label>
               <input type="text" name="pppoe_username" x-model="pppoeUsername" placeholder="herman_net"
-                     class="inp font-mono" style="color: #93c5fd;">
+                     class="inp font-mono font-semibold text-brand">
             </div>
 
             <div>
               <label class="lbl">ID ODP & Port</label>
               <input type="text" name="odp_port" x-model="odpPort" placeholder="ODP-TMB-04 / Port 2"
-                     class="inp font-mono" style="color: #93c5fd;">
+                     class="inp font-mono font-semibold text-gray-900">
             </div>
           </div>
         </div>
@@ -869,7 +1103,7 @@
         <!-- ========================================== -->
         <div class="pt-2">
           <p class="section-title">
-            <i class="fa-solid fa-microchip text-indigo-400"></i>
+            <i class="fa-solid fa-microchip text-brand"></i>
             <span>Parameter Teknis & Harga Material</span>
           </p>
 
@@ -877,159 +1111,213 @@
             <div>
               <label class="lbl">Rx Power (dBm)</label>
               <input type="text" name="rx_power" x-model="rxPower" placeholder="-19.5"
-                     class="inp font-mono font-bold" style="color: #fbbf24;">
+                     class="inp font-mono font-bold text-amber-700">
             </div>
 
             <div>
               <label class="lbl">SN Perangkat ONT</label>
               <input type="text" name="ont_sn" x-model="ontSn" placeholder="ZTEGC819A2B"
-                     class="inp font-mono font-bold" style="color: #93c5fd;">
+                     class="inp font-mono font-bold text-gray-900">
             </div>
           </div>
 
           <!-- KATALOG MATERIAL (Sinkron dengan Stok Admin + Edit Manual + Tambah Manual) -->
-          <div class="p-5 rounded-2xl bg-[#090e1a] border border-white/[0.08] space-y-4">
+          <div class="p-5 rounded-2xl bg-gray-50/70 border border-gray-200 space-y-4">
             
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
-              <div class="flex items-center gap-2">
-                <i class="fa-solid fa-boxes-stacked text-blue-400"></i>
-                <span class="font-bold text-white text-sm">Katalog Material & Harga Satuan</span>
-                <span class="text-[10px] text-slate-400 hidden sm:inline">(Stok Barang POV Admin)</span>
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-200">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-red-50 text-brand flex items-center justify-center text-xs border border-red-100">
+                  <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+                <div>
+                  <span class="font-extrabold text-black text-sm block">Katalog Material & Harga Satuan</span>
+                  <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      <i class="fa-solid fa-arrow-down-long text-[9px] text-emerald-600"></i>
+                      Barang Masuk: {{ $currentMonthName ?? 'Bulan Sekarang' }}
+                    </span>
+                    <span class="text-[10px] text-gray-500 font-medium">(Sinkron Log Mutasi Stok POV Admin)</span>
+                  </div>
+                </div>
               </div>
 
               <div class="flex items-center gap-2.5 flex-wrap">
                 <!-- Total Biaya Badge -->
-                <span class="text-xs font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-500/30 px-3 py-1.5 rounded-xl">
+                <span class="text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl shadow-xs">
                   Total Est: <span x-text="rp(totalMaterialCost)"></span>
                 </span>
 
                 <!-- Tambah Barang Manual Button -->
                 <button type="button" @click="openAddMaterialModal = true"
-                        class="btn-ghost flex items-center gap-1.5 text-xs py-1.5 px-3 border-blue-500/40 text-blue-300 hover:text-white hover:bg-blue-600/20">
+                        class="btn-ghost flex items-center gap-1.5 text-xs py-1.5 px-3 border-red-200 text-brand hover:bg-red-50 font-bold">
                   <i class="fa-solid fa-plus text-[11px]"></i>
                   <span>Tambah Barang Manual</span>
                 </button>
               </div>
             </div>
 
-            <!-- Category Filter Bar (Samakan dengan Stok Admin) -->
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-              <span class="text-[11px] font-bold text-slate-400 shrink-0 uppercase tracking-wider">
-                Kategori:
-              </span>
-              <button type="button" @click="selectedCategoryFilter = 'all'"
-                      class="px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition"
-                      :class="selectedCategoryFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-400 hover:text-white'">
-                Semua Kategori ({{ count($defaultCatalog) }}+)
-              </button>
-              <template x-for="cat in stockCategories" :key="cat">
-                <button type="button" @click="selectedCategoryFilter = cat"
-                        class="px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition"
-                        :class="selectedCategoryFilter === cat ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-400 hover:text-white'"
-                        x-text="cat">
-                </button>
-              </template>
-            </div>
-
-            <!-- List of Materials (Editable in-place) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-              <template x-for="(item, index) in filteredCatalog" :key="item.key">
-                <div class="mat-card flex flex-col justify-between gap-2.5"
-                     :class="item.checked ? 'checked' : ''">
+            <!-- Kategori-Kategori Tersusun 2 Berjejer Mengikuti Urutan Stok Barang -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 items-start">
+              <template x-for="group in categorizedCatalog" :key="group.name">
+                <div class="p-4 sm:p-5 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-3 flex flex-col justify-between">
                   
-                  <!-- Normal View (When not in edit mode) -->
-                  <div x-show="!item.isEditing">
-                    <div class="flex items-start justify-between gap-2">
-                      
-                      <!-- Checkbox & Name -->
-                      <label class="flex items-start gap-3 cursor-pointer flex-1 min-w-0 select-none">
-                        <input type="checkbox" x-model="item.checked"
-                               class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-slate-700 mt-0.5 accent-blue-600 shrink-0">
-                        <div class="min-w-0">
-                          <p class="text-xs font-bold truncate leading-tight"
-                             :class="item.checked ? 'text-white' : 'text-slate-300'"
-                             x-text="item.name"></p>
-                          <div class="flex items-center gap-2 mt-1 flex-wrap">
-                            <span class="badge badge-slate text-[9px] py-0.5 px-2 font-medium truncate max-w-[170px]" x-text="item.category"></span>
-                            <span class="text-[11px] font-mono" style="color: #94a3b8;" x-text="rp(item.price) + ' / ' + item.unit"></span>
-                          </div>
+                  <!-- Header Kategori -->
+                  <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-gray-100">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <div class="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center text-sm border border-gray-200/80 shadow-xs shrink-0">
+                        <i :class="getCategoryIcon(group.name)"></i>
+                      </div>
+                      <div class="min-w-0">
+                        <h4 class="font-extrabold text-xs sm:text-sm text-gray-900 tracking-tight truncate" x-text="group.name"></h4>
+                        <div class="flex items-center gap-2 mt-0.5">
+                          <span class="text-[10px] text-gray-400 font-semibold shrink-0" x-text="group.items.length + ' item'"></span>
+                          <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0"
+                                x-show="group.items.some(i => i.checked && Number(i.qty) > 0)">
+                            <i class="fa-solid fa-check text-[8px]"></i> Digunakan
+                          </span>
                         </div>
-                      </label>
-
-                      <!-- Action Buttons: Edit & Delete -->
-                      <div class="flex items-center gap-1 shrink-0">
-                        <button type="button" @click="toggleEditMaterial(item)"
-                                class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-400 hover:bg-white/5 transition"
-                                title="Edit Manual Barang & Harga">
-                          <i class="fa-solid fa-pen text-[10px]"></i>
-                        </button>
-                        <button type="button" @click="deleteMaterial(index)"
-                                class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
-                                title="Hapus dari Daftar">
-                          <i class="fa-regular fa-trash-can text-[10px]"></i>
-                        </button>
-                      </div>
-
-                    </div>
-
-                    <!-- Quantity Input & Subtotal (Visible when checked) -->
-                    <div class="flex items-center justify-between pt-2 mt-2 border-t border-white/[0.04]" x-show="item.checked" x-cloak>
-                      <span class="text-[11px] text-slate-400">
-                        Subtotal: <strong class="text-emerald-400" x-text="rp(item.price * item.qty)"></strong>
-                      </span>
-                      <div class="flex items-center gap-1.5">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase">Qty:</span>
-                        <input type="number" x-model="item.qty" min="1" step="any"
-                               class="w-16 inp text-center py-1 px-1.5 text-xs font-bold font-mono">
-                        <span class="text-[11px] text-slate-400 font-semibold" x-text="item.unit"></span>
                       </div>
                     </div>
+
+                    <!-- Quick Button Tambah Barang di Kategori Ini -->
+                    <button type="button" @click="openAddForCategory(group.name)"
+                            class="btn-ghost flex items-center gap-1.5 text-[11px] py-1 px-2.5 text-gray-600 hover:text-brand hover:border-red-200 font-bold shrink-0"
+                            title="Tambah barang khusus kategori ini">
+                      <i class="fa-solid fa-plus text-[10px] text-brand"></i>
+                      <span class="hidden sm:inline">Tambah</span>
+                    </button>
                   </div>
 
-                  <!-- Inline Edit View (When user clicks Edit Manual) -->
-                  <div x-show="item.isEditing" x-cloak class="p-2.5 rounded-xl bg-slate-900 border border-blue-500/30 space-y-2.5">
-                    <div class="flex items-center justify-between pb-1 border-b border-white/[0.06]">
-                      <span class="text-[11px] font-bold text-blue-400 flex items-center gap-1">
-                        <i class="fa-solid fa-pen-to-square"></i> Edit Manual Material
-                      </span>
-                      <button type="button" @click="toggleEditMaterial(item)"
-                              class="text-[11px] font-bold text-emerald-400 hover:underline flex items-center gap-1">
-                        <i class="fa-solid fa-check"></i> Selesai
-                      </button>
-                    </div>
+                  <!-- Daftar Barang dalam Kategori Ini (Rapi Menyesuaikan Kartu 2 Berjejer) -->
+                  <div class="space-y-2.5 pt-1">
+                    <template x-for="item in group.items" :key="item.key">
+                      <div class="mat-card flex flex-col justify-between gap-2.5"
+                           :class="item.checked ? 'checked' : ''">
+                        
+                        <!-- Normal View (When not in edit mode) -->
+                        <div x-show="!item.isEditing">
+                          <div class="flex items-start justify-between gap-2">
+                            
+                            <!-- Checkbox & Name -->
+                            <label class="flex items-start gap-3 cursor-pointer flex-1 min-w-0 select-none">
+                              <input type="checkbox" x-model="item.checked"
+                                     class="w-4 h-4 rounded text-brand border-gray-300 mt-0.5 accent-brand shrink-0 focus:ring-brand">
+                              <div class="min-w-0">
+                                <p class="text-xs font-extrabold truncate leading-tight"
+                                   :class="item.checked ? 'text-black' : 'text-gray-800'"
+                                   x-text="item.name"></p>
+                                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                  <span class="text-[11px] font-mono font-medium text-gray-500" x-text="rp(item.price) + ' / ' + item.unit"></span>
+                                  <template x-if="item.max_qty !== undefined && item.max_qty !== null">
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md"
+                                          :title="'Batas stok barang masuk periode ini: ' + item.max_qty + ' ' + item.unit">
+                                      <i class="fa-solid fa-boxes-stacked text-[9px] text-amber-600"></i>
+                                      Stok Masuk: <span x-text="item.max_qty + ' ' + item.unit"></span>
+                                    </span>
+                                  </template>
+                                </div>
+                              </div>
+                            </label>
 
-                    <div>
-                      <label class="text-[10px] font-bold text-slate-400 block mb-1">Nama Barang:</label>
-                      <input type="text" x-model="item.name" class="inp py-1.5 text-xs">
-                    </div>
+                            <!-- Action Buttons: Edit & Delete -->
+                            <div class="flex items-center gap-1 shrink-0">
+                              <button type="button" @click="toggleEditMaterial(item)"
+                                      class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-brand hover:bg-red-50 transition"
+                                      title="Edit Manual Barang & Harga">
+                                <i class="fa-solid fa-pen text-[10px]"></i>
+                              </button>
+                              <button type="button" @click="deleteMaterial(item)"
+                                      class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-brand hover:bg-red-50 transition"
+                                      title="Hapus dari Daftar">
+                                <i class="fa-regular fa-trash-can text-[10px]"></i>
+                              </button>
+                            </div>
 
-                    <div class="grid grid-cols-2 gap-2">
-                      <div>
-                        <label class="text-[10px] font-bold text-slate-400 block mb-1">Kategori:</label>
-                        <select x-model="item.category" class="inp py-1.5 text-xs" style="background-color: #0f172a; color: #f8fafc;">
-                          <template x-for="cat in stockCategories" :key="cat">
-                            <option :value="cat" x-text="cat" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;"></option>
-                          </template>
-                        </select>
+                          </div>
+
+                          <!-- Quantity Input & Subtotal (Visible when checked) -->
+                          <div class="flex items-center justify-between pt-2 mt-2 border-t border-gray-100" x-show="item.checked" x-cloak>
+                            <div class="flex flex-col min-w-0">
+                              <span class="text-[11px] text-gray-600 font-medium">
+                                Subtotal: <strong class="text-emerald-700 font-extrabold" x-text="rp(item.price * item.qty)"></strong>
+                              </span>
+                              <template x-if="item.max_qty !== undefined && item.max_qty !== null">
+                                <span class="text-[9px] text-gray-400 font-medium mt-0.5"
+                                      :class="Number(item.qty) >= Number(item.max_qty) ? 'text-amber-600 font-bold' : ''">
+                                  Batas: <span x-text="'Maks. ' + item.max_qty + ' ' + item.unit"></span>
+                                </span>
+                              </template>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                              <span class="text-[10px] text-gray-500 font-bold uppercase">Qty:</span>
+                              <input type="number" x-model="item.qty" min="1" step="any"
+                                     :max="item.max_qty || null"
+                                     @input="if (item.max_qty !== undefined && item.max_qty !== null && Number(item.qty) > Number(item.max_qty)) { item.qty = item.max_qty; }"
+                                     @change="validateItemQty(item)"
+                                     class="w-16 inp text-center py-1 px-1.5 text-xs font-bold font-mono"
+                                     :class="item.max_qty && Number(item.qty) >= Number(item.max_qty) ? 'border-amber-400 bg-amber-50/40' : ''">
+                              <span class="text-[11px] text-gray-600 font-semibold" x-text="item.unit"></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Inline Edit View (When user clicks Edit Manual) -->
+                        <div x-show="item.isEditing" x-cloak class="p-3 rounded-xl bg-white border border-red-200 shadow-xs space-y-2.5">
+                          <div class="flex items-center justify-between pb-1.5 border-b border-gray-100">
+                            <span class="text-[11px] font-extrabold text-brand flex items-center gap-1">
+                              <i class="fa-solid fa-pen-to-square"></i> Edit Manual Material
+                            </span>
+                            <button type="button" @click="toggleEditMaterial(item)"
+                                    class="text-[11px] font-extrabold text-emerald-700 hover:underline flex items-center gap-1">
+                              <i class="fa-solid fa-check"></i> Selesai
+                            </button>
+                          </div>
+
+                          <div>
+                            <label class="text-[10px] font-bold text-gray-600 block mb-1">Nama Barang:</label>
+                            <input type="text" x-model="item.name" class="inp py-1.5 text-xs">
+                          </div>
+
+                          <div class="grid grid-cols-2 gap-2">
+                            <div>
+                              <label class="text-[10px] font-bold text-gray-600 block mb-1">Kategori:</label>
+                              <select x-model="item.category" class="inp py-1.5 text-xs">
+                                <template x-for="cat in stockCategories" :key="cat">
+                                  <option :value="cat" x-text="cat"></option>
+                                </template>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label class="text-[10px] font-bold text-gray-600 block mb-1">Satuan:</label>
+                              <input type="text" x-model="item.unit" placeholder="m, pcs, unit, roll" class="inp py-1.5 text-xs">
+                            </div>
+                          </div>
+
+                          <div class="grid grid-cols-2 gap-2">
+                            <div>
+                              <label class="text-[10px] font-bold text-gray-600 block mb-1">Harga Satuan (Rp):</label>
+                              <input type="number" x-model="item.price" min="0" step="500" class="inp py-1.5 text-xs font-mono font-bold">
+                            </div>
+
+                            <div>
+                              <div class="flex items-center justify-between mb-1">
+                                <label class="text-[10px] font-bold text-gray-600 block">Jumlah (Qty):</label>
+                                <template x-if="item.max_qty !== undefined && item.max_qty !== null">
+                                  <span class="text-[9px] text-amber-700 font-bold" x-text="'Maks. ' + item.max_qty + ' ' + item.unit"></span>
+                                </template>
+                              </div>
+                              <input type="number" x-model="item.qty" min="1" step="any"
+                                     :max="item.max_qty || null"
+                                     @input="if (item.max_qty !== undefined && item.max_qty !== null && Number(item.qty) > Number(item.max_qty)) { item.qty = item.max_qty; }"
+                                     @change="validateItemQty(item)"
+                                     class="inp py-1.5 text-xs font-mono font-bold">
+                            </div>
+                          </div>
+                        </div>
+
                       </div>
-
-                      <div>
-                        <label class="text-[10px] font-bold text-slate-400 block mb-1">Satuan:</label>
-                        <input type="text" x-model="item.unit" placeholder="m, pcs, unit, roll" class="inp py-1.5 text-xs">
-                      </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                      <div>
-                        <label class="text-[10px] font-bold text-slate-400 block mb-1">Harga Satuan (Rp):</label>
-                        <input type="number" x-model="item.price" min="0" step="500" class="inp py-1.5 text-xs font-mono">
-                      </div>
-
-                      <div>
-                        <label class="text-[10px] font-bold text-slate-400 block mb-1">Jumlah (Qty):</label>
-                        <input type="number" x-model="item.qty" min="1" step="any" class="inp py-1.5 text-xs font-mono">
-                      </div>
-                    </div>
+                    </template>
                   </div>
 
                 </div>
@@ -1044,9 +1332,9 @@
             </div>
 
             <!-- Dynamic Rincian Preview Box -->
-            <div class="p-3 rounded-xl bg-slate-950/80 border border-white/[0.06] text-xs leading-relaxed">
-              <span class="text-blue-400 font-bold">Rincian: </span>
-              <span class="text-slate-300 font-medium" x-text="materialSummary"></span>
+            <div class="p-3.5 rounded-xl bg-white border border-gray-200 text-xs leading-relaxed shadow-xs">
+              <span class="text-brand font-black">Rincian: </span>
+              <span class="text-gray-700 font-medium" x-text="materialSummary"></span>
             </div>
 
           </div>
@@ -1057,7 +1345,7 @@
         <!-- ========================================== -->
         <div class="pt-2">
           <p class="section-title">
-            <i class="fa-solid fa-money-check-dollar text-emerald-400"></i>
+            <i class="fa-solid fa-money-check-dollar text-emerald-600"></i>
             <span>Pembukuan / Transaksi Lapangan</span>
           </p>
 
@@ -1066,36 +1354,34 @@
               <label class="lbl">Jenis Transaksi</label>
               <div class="relative">
                 <select name="transaction_type" x-model="transactionType" required
-                        class="inp pr-9 font-medium"
-                        style="background-color: #0f172a; color: #f8fafc;">
-                  <option value="Biaya Pasang Baru (PSB)" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">Biaya Pasang Baru (PSB)</option>
-                  <option value="Biaya Perbaikan / Visit" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">Biaya Perbaikan / Visit</option>
-                  <option value="Penjualan Router / ONT Tambahan" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">Penjualan Router / ONT Tambahan</option>
-                  <option value="Penjualan Kabel FO Tambahan" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">Penjualan Kabel FO Tambahan</option>
-                  <option value="Bebas Biaya / Free Garansi" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">Bebas Biaya / Free Garansi</option>
+                        class="inp pr-9 font-semibold text-gray-800">
+                  <option value="Biaya Pasang Baru (PSB)">Biaya Pasang Baru (PSB)</option>
+                  <option value="Biaya Perbaikan / Visit">Biaya Perbaikan / Visit</option>
+                  <option value="Penjualan Router / ONT Tambahan">Penjualan Router / ONT Tambahan</option>
+                  <option value="Penjualan Kabel FO Tambahan">Penjualan Kabel FO Tambahan</option>
+                  <option value="Bebas Biaya / Free Garansi">Bebas Biaya / Free Garansi</option>
                 </select>
-                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
               </div>
             </div>
 
             <div>
               <label class="lbl">Nominal Kas (Rp)</label>
               <input type="number" name="cash_amount" x-model="cashAmount" required min="0" step="1000"
-                     class="inp font-mono font-bold" style="color: #34d399;">
+                     class="inp font-mono font-black text-emerald-600 text-base">
             </div>
 
             <div>
               <label class="lbl">Metode Bayar</label>
               <div class="relative">
                 <select name="payment_method" x-model="paymentMethod" required
-                        class="inp pr-9 font-medium"
-                        style="background-color: #0f172a; color: #f8fafc;">
-                  <option value="Tunai (Cash)" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">💵 Tunai (Cash)</option>
-                  <option value="QRIS" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">📱 QRIS</option>
-                  <option value="Transfer Bank" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">🏦 Transfer Bank</option>
-                  <option value="Non-Tunai / Bebas Biaya" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">🆓 Non-Tunai / Bebas Biaya</option>
+                        class="inp pr-9 font-semibold text-gray-800">
+                  <option value="Tunai (Cash)">💵 Tunai (Cash)</option>
+                  <option value="QRIS">📱 QRIS</option>
+                  <option value="Transfer Bank">🏦 Transfer Bank</option>
+                  <option value="Non-Tunai / Bebas Biaya">🆓 Non-Tunai / Bebas Biaya</option>
                 </select>
-                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
               </div>
             </div>
 
@@ -1103,26 +1389,25 @@
               <label class="lbl">Status Setor Kas</label>
               <div class="relative">
                 <select name="cash_deposit_status" x-model="cashDepositStatus" required
-                        class="inp pr-9 font-medium"
-                        style="background-color: #0f172a; color: #f8fafc;">
-                  <option value="Belum Disetor" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">⏳ Belum Disetor</option>
-                  <option value="Sudah Disetor" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">✅ Sudah Disetor</option>
+                        class="inp pr-9 font-semibold text-gray-800">
+                  <option value="Belum Disetor">⏳ Belum Disetor</option>
+                  <option value="Sudah Disetor">✅ Sudah Disetor</option>
                 </select>
-                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
               </div>
             </div>
 
             <div class="sm:col-span-2">
               <label class="lbl">Catatan Tambahan (Opsional)</label>
-              <input type="text" name="notes" placeholder="Catatan pekerjaan atau kendala di lapangan" class="inp">
+              <input type="text" name="notes" placeholder="Catatan pekerjaan atau kendala di lapangan" class="inp font-medium">
             </div>
           </div>
         </div>
 
-        <!-- Submit Button -->
+        <!-- Submit Button (Matching Banterpool Brand CTA) -->
         <div class="pt-3">
           <button type="submit"
-                  class="btn-primary w-full flex items-center justify-center gap-2.5 text-sm sm:text-base py-3.5 shadow-lg shadow-blue-600/25">
+                  class="btn-primary w-full flex items-center justify-center gap-2.5 text-sm sm:text-base py-3.5 rounded-xl shadow-lg shadow-brand/25">
             <i class="fa-solid fa-paper-plane text-sm"></i>
             <span>Simpan & Kirim ke Spreadsheet</span>
           </button>
@@ -1143,7 +1428,7 @@
         <form method="GET" action="{{ route('daily-report.index') }}" class="flex-1 flex items-center gap-2">
           <input type="hidden" name="tab" :value="activeTab">
           <div class="relative flex-1">
-            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
             <input type="text" name="q" value="{{ $search }}" placeholder="Cari Pelanggan, PPPoE, Alamat, atau Mitra..."
                    class="inp pl-9 text-xs">
           </div>
@@ -1151,18 +1436,17 @@
           <!-- Filter Job Type Dropdown -->
           <div class="relative w-48 sm:w-60">
             <select name="job_type" onchange="this.form.submit()"
-                    class="inp pr-8 text-xs font-medium"
-                    style="background-color: #0f172a; color: #f8fafc;">
-              <option value="all" {{ $jobTypeFilter === 'all' ? 'selected' : '' }} class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">
+                    class="inp pr-8 text-xs font-semibold text-gray-800">
+              <option value="all" {{ $jobTypeFilter === 'all' ? 'selected' : '' }}>
                 Semua Tipe Pekerjaan
               </option>
               @foreach($jobTypes as $jt)
-                <option value="{{ $jt }}" {{ $jobTypeFilter === $jt ? 'selected' : '' }} class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">
+                <option value="{{ $jt }}" {{ $jobTypeFilter === $jt ? 'selected' : '' }}>
                   {{ $jt }}
                 </option>
               @endforeach
             </select>
-            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[10px]"></i>
+            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[10px]"></i>
           </div>
 
           @if(!empty($search) || $jobTypeFilter !== 'all')
@@ -1173,25 +1457,25 @@
         </form>
 
         <!-- Export CSV Button -->
-        <a href="{{ route('daily-report.export') }}" class="btn-ghost flex items-center gap-2 text-xs shrink-0">
-          <i class="fa-solid fa-file-csv text-emerald-400 text-sm"></i>
+        <a href="{{ route('daily-report.export') }}" class="btn-ghost flex items-center gap-2 text-xs font-bold text-emerald-700 border-emerald-200 hover:bg-emerald-50 shrink-0 shadow-xs">
+          <i class="fa-solid fa-file-csv text-base text-emerald-600"></i>
           <span>Export Spreadsheet</span>
         </a>
 
       </div>
 
       <!-- Tabs Navigation -->
-      <div class="flex items-center gap-6 border-b border-white/[0.08] mb-6">
+      <div class="flex items-center gap-6 border-b border-gray-200 mb-6">
         <button type="button" class="tab-btn" :class="activeTab === 'jobs' ? 'active' : ''" @click="activeTab = 'jobs'">
-          <i class="fa-solid fa-wrench text-blue-400"></i>
+          <i class="fa-solid fa-wrench" :class="activeTab === 'jobs' ? 'text-brand' : 'text-gray-400'"></i>
           <span>Log Pekerjaan Teknis</span>
-          <span class="badge" :class="activeTab === 'jobs' ? 'badge-blue' : 'badge-slate'">
+          <span class="badge" :class="activeTab === 'jobs' ? 'badge-brand' : 'badge-slate'">
             {{ $reports->total() }}
           </span>
         </button>
 
         <button type="button" class="tab-btn" :class="activeTab === 'cash' ? 'active' : ''" @click="activeTab = 'cash'">
-          <i class="fa-solid fa-wallet text-emerald-400"></i>
+          <i class="fa-solid fa-wallet" :class="activeTab === 'cash' ? 'text-emerald-600' : 'text-gray-400'"></i>
           <span>Pembukuan Kas Lapangan</span>
           <span class="badge" :class="activeTab === 'cash' ? 'badge-green' : 'badge-slate'">
             {{ $cashTransactions->total() }}
@@ -1218,50 +1502,50 @@
             @forelse($reports as $r)
               <tr>
                 <td class="whitespace-nowrap">
-                  <span class="font-bold text-white block">{{ $r->report_date ? $r->report_date->format('d/m/Y') : '-' }}</span>
-                  <span class="text-[11px] text-blue-400 font-semibold block">{{ $r->partner_company }}</span>
-                  <span class="text-[10px] text-slate-400 block">Oleh: {{ $r->technician_name }}</span>
+                  <span class="font-extrabold text-gray-900 block">{{ $r->report_date ? $r->report_date->format('d/m/Y') : '-' }}</span>
+                  <span class="text-[11px] text-brand font-bold block">{{ $r->partner_company }}</span>
+                  <span class="text-[10px] text-gray-500 block">Oleh: {{ $r->technician_name }}</span>
                 </td>
 
                 <td>
-                  <span class="font-bold text-white block">{{ $r->customer_name }}</span>
-                  <span class="text-[11px] text-slate-400 block font-mono">{{ $r->pppoe_username ?: '-' }}</span>
-                  <span class="text-[10px] text-slate-400 block truncate max-w-[200px]">{{ $r->customer_address }}</span>
+                  <span class="font-extrabold text-gray-900 block">{{ $r->customer_name }}</span>
+                  <span class="text-[11px] text-gray-500 block font-mono font-medium">{{ $r->pppoe_username ?: '-' }}</span>
+                  <span class="text-[10px] text-gray-400 block truncate max-w-[200px]">{{ $r->customer_address }}</span>
                 </td>
 
                 <td class="whitespace-nowrap">
-                  <span class="badge badge-slate">{{ $r->job_type }}</span>
-                  <span class="text-[10px] text-slate-400 block mt-1 font-mono">{{ $r->odp_port ?: '-' }}</span>
+                  <span class="badge badge-slate font-semibold">{{ $r->job_type }}</span>
+                  <span class="text-[10px] text-gray-500 block mt-1 font-mono font-medium">{{ $r->odp_port ?: '-' }}</span>
                 </td>
 
                 <td class="whitespace-nowrap">
-                  <span class="font-mono font-bold text-amber-300 block">{{ $r->rx_power ? $r->rx_power . ' dBm' : '-' }}</span>
-                  <span class="text-[10px] text-slate-400 font-mono block">{{ $r->ont_sn ?: '-' }}</span>
+                  <span class="font-mono font-bold text-amber-700 block">{{ $r->rx_power ? $r->rx_power . ' dBm' : '-' }}</span>
+                  <span class="text-[10px] text-gray-500 font-mono block">{{ $r->ont_sn ?: '-' }}</span>
                 </td>
 
                 <td class="whitespace-nowrap">
-                  <span class="font-bold text-indigo-300 block">{{ $r->formatted_material_cost }}</span>
-                  <span class="text-[10px] text-slate-400 block truncate max-w-[170px]" title="{{ $r->materials_summary_text }}">
+                  <span class="font-extrabold text-gray-900 block">{{ $r->formatted_material_cost }}</span>
+                  <span class="text-[10px] text-gray-500 block truncate max-w-[170px]" title="{{ $r->materials_summary_text }}">
                     {{ $r->materials_summary_text }}
                   </span>
                 </td>
 
                 <td class="whitespace-nowrap">
-                  <span class="font-bold {{ $r->cash_amount > 0 ? 'text-emerald-400' : 'text-slate-400' }} block">
+                  <span class="font-black {{ $r->cash_amount > 0 ? 'text-emerald-700' : 'text-gray-400' }} block text-sm">
                     {{ $r->formatted_cash }}
                   </span>
-                  <span class="text-[10px] text-slate-400 block">{{ $r->payment_method }}</span>
+                  <span class="text-[10px] text-gray-500 block font-medium">{{ $r->payment_method }}</span>
                 </td>
 
                 <td class="whitespace-nowrap">
                   @if($r->cash_amount > 0)
                     @if($r->cash_deposit_status === 'Sudah Disetor')
-                      <span class="badge badge-green">Disetor</span>
+                      <span class="badge badge-green font-bold">Disetor</span>
                     @else
-                      <span class="badge badge-amber">Belum Setor</span>
+                      <span class="badge badge-amber font-bold">Belum Setor</span>
                     @endif
                   @else
-                    <span class="text-slate-500 text-xs">—</span>
+                    <span class="text-gray-400 text-xs">—</span>
                   @endif
                 </td>
 
@@ -1270,7 +1554,7 @@
                     @if($r->cash_amount > 0 && $r->cash_deposit_status !== 'Sudah Disetor')
                       <form action="{{ route('daily-report.setor', $r->id) }}" method="POST" onsubmit="return confirm('Tandai kas sebesar {{ $r->formatted_cash }} sudah disetor?')">
                         @csrf
-                        <button type="submit" class="icon-btn w-8 h-8 text-emerald-400 hover:bg-emerald-500/20" title="Tandai Sudah Disetor">
+                        <button type="submit" class="icon-btn w-8 h-8 text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50" title="Tandai Sudah Disetor">
                           <i class="fa-solid fa-check text-xs"></i>
                         </button>
                       </form>
@@ -1279,7 +1563,7 @@
                     <form action="{{ route('daily-report.destroy', $r->id) }}" method="POST" onsubmit="return confirm('Hapus data laporan harian ini?')">
                       @csrf
                       @method('DELETE')
-                      <button type="submit" class="icon-btn w-8 h-8 text-rose-400 hover:bg-rose-500/20" title="Hapus Laporan">
+                      <button type="submit" class="icon-btn w-8 h-8 text-brand hover:border-red-300 hover:bg-red-50" title="Hapus Laporan">
                         <i class="fa-regular fa-trash-can text-xs"></i>
                       </button>
                     </form>
@@ -1288,8 +1572,8 @@
               </tr>
             @empty
               <tr>
-                <td colspan="8" class="text-center py-12 text-slate-400">
-                  <i class="fa-regular fa-folder-open text-3xl mb-2 text-slate-500 block"></i>
+                <td colspan="8" class="text-center py-12 text-gray-400">
+                  <i class="fa-regular fa-folder-open text-3xl mb-2 text-gray-300 block"></i>
                   <span>Belum ada data log pekerjaan teknis tercatat.</span>
                 </td>
               </tr>
@@ -1321,39 +1605,39 @@
             @forelse($cashTransactions as $c)
               <tr>
                 <td class="whitespace-nowrap">
-                  <span class="font-bold text-white block">{{ $c->report_date ? $c->report_date->format('d/m/Y') : '-' }}</span>
-                  <span class="text-[10px] text-slate-400">{{ $c->created_at ? $c->created_at->format('H:i') : '' }} WIB</span>
+                  <span class="font-extrabold text-gray-900 block">{{ $c->report_date ? $c->report_date->format('d/m/Y') : '-' }}</span>
+                  <span class="text-[10px] text-gray-500 font-medium">{{ $c->created_at ? $c->created_at->format('H:i') : '' }} WIB</span>
                 </td>
 
                 <td class="whitespace-nowrap">
-                  <span class="font-bold text-white block">{{ $c->technician_name }}</span>
-                  <span class="text-[11px] text-blue-400">{{ $c->partner_company }}</span>
+                  <span class="font-extrabold text-gray-900 block">{{ $c->technician_name }}</span>
+                  <span class="text-[11px] text-brand font-bold">{{ $c->partner_company }}</span>
                 </td>
 
                 <td>
-                  <span class="font-bold text-white block">{{ $c->customer_name }}</span>
-                  <span class="text-[10px] text-slate-400 block">{{ $c->customer_phone ?: '-' }}</span>
+                  <span class="font-extrabold text-gray-900 block">{{ $c->customer_name }}</span>
+                  <span class="text-[10px] text-gray-500 block">{{ $c->customer_phone ?: '-' }}</span>
                 </td>
 
                 <td class="whitespace-nowrap">
-                  <span class="badge badge-slate">{{ $c->transaction_type }}</span>
+                  <span class="badge badge-slate font-semibold">{{ $c->transaction_type }}</span>
                 </td>
 
                 <td class="whitespace-nowrap">
-                  <span class="text-xs font-semibold text-slate-300">{{ $c->payment_method }}</span>
+                  <span class="text-xs font-bold text-gray-700">{{ $c->payment_method }}</span>
                 </td>
 
                 <td class="whitespace-nowrap">
-                  <span class="font-bold text-emerald-400 text-sm">{{ $c->formatted_cash }}</span>
+                  <span class="font-black text-emerald-700 text-sm">{{ $c->formatted_cash }}</span>
                 </td>
 
                 <td class="whitespace-nowrap">
                   @if($c->cash_deposit_status === 'Sudah Disetor')
-                    <span class="badge badge-green">
+                    <span class="badge badge-green font-bold">
                       <i class="fa-solid fa-check text-[9px]"></i> Sudah Disetor
                     </span>
                   @else
-                    <span class="badge badge-amber">
+                    <span class="badge badge-amber font-bold">
                       <i class="fa-regular fa-clock text-[9px]"></i> Belum Disetor
                     </span>
                   @endif
@@ -1363,19 +1647,19 @@
                   @if($c->cash_deposit_status !== 'Sudah Disetor')
                     <form action="{{ route('daily-report.setor', $c->id) }}" method="POST" onsubmit="return confirm('Konfirmasi setor kas sebesar {{ $c->formatted_cash }}?')">
                       @csrf
-                      <button type="submit" class="btn-ghost text-xs py-1 px-3 text-emerald-400 border-emerald-500/30 hover:bg-emerald-600/20">
+                      <button type="submit" class="btn-ghost text-xs py-1.5 px-3 font-bold text-emerald-700 border-emerald-300 hover:bg-emerald-50">
                         Setor Kas
                       </button>
                     </form>
                   @else
-                    <span class="text-slate-500 text-xs italic">Selesai</span>
+                    <span class="text-gray-400 text-xs italic">Selesai</span>
                   @endif
                 </td>
               </tr>
             @empty
               <tr>
-                <td colspan="8" class="text-center py-12 text-slate-400">
-                  <i class="fa-solid fa-wallet text-3xl mb-2 text-slate-500 block"></i>
+                <td colspan="8" class="text-center py-12 text-gray-400">
+                  <i class="fa-solid fa-wallet text-3xl mb-2 text-gray-300 block"></i>
                   <span>Tidak ada catatan kas lapangan.</span>
                 </td>
               </tr>
@@ -1396,18 +1680,18 @@
   <!-- MODAL: TAMBAH BARANG MANUAL / DARI STOK ADMIN  -->
   <!-- ============================================== -->
   <div x-show="openAddMaterialModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm" @click="openAddMaterialModal = false"></div>
-    <div class="relative card card-lg w-full max-w-lg p-6 text-slate-200 z-10 shadow-2xl">
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-xs" @click="openAddMaterialModal = false"></div>
+    <div class="relative card card-lg w-full max-w-lg p-6 text-gray-800 z-10 shadow-2xl">
       
-      <div class="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-        <div>
-          <h3 class="font-bold text-white text-base flex items-center gap-2">
-            <i class="fa-solid fa-boxes-packing text-blue-400"></i>
-            <span>Tambah Barang ke Laporan</span>
-          </h3>
-          <p class="text-xs text-slate-400 mt-0.5">
-            Pilih dari Stok Barang POV Admin atau input manual
-          </p>
+      <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm border border-red-100">
+            <i class="fa-solid fa-boxes-packing"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-black text-base">Tambah Barang ke Laporan</h3>
+            <p class="text-xs text-gray-500 font-medium">Pilih dari Stok Barang POV Admin atau input manual</p>
+          </div>
         </div>
         <button type="button" @click="openAddMaterialModal = false" class="icon-btn w-8 h-8">
           <i class="fa-solid fa-xmark text-xs"></i>
@@ -1415,16 +1699,16 @@
       </div>
 
       <!-- Mode Selector: Dari Stok Admin vs Input Manual Sepenuhnya -->
-      <div class="flex items-center gap-2 mt-4 p-1 rounded-xl bg-slate-950/80 border border-white/[0.06]">
+      <div class="flex items-center gap-2 mt-4 p-1 rounded-xl bg-gray-100 border border-gray-200">
         <button type="button" @click="addMode = 'stock'"
                 class="flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
-                :class="addMode === 'stock' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'">
+                :class="addMode === 'stock' ? 'bg-brand text-white shadow-xs' : 'text-gray-600 hover:text-black'">
           <i class="fa-solid fa-database text-[10px]"></i>
           <span>Pilih dari Stok Admin</span>
         </button>
         <button type="button" @click="addMode = 'custom'"
                 class="flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
-                :class="addMode === 'custom' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'">
+                :class="addMode === 'custom' ? 'bg-brand text-white shadow-xs' : 'text-gray-600 hover:text-black'">
           <i class="fa-solid fa-keyboard text-[10px]"></i>
           <span>Ketik Manual Bebas</span>
         </button>
@@ -1438,29 +1722,26 @@
             <div>
               <label class="lbl">Kategori Stok (POV Admin)</label>
               <div class="relative">
-                <select x-model="newMat.category" class="inp pr-9 text-xs"
-                        style="background-color: #0f172a; color: #f8fafc;">
-                  <option value="" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">-- Pilih Kategori --</option>
+                <select x-model="newMat.category" class="inp pr-9 text-xs font-semibold">
+                  <option value="">-- Pilih Kategori --</option>
                   <template x-for="cat in stockCategories" :key="cat">
-                    <option :value="cat" x-text="cat" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;"></option>
+                    <option :value="cat" x-text="cat"></option>
                   </template>
                 </select>
-                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
               </div>
             </div>
 
             <div>
               <label class="lbl">Pilih Barang dari Stok Admin</label>
               <div class="relative">
-                <select x-model="newMat.materialId" @change="onSelectStockItem()" class="inp pr-9 text-xs"
-                        style="background-color: #0f172a; color: #f8fafc;">
-                  <option value="" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">-- Pilih Barang (135+ item tersedia) --</option>
+                <select x-model="newMat.materialId" @change="onSelectStockItem()" class="inp pr-9 text-xs font-semibold">
+                  <option value="">-- Pilih Barang (135+ item tersedia) --</option>
                   <template x-for="m in filteredStockMaterials" :key="m.id">
-                    <option :value="m.id" x-text="m.name + ' (' + m.category + ' - Stok: ' + (m.stock || 0) + ' ' + m.unit + ')'"
-                            class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;"></option>
+                    <option :value="m.id" x-text="m.name + ' (' + m.category + ' - Stok: ' + (m.stock || 0) + ' ' + m.unit + ')'"></option>
                   </template>
                 </select>
-                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
               </div>
             </div>
           </div>
@@ -1469,20 +1750,20 @@
         <!-- Form fields: Nama, Satuan, Harga, Qty -->
         <div>
           <label class="lbl">Nama Barang</label>
-          <input type="text" x-model="newMat.name" placeholder="Contoh: Modem ZTE F670L / Fast Connector" class="inp text-xs">
+          <input type="text" x-model="newMat.name" placeholder="Contoh: Modem ZTE F670L / Fast Connector" class="inp text-xs font-semibold">
         </div>
 
         <template x-if="addMode === 'custom'">
           <div>
             <label class="lbl">Kategori Barang</label>
             <div class="relative">
-              <select x-model="newMat.category" class="inp pr-9 text-xs" style="background-color: #0f172a; color: #f8fafc;">
-                <option value="" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;">-- Pilih Kategori --</option>
+              <select x-model="newMat.category" class="inp pr-9 text-xs font-semibold">
+                <option value="">-- Pilih Kategori --</option>
                 <template x-for="cat in stockCategories" :key="cat">
-                  <option :value="cat" x-text="cat" class="bg-slate-900 text-slate-100" style="background-color: #0f172a; color: #f8fafc;"></option>
+                  <option :value="cat" x-text="cat"></option>
                 </template>
               </select>
-              <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+              <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
             </div>
           </div>
         </template>
@@ -1490,34 +1771,35 @@
         <div class="grid grid-cols-3 gap-3">
           <div>
             <label class="lbl">Satuan</label>
-            <input type="text" x-model="newMat.unit" placeholder="pcs, m, unit" class="inp text-xs">
+            <input type="text" x-model="newMat.unit" placeholder="pcs, m, unit" class="inp text-xs font-semibold">
           </div>
 
           <div>
             <label class="lbl">Harga Satuan (Rp)</label>
-            <input type="number" x-model="newMat.price" min="0" step="500" class="inp text-xs font-mono">
+            <input type="number" x-model="newMat.price" min="0" step="500" class="inp text-xs font-mono font-bold">
           </div>
 
           <div>
             <label class="lbl">Jumlah (Qty)</label>
-            <input type="number" x-model="newMat.qty" min="1" step="any" class="inp text-xs font-mono font-bold">
+            <input type="number" x-model="newMat.qty" min="1" step="any" class="inp text-xs font-mono font-extrabold">
           </div>
         </div>
 
-        <div class="p-3 rounded-xl bg-blue-950/20 border border-blue-500/20 text-[11px] text-blue-300">
-          <i class="fa-solid fa-circle-info mr-1"></i>
-          Barang yang ditambahkan akan otomatis diikutsertakan dalam kalkulasi total biaya dan laporan spreadsheet.
+        <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 leading-relaxed font-medium">
+          <i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i>
+          Barang yang ditambahkan otomatis terdaftar ke <strong>Log Stok Barang Masuk</strong> di Dashboard Admin untuk periode saat ini ({{ $currentMonthName ?? 'Bulan Sekarang' }}).
         </div>
 
       </div>
 
-      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-white/[0.08]">
-        <button type="button" @click="openAddMaterialModal = false" class="btn-ghost text-xs">
+      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-200">
+        <button type="button" @click="openAddMaterialModal = false" class="btn-ghost text-xs" :disabled="isSubmittingMaterial">
           Batal
         </button>
-        <button type="button" @click="submitAddMaterial()" class="btn-primary text-xs py-2 px-4 flex items-center gap-1.5">
-          <i class="fa-solid fa-plus text-[10px]"></i>
-          <span>Tambahkan ke Laporan</span>
+        <button type="button" @click="submitAddMaterial()" :disabled="isSubmittingMaterial" class="btn-primary text-xs py-2 px-4 flex items-center gap-1.5 disabled:opacity-50">
+          <i class="fa-solid fa-spinner fa-spin text-[10px]" x-show="isSubmittingMaterial" x-cloak></i>
+          <i class="fa-solid fa-plus text-[10px]" x-show="!isSubmittingMaterial"></i>
+          <span x-text="isSubmittingMaterial ? 'Menyimpan & Mencatat...' : 'Tambahkan ke Laporan & Stok Masuk'"></span>
         </button>
       </div>
 
@@ -1528,16 +1810,16 @@
   <!-- MODAL: PENGATURAN SPREADSHEET & WEBHOOK        -->
   <!-- ============================================== -->
   <div x-show="openSettings" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm" @click="openSettings = false"></div>
-    <div class="relative card card-lg w-full max-w-md p-6 text-slate-300 z-10 shadow-2xl">
-      <div class="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center text-sm">
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-xs" @click="openSettings = false"></div>
+    <div class="relative card card-lg w-full max-w-md p-6 text-gray-800 z-10 shadow-2xl">
+      <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm border border-red-100">
             <i class="fa-solid fa-sliders"></i>
           </div>
           <div>
-            <h3 class="text-sm font-bold text-white">Integrasi Spreadsheet</h3>
-            <p class="text-[11px] text-slate-400">Google Sheets / Apps Script Webhook</p>
+            <h3 class="text-sm font-extrabold text-black">Integrasi Spreadsheet</h3>
+            <p class="text-[11px] text-gray-500 font-medium">Google Sheets / Apps Script Webhook</p>
           </div>
         </div>
         <button type="button" @click="openSettings = false" class="icon-btn w-8 h-8">
@@ -1550,31 +1832,55 @@
           <label class="lbl">Webhook URL</label>
           <input type="url" x-model="gsWebhook" placeholder="https://script.google.com/macros/s/.../exec"
                  class="inp font-mono text-xs">
-          <span class="text-[10px] text-slate-400 mt-1 block">
+          <span class="text-[10px] text-gray-500 mt-1 block">
             Kosongkan untuk tetap menggunakan <strong>Demo Mode (Local Banterpool Sync)</strong>.
           </span>
         </div>
 
-        <div class="p-3 rounded-xl bg-blue-950/20 border border-blue-500/20 text-[11px] text-slate-300">
-          <p class="font-bold text-blue-400 mb-1"><i class="fa-solid fa-circle-check mr-1"></i> Status Aktif:</p>
+        <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 leading-relaxed font-medium">
+          <p class="font-extrabold text-emerald-900 mb-1 flex items-center gap-1">
+            <i class="fa-solid fa-circle-check text-emerald-600"></i> Status Aktif:
+          </p>
           Setiap laporan tersimpan ke database lokal dan dapat langsung di-export sebagai file spreadsheet CSV kapan saja.
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-2 pt-3 border-t border-white/[0.08]">
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-200">
         <button type="button" @click="openSettings = false" class="btn-ghost text-xs">Tutup</button>
         <button type="button" @click="saveSettings()" class="btn-primary text-xs py-2 px-4">Simpan</button>
       </div>
     </div>
   </div>
 
-  <!-- Footer -->
-  <footer class="border-t border-white/[0.06] py-5 text-center text-xs text-slate-400 bg-[#070b13]">
+  <!-- ============================================== -->
+  <!-- FOOTER (BANTERPOOL THEME)                      -->
+  <!-- ============================================== -->
+  <footer class="border-t border-gray-200/80 py-5 text-center text-xs text-gray-500 bg-white/80 relative z-10">
     <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-      <span>Daily Report — ISP Field Technician Portal v2.6</span>
-      <span>Terhubung dengan Master Stok Barang &amp; Mutasi Banterpool</span>
+      <span class="font-semibold text-gray-700">WiFi <strong class="text-brand">BANTERPOOL</strong> &bull; Daily Report Portal v2.6</span>
+      <span>Sinkronisasi Master Stok Barang &amp; Mutasi Lapangan</span>
     </div>
   </footer>
+
+  <!-- Script Animasi Background Garis Merah saat Scroll (Bergerak Halus) -->
+  <script>
+    (function () {
+      const wave = document.getElementById('bgWavePattern');
+      if (!wave) return;
+      let ticking = false;
+
+      window.addEventListener('scroll', function () {
+        if (!ticking) {
+          window.requestAnimationFrame(function () {
+            const scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+            wave.style.transform = `translate3d(0, -${scrollY * 0.12}px, 0)`;
+            ticking = false;
+          });
+          ticking = true;
+        }
+      }, { passive: true });
+    })();
+  </script>
 
 </body>
 </html>

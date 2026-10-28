@@ -120,6 +120,7 @@ Route::prefix('teknisi')->name('teknisi.')->middleware(['auth', 'technician'])->
         return redirect()->route('daily-report.index');
     })->name('daily-report');
     Route::post('/daily-report', [\App\Http\Controllers\Technician\DailyReportController::class, 'store'])->name('daily-report.store');
+    Route::post('/daily-report/tambah-barang-masuk', [\App\Http\Controllers\Technician\DailyReportController::class, 'storeMaterialMasuk'])->name('daily-report.tambah-barang-masuk-alias');
     Route::post('/daily-report/{id}/setor', [\App\Http\Controllers\Technician\DailyReportController::class, 'setorKas'])->name('daily-report.setor');
     Route::delete('/daily-report/{id}', [\App\Http\Controllers\Technician\DailyReportController::class, 'destroy'])->name('daily-report.destroy');
     Route::get('/daily-report/export', [\App\Http\Controllers\Technician\DailyReportController::class, 'export'])->name('daily-report.export');
@@ -131,6 +132,7 @@ Route::prefix('teknisi')->name('teknisi.')->middleware(['auth', 'technician'])->
 Route::prefix('daily-report')->name('daily-report.')->middleware(['auth'])->group(function () {
     Route::get('/', [\App\Http\Controllers\Technician\DailyReportController::class, 'index'])->name('index');
     Route::post('/', [\App\Http\Controllers\Technician\DailyReportController::class, 'store'])->name('store');
+    Route::post('/tambah-barang-masuk', [\App\Http\Controllers\Technician\DailyReportController::class, 'storeMaterialMasuk'])->name('tambah-barang-masuk');
     Route::post('/{id}/setor', [\App\Http\Controllers\Technician\DailyReportController::class, 'setorKas'])->name('setor');
     Route::delete('/{id}', [\App\Http\Controllers\Technician\DailyReportController::class, 'destroy'])->name('destroy');
     Route::get('/export', [\App\Http\Controllers\Technician\DailyReportController::class, 'export'])->name('export');

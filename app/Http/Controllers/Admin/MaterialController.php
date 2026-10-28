@@ -2166,12 +2166,9 @@ class MaterialController extends Controller
             return $this->exportCsv($request);
         }
 
-        $templatePath = base_path('template data stok barang udah fix.xlsx');
+        $templatePath = public_path('template/template_data_stok_barang_udah_fix.xlsx');
         if (!file_exists($templatePath)) {
-            $templatePath = base_path('template_stok.xlsx');
-        }
-        if (!file_exists($templatePath)) {
-            $templatePath = base_path('template data stok barang fix.xlsx');
+            $templatePath = base_path('template data stok barang udah fix.xlsx');
         }
 
         if (file_exists($templatePath)) {

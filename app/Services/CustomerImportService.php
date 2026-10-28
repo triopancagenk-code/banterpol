@@ -779,7 +779,10 @@ class CustomerImportService
     public static function downloadTemplate(string $format = 'xlsx')
     {
         $format = strtolower($format);
-        $templatePath = base_path('template data pelanggan fix.xlsx');
+        $templatePath = public_path('template/template_data_pelanggan_fix.xlsx');
+        if (!file_exists($templatePath)) {
+            $templatePath = base_path('template data pelanggan fix.xlsx');
+        }
         if (!file_exists($templatePath)) {
             $templatePath = base_path('template.xlsx');
         }
