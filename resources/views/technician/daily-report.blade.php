@@ -1803,7 +1803,7 @@
                   </form>
                 @endif
 
-                <form action="{{ route('daily-report.destroy', $r->id) }}" method="POST" onsubmit="return confirm('Hapus data laporan harian ini?')">
+                <form action="{{ route('daily-report.destroy', $r->id) }}" method="POST" onsubmit="return confirm('Hapus data laporan harian ini? Data pelanggan, monitoring pesanan, dan catatan stok barang keluar terkait juga akan otomatis dihapus.')">
                   @csrf
                   @method('DELETE')
                   <button type="submit" class="icon-btn w-8 h-8 text-brand hover:border-red-300 hover:bg-red-50" title="Hapus Laporan">
@@ -1911,7 +1911,7 @@
                         </form>
                       @endif
 
-                      <form action="{{ route('daily-report.destroy', $r->id) }}" method="POST" onsubmit="return confirm('Hapus data laporan harian ini?')">
+                      <form action="{{ route('daily-report.destroy', $r->id) }}" method="POST" onsubmit="return confirm('Hapus data laporan harian ini? Data pelanggan, monitoring pesanan, dan catatan stok barang keluar terkait juga akan otomatis dihapus.')">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="icon-btn w-8 h-8 text-brand hover:border-red-300 hover:bg-red-50" title="Hapus Laporan">

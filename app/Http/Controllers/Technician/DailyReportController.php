@@ -9,6 +9,7 @@ use App\Models\Material;
 use App\Models\MaterialMutation;
 use App\Models\MaterialMonthlyStock;
 use App\Models\User;
+use App\Models\Bill;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -574,7 +575,7 @@ class DailyReportController extends Controller
                 }
 
                 if ($material) {
-                    $notesOut = "Pemakaian Daily Report Teknisi: {$validated['job_type']} - {$validated['customer_name']} (" . ($validated['partner_company'] ?? 'Mitra') . ")";
+                    $notesOut = "[DailyReport #{$report->id}] Pemakaian Daily Report Teknisi: {$validated['job_type']} - {$validated['customer_name']} (" . ($validated['partner_company'] ?? 'Mitra') . ")";
 
                     try {
                         // 1. Kurangi stok dan catat mutasi tipe 'out'
@@ -586,9 +587,16 @@ class DailyReportController extends Controller
                             true // allowNegative
                         );
 
-                        // 2. Hubungkan mutasi dengan order/laporan jika kolom order_id tersedia
+                        // 2. Hubungkan mutasi dengan order dan daily report jika kolom tersedia
+                        $mutUpdates = [];
                         if (!empty($orderId) && Schema::hasColumn('material_mutations', 'order_id')) {
-                            $mutation->update(['order_id' => $orderId]);
+                            $mutUpdates['order_id'] = $orderId;
+                        }
+                        if (Schema::hasColumn('material_mutations', 'daily_report_id')) {
+                            $mutUpdates['daily_report_id'] = $report->id;
+                        }
+                        if (!empty($mutUpdates)) {
+                            $mutation->update($mutUpdates);
                         }
 
                         // 3. Perbarui snapshot MaterialMonthlyStock
@@ -642,54 +650,182 @@ class DailyReportController extends Controller
 
     /**
      * Hapus Laporan Harian
+     * Sekaligus otomatis menghapus data pelanggan, monitoring pesanan, dan stok barang keluar terkait (POV Admin)
      */
     public function destroy($id)
     {
         $report = DailyReport::findOrFail($id);
-        $name = $report->customer_name;
+        $customerName = $report->customer_name;
+        $orderId = $report->order_id;
+        $pppoe = $report->pppoe_username;
+        $reportDateStr = $report->report_date ? $report->report_date->toDateString() : now()->toDateString();
+        $txCarbon = Carbon::parse($reportDateStr);
+        $monthNum = (int)$txCarbon->month;
+        $yearNum = (int)$txCarbon->year;
 
-        // Rollback stok material jika laporan ini mencatat pemakaian material
-        if (!empty($report->materials_json)) {
-            $materialsArray = is_array($report->materials_json) ? $report->materials_json : json_decode($report->materials_json, true);
-            if (is_array($materialsArray)) {
-                $txCarbon = Carbon::parse($report->report_date ?? now());
-                $monthNum = (int)$txCarbon->month;
-                $yearNum = (int)$txCarbon->year;
+        // =========================================================================
+        // 1. HAPUS MUTASI STOK BARANG KELUAR & ROLLBACK STOK MATERIAL (POV ADMIN)
+        // =========================================================================
+        $mutationsToDelete = collect();
 
-                foreach ($materialsArray as $item) {
-                    $qty = (float)($item['qty'] ?? 0);
-                    if ($qty <= 0) continue;
-                    $mat = null;
-                    if (!empty($item['material_id'])) {
-                        $mat = Material::find($item['material_id']);
+        // 1a. Berdasarkan daily_report_id jika kolom tersedia
+        if (Schema::hasColumn('material_mutations', 'daily_report_id')) {
+            $mutationsToDelete = MaterialMutation::where('daily_report_id', $report->id)->get();
+        }
+
+        // 1b. Berdasarkan tag catatan [DailyReport #ID]
+        $tagMutations = MaterialMutation::where('type', 'out')
+            ->where('notes', 'like', "%[DailyReport #{$report->id}]%")
+            ->get();
+        $mutationsToDelete = $mutationsToDelete->merge($tagMutations)->unique('id');
+
+        // 1c. Berdasarkan order_id jika ada
+        if (!empty($orderId) && Schema::hasColumn('material_mutations', 'order_id')) {
+            $orderMutations = MaterialMutation::where('order_id', $orderId)->where('type', 'out')->get();
+            $mutationsToDelete = $mutationsToDelete->merge($orderMutations)->unique('id');
+        }
+
+        // 1d. Berdasarkan nama pelanggan dan tanggal transaksi
+        if ($mutationsToDelete->isEmpty() && !empty($customerName)) {
+            $nameMutations = MaterialMutation::where('type', 'out')
+                ->where('notes', 'like', "%{$customerName}%")
+                ->where(function ($q) use ($reportDateStr) {
+                    $q->where('transaction_date', $reportDateStr)
+                      ->orWhereNull('transaction_date');
+                })
+                ->get();
+            $mutationsToDelete = $mutationsToDelete->merge($nameMutations)->unique('id');
+        }
+
+        // Eksekusi rollback stok dan penghapusan mutasi barang keluar
+        if ($mutationsToDelete->isNotEmpty()) {
+            foreach ($mutationsToDelete as $mutation) {
+                $material = $mutation->material ?: Material::find($mutation->material_id);
+                $amount = (float)$mutation->amount;
+
+                if ($material && $amount > 0) {
+                    try {
+                        // Kembalikan stok fisik
+                        $material->update([
+                            'stock' => (float)$material->stock + $amount,
+                            'total_out' => max(0, (float)($material->total_out ?? 0) - $amount),
+                        ]);
+
+                        // Perbarui snapshot MaterialMonthlyStock
+                        $mutDate = $mutation->transaction_date ? Carbon::parse($mutation->transaction_date) : $txCarbon;
+                        $mStock = MaterialMonthlyStock::where('material_id', $material->id)
+                            ->where('month', (int)$mutDate->month)
+                            ->where('year', (int)$mutDate->year)
+                            ->first();
+
+                        if ($mStock) {
+                            $mStock->total_out = max(0, (float)$mStock->total_out - $amount);
+                            $mStock->final_stock = (float)$mStock->initial_stock + (float)$mStock->total_in - $mStock->total_out;
+                            $mStock->save();
+                        }
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning("Gagal rollback stok material: " . $e->getMessage());
                     }
-                    if (!$mat && !empty($item['name'])) {
-                        $mat = Material::where('name', trim($item['name']))->first();
-                    }
-                    if ($mat) {
-                        try {
-                            $mat->update([
-                                'stock' => (float)$mat->stock + $qty,
-                                'total_out' => max(0, (float)($mat->total_out ?? 0) - $qty),
-                            ]);
-                            $mStock = MaterialMonthlyStock::where('material_id', $mat->id)
-                                ->where('month', $monthNum)
-                                ->where('year', $yearNum)
-                                ->first();
-                            if ($mStock) {
-                                $mStock->total_out = max(0, (float)$mStock->total_out - $qty);
-                                $mStock->final_stock = (float)$mStock->initial_stock + (float)$mStock->total_in - $mStock->total_out;
-                                $mStock->save();
-                            }
-                        } catch (\Throwable $e) {}
+                }
+
+                // Hapus data mutasi barang keluar ini secara permanen dari POV Admin
+                $mutation->delete();
+            }
+        } else {
+            // Fallback pemulihan stok jika mutasi tidak terlacak
+            if (!empty($report->materials_json)) {
+                $materialsArray = is_array($report->materials_json) ? $report->materials_json : json_decode($report->materials_json, true);
+                if (is_array($materialsArray)) {
+                    foreach ($materialsArray as $item) {
+                        $qty = (float)($item['qty'] ?? 0);
+                        if ($qty <= 0) continue;
+                        $mat = null;
+                        if (!empty($item['material_id'])) {
+                            $mat = Material::find($item['material_id']);
+                        }
+                        if (!$mat && !empty($item['name'])) {
+                            $mat = Material::where('name', trim($item['name']))->first();
+                        }
+                        if ($mat) {
+                            try {
+                                $mat->update([
+                                    'stock' => (float)$mat->stock + $qty,
+                                    'total_out' => max(0, (float)($mat->total_out ?? 0) - $qty),
+                                ]);
+                                $mStock = MaterialMonthlyStock::where('material_id', $mat->id)
+                                    ->where('month', $monthNum)
+                                    ->where('year', $yearNum)
+                                    ->first();
+                                if ($mStock) {
+                                    $mStock->total_out = max(0, (float)$mStock->total_out - $qty);
+                                    $mStock->final_stock = (float)$mStock->initial_stock + (float)$mStock->total_in - $mStock->total_out;
+                                    $mStock->save();
+                                }
+                            } catch (\Throwable $e) {}
+                        }
                     }
                 }
             }
         }
 
+        // =========================================================================
+        // 2. HAPUS DATA PELANGGAN & MONITORING PESANAN (Tabel orders & bills)
+        // =========================================================================
+        $ordersToDelete = collect();
+
+        // 2a. Cari berdasarkan order_id yang tercatat di laporan
+        if (!empty($orderId)) {
+            $ord = Order::find($orderId);
+            if ($ord) {
+                $ordersToDelete->push($ord);
+            }
+        }
+
+        // 2b. Cari berdasarkan PPPoE username
+        if (!empty($pppoe)) {
+            $ordPppoe = Order::where('pppoe', trim($pppoe))->get();
+            $ordersToDelete = $ordersToDelete->merge($ordPppoe);
+        }
+
+        // 2c. Cari berdasarkan kesamaan nama pelanggan jika order dibuat dari daily report
+        if (!empty($customerName)) {
+            $cleanName = preg_replace('/\s*[\(\/\-].*$/', '', trim($customerName));
+            $ordName = Order::where('customer_name', trim($customerName))
+                ->orWhere(function ($q) use ($cleanName) {
+                    if (strlen($cleanName) >= 4) {
+                        $q->where('customer_name', 'like', "%{$cleanName}%")
+                          ->where('admin_notes', 'like', '%Daily Report%');
+                    }
+                })
+                ->get();
+            $ordersToDelete = $ordersToDelete->merge($ordName);
+        }
+
+        $ordersToDelete = $ordersToDelete->unique('id');
+
+        foreach ($ordersToDelete as $order) {
+            try {
+                // Hapus tagihan terkait jika ada
+                Bill::where('order_id', $order->id)->delete();
+
+                // Hapus sisa mutasi material yang masih terkait jika ada
+                if (Schema::hasColumn('material_mutations', 'order_id')) {
+                    MaterialMutation::where('order_id', $order->id)->delete();
+                }
+
+                // Hapus data order (otomatis terhapus dari Data Pelanggan & Monitoring Pesanan)
+                $order->delete();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Gagal hapus data pesanan {$order->id}: " . $e->getMessage());
+            }
+        }
+
+        // =========================================================================
+        // 3. HAPUS DATA LAPORAN HARIAN (daily_reports)
+        // =========================================================================
         $report->delete();
 
-        return redirect()->back()->with('success', "Laporan untuk {$name} berhasil dihapus.");
+        return redirect()->back()->with('success', "Log laporan harian {$customerName} beserta data pelanggan, monitoring pesanan, dan mutasi stok barang keluar berhasil dihapus dari sistem.");
     }
 
     /**
@@ -940,6 +1076,13 @@ class DailyReportController extends Controller
                     if (!Schema::hasColumn('daily_reports', 'service_price')) {
                         $table->decimal('service_price', 15, 2)->default(0)->after('service_plan');
                     }
+                });
+            }
+
+            // Pastikan kolom daily_report_id ada di material_mutations untuk pelacakan mutasi per laporan
+            if (Schema::hasTable('material_mutations') && !Schema::hasColumn('material_mutations', 'daily_report_id')) {
+                Schema::table('material_mutations', function ($table) {
+                    $table->unsignedBigInteger('daily_report_id')->nullable()->after('order_id');
                 });
             }
         } catch (\Throwable $e) {
