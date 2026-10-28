@@ -776,11 +776,12 @@
 
         // Kirim data langsung ke Webhook Google Sheets jika dikonfigurasi
         sendToGoogleSheetsWebhook() {
-          if (this.gsWebhook && this.gsWebhook.startsWith('http')) {
-            try {
+          try {
+            if (this.gsWebhook && this.gsWebhook.startsWith('http')) {
               fetch(this.gsWebhook, {
                 method: 'POST',
                 mode: 'no-cors',
+                keepalive: true,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   tanggal: this.reportDate,
@@ -788,26 +789,26 @@
                   mitra: this.partnerCompany,
                   tipe_pekerjaan: this.jobType,
                   nama_pelanggan: this.customerName,
-                  nik: this.customerNik,
-                  jenis_layanan: this.servicePlan,
-                  harga_layanan: this.servicePrice,
-                  telepon: this.customerPhone,
-                  alamat: this.customerAddress,
-                  pppoe: this.pppoeUsername,
-                  odp: this.odpPort,
-                  rx_power: this.rxPower,
-                  ont_sn: this.ontSn,
-                  material: this.materialSummary,
-                  biaya_material: this.totalMaterialCost,
-                  jenis_transaksi: this.transactionType,
-                  nominal_kas: this.cashAmount,
-                  metode_bayar: this.paymentMethod,
-                  status_setor: this.cashDepositStatus,
+                  nik: this.customerNik || '',
+                  jenis_layanan: this.servicePlan || '',
+                  harga_layanan: this.servicePrice || 0,
+                  telepon: this.customerPhone || '',
+                  alamat: this.customerAddress || '',
+                  pppoe: this.pppoeUsername || '',
+                  odp: this.odpPort || '',
+                  rx_power: this.rxPower || '',
+                  ont_sn: this.ontSn || '',
+                  material: this.materialSummary || '',
+                  biaya_material: this.totalMaterialCost || 0,
+                  jenis_transaksi: this.transactionType || '',
+                  nominal_kas: this.cashAmount || 0,
+                  metode_bayar: this.paymentMethod || '',
+                  status_setor: this.cashDepositStatus || '',
                 })
-              }).catch(e => console.log('Sheets Webhook:', e));
-            } catch (e) {
-              console.log('Sheets Webhook error:', e);
+              }).catch(() => {});
             }
+          } catch (e) {
+            console.log('Sheets Webhook:', e);
           }
         },
 
@@ -1121,7 +1122,7 @@
       </div>
 
       <!-- Form Element -->
-      <form action="{{ route('daily-report.store') }}" method="POST" @submit="sendToGoogleSheetsWebhook()" class="space-y-5 sm:space-y-6">
+      <form action="{{ route('daily-report.store') }}" method="POST" class="space-y-5 sm:space-y-6">
         @csrf
         <input type="hidden" name="order_id" :value="selectedOrderId">
         <input type="hidden" name="materials_json" :value="materialsJsonPayload">
@@ -1556,7 +1557,7 @@
 
         <!-- Submit Button (Matching Banterpool Brand CTA) -->
         <div class="pt-3">
-          <button type="submit"
+          <button type="submit" @click="sendToGoogleSheetsWebhook()"
                   class="btn-primary w-full flex items-center justify-center gap-2.5 text-sm sm:text-base py-3 sm:py-3.5 rounded-xl shadow-lg shadow-brand/25">
             <i class="fa-solid fa-paper-plane text-sm"></i>
             <span>Simpan & Kirim ke Spreadsheet</span>

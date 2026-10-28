@@ -22,17 +22,8 @@ class DailyReportController extends Controller
      */
     public function index(Request $request)
     {
-        // Auto-heal: Jika tabel belum ada di server hosting / produksi, jalankan migrasi otomatis
-        if (!Schema::hasTable('daily_reports')) {
-            try {
-                Artisan::call('migrate', ['--force' => true]);
-                if (!User::where('email', 'admindaily')->exists()) {
-                    Artisan::call('db:seed', ['--class' => 'AdminDailySeeder', '--force' => true]);
-                }
-            } catch (\Throwable $e) {
-                // Log atau lanjutkan
-            }
-        }
+        // Auto-heal: Pastikan tabel dan kolom terbaru selalu ada di server hosting/produksi
+        $this->ensureDatabaseSchema();
 
         $search = $request->input('q', '');
         $partnerFilter = $request->input('partner', 'all');
@@ -281,6 +272,9 @@ class DailyReportController extends Controller
      */
     public function store(Request $request)
     {
+        // Auto-heal database schema jika belum termigrasi di hosting
+        $this->ensureDatabaseSchema();
+
         $validated = $request->validate([
             'report_date' => 'required|date',
             'technician_name' => 'required|string|max:100',
@@ -303,7 +297,7 @@ class DailyReportController extends Controller
             'cash_amount' => 'nullable|numeric|min:0',
             'payment_method' => 'required|string|max:50',
             'cash_deposit_status' => 'required|string|max:50',
-            'order_id' => 'nullable|exists:orders,id',
+            'order_id' => 'nullable',
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -348,139 +342,140 @@ class DailyReportController extends Controller
         // =========================================================================
         // KHUSUS MITRA BANTERPOL: Otomatis masuk ke Data Pelanggan pada POV Admin
         // =========================================================================
-        $orderId = $validated['order_id'] ?? null;
+        $orderId = !empty($validated['order_id']) && is_numeric($validated['order_id']) ? (int)$validated['order_id'] : null;
         $isBanterpol = strtoupper(trim($validated['partner_company'])) === 'BANTERPOL';
 
         if ($isBanterpol) {
-            $linkedOrder = null;
+            try {
+                $linkedOrder = null;
 
-            // 1. Cek apakah ada order_id yang valid
-            if (!empty($orderId)) {
-                $linkedOrder = Order::find($orderId);
-            }
-
-            // 2. Cari berdasarkan PPPoE username
-            if (!$linkedOrder && !empty($validated['pppoe_username'])) {
-                $linkedOrder = Order::where('pppoe', trim($validated['pppoe_username']))->first();
-            }
-
-            // 3. Cari berdasarkan nomor telepon
-            if (!$linkedOrder && !empty($validated['customer_phone'])) {
-                $cleanPhone = preg_replace('/[^0-9]/', '', $validated['customer_phone']);
-                if (strlen($cleanPhone) >= 8) {
-                    $linkedOrder = Order::where(function ($q) use ($cleanPhone) {
-                        $q->where('customer_phone', 'like', "%{$cleanPhone}%");
-                    })->first();
-                }
-            }
-
-            // 4. Cari berdasarkan kesamaan nama pelanggan
-            if (!$linkedOrder && !empty($validated['customer_name'])) {
-                $cName = trim($validated['customer_name']);
-                $cleanName = preg_replace('/\s*[\(\/\-].*$/', '', $cName);
-                if (strlen($cleanName) >= 4) {
-                    $linkedOrder = Order::where('customer_name', 'like', "%{$cleanName}%")->first();
-                }
-            }
-
-            $packageName = !empty($validated['service_plan']) ? trim($validated['service_plan']) : 'Paket 20 Mbps';
-            $speed = '20 Mbps';
-            if (str_contains($packageName, '100')) {
-                $speed = '100 Mbps';
-            } elseif (str_contains($packageName, '50')) {
-                $speed = '50 Mbps';
-            } elseif (str_contains($packageName, '30')) {
-                $speed = '30 Mbps';
-            }
-
-            $servicePrice = isset($validated['service_price']) && is_numeric($validated['service_price']) && (float)$validated['service_price'] > 0
-                ? (float) $validated['service_price']
-                : (!empty($validated['cash_amount']) && (float)$validated['cash_amount'] > 0 ? (float)$validated['cash_amount'] : 110000);
-
-            $pppoeUsername = !empty($validated['pppoe_username'])
-                ? trim($validated['pppoe_username'])
-                : Order::generatePppoeUsername($validated['customer_name']);
-
-            $address = !empty($validated['customer_address']) ? trim($validated['customer_address']) : '-';
-            $wilayah = \App\Services\CustomerImportService::resolveVillage(null, null, $address);
-            $assignedOdp = !empty($validated['odp_port'])
-                ? trim($validated['odp_port'])
-                : (!empty($wilayah) ? ('ODP-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $wilayah), 0, 3)) . '-01') : 'ODP-BTR-01');
-
-            if ($linkedOrder) {
-                // Update order yang ada agar berstatus 'Selesai' (sehingga langsung masuk ke Data Pelanggan Admin)
-                $linkedOrder->update([
-                    'status' => 'Selesai',
-                    'payment_status' => 'Lunas',
-                    'customer_name' => trim($validated['customer_name']),
-                    'id_card_number' => !empty($validated['customer_nik']) ? trim($validated['customer_nik']) : ($linkedOrder->id_card_number ?: '-'),
-                    'customer_phone' => !empty($validated['customer_phone']) ? trim($validated['customer_phone']) : $linkedOrder->customer_phone,
-                    'address' => $address !== '-' ? $address : $linkedOrder->address,
-                    'village' => $wilayah ?: $linkedOrder->village,
-                    'package_name' => $packageName,
-                    'speed' => $speed,
-                    'price' => $servicePrice,
-                    'total' => $servicePrice,
-                    'pppoe' => $pppoeUsername,
-                    'assigned_odp' => $assignedOdp,
-                    'ont_sn' => !empty($validated['ont_sn']) ? trim($validated['ont_sn']) : $linkedOrder->ont_sn,
-                    'opm_dbm' => !empty($validated['rx_power']) ? trim($validated['rx_power']) : $linkedOrder->opm_dbm,
-                    'technician' => $validated['technician_name'],
-                    'technician_id' => auth()->id() ?? $linkedOrder->technician_id,
-                    'installed_at' => $linkedOrder->installed_at ?: now(),
-                ]);
-            } else {
-                // Buat Order baru dengan status 'Selesai' dan nomor pesanan unik
-                $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
-                while (Order::where('order_number', $orderNumber)->exists()) {
-                    $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + rand(1, 99), 4, '0', STR_PAD_LEFT);
+                // 1. Cek apakah ada order_id yang valid
+                if (!empty($orderId)) {
+                    $linkedOrder = Order::find($orderId);
                 }
 
-                $linkedOrder = Order::create([
-                    'order_number' => $orderNumber,
-                    'customer_name' => trim($validated['customer_name']),
-                    'pppoe' => $pppoeUsername,
-                    'id_card_number' => !empty($validated['customer_nik']) ? trim($validated['customer_nik']) : '-',
-                    'birth_place' => 'Banyumas',
-                    'customer_phone' => !empty($validated['customer_phone']) ? trim($validated['customer_phone']) : '-',
-                    'customer_email' => '-',
-                    'package_name' => $packageName,
-                    'speed' => $speed,
-                    'price' => $servicePrice,
-                    'total' => $servicePrice,
-                    'address' => $address,
-                    'village' => $wilayah,
-                    'status' => 'Selesai',
-                    'payment_status' => 'Lunas',
-                    'payment_method' => $validated['payment_method'] ?? 'Tunai (Cash)',
-                    'installation_date' => $validated['report_date'] ?? now()->toDateString(),
-                    'installation_time' => 'pagi',
-                    'installed_at' => now(),
-                    'technician' => $validated['technician_name'],
-                    'technician_id' => auth()->id(),
-                    'assigned_odp' => $assignedOdp,
-                    'ont_sn' => $validated['ont_sn'] ?? null,
-                    'opm_dbm' => $validated['rx_power'] ?? null,
-                    'admin_notes' => 'Pelanggan otomatis terdaftar dari Daily Report Mitra BANTERPOL.',
-                ]);
-            }
+                // 2. Cari berdasarkan PPPoE username
+                if (!$linkedOrder && !empty($validated['pppoe_username'])) {
+                    $linkedOrder = Order::where('pppoe', trim($validated['pppoe_username']))->first();
+                }
 
-            $orderId = $linkedOrder->id;
+                // 3. Cari berdasarkan nomor telepon
+                if (!$linkedOrder && !empty($validated['customer_phone'])) {
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $validated['customer_phone']);
+                    if (strlen($cleanPhone) >= 8) {
+                        $linkedOrder = Order::where(function ($q) use ($cleanPhone) {
+                            $q->where('customer_phone', 'like', "%{$cleanPhone}%");
+                        })->first();
+                    }
+                }
+
+                // 4. Cari berdasarkan kesamaan nama pelanggan
+                if (!$linkedOrder && !empty($validated['customer_name'])) {
+                    $cName = trim($validated['customer_name']);
+                    $cleanName = preg_replace('/\s*[\(\/\-].*$/', '', $cName);
+                    if (strlen($cleanName) >= 4) {
+                        $linkedOrder = Order::where('customer_name', 'like', "%{$cleanName}%")->first();
+                    }
+                }
+
+                $packageName = !empty($validated['service_plan']) ? trim($validated['service_plan']) : 'Paket 20 Mbps';
+                $speed = '20 Mbps';
+                if (str_contains($packageName, '100')) {
+                    $speed = '100 Mbps';
+                } elseif (str_contains($packageName, '50')) {
+                    $speed = '50 Mbps';
+                } elseif (str_contains($packageName, '30')) {
+                    $speed = '30 Mbps';
+                }
+
+                $servicePrice = isset($validated['service_price']) && is_numeric($validated['service_price']) && (float)$validated['service_price'] > 0
+                    ? (float) $validated['service_price']
+                    : (!empty($validated['cash_amount']) && (float)$validated['cash_amount'] > 0 ? (float)$validated['cash_amount'] : 110000);
+
+                $pppoeUsername = !empty($validated['pppoe_username'])
+                    ? trim($validated['pppoe_username'])
+                    : Order::generatePppoeUsername($validated['customer_name']);
+
+                $address = !empty($validated['customer_address']) ? trim($validated['customer_address']) : '-';
+                $wilayah = \App\Services\CustomerImportService::resolveVillage(null, null, $address);
+                $assignedOdp = !empty($validated['odp_port'])
+                    ? trim($validated['odp_port'])
+                    : (!empty($wilayah) ? ('ODP-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $wilayah), 0, 3)) . '-01') : 'ODP-BTR-01');
+
+                if ($linkedOrder) {
+                    $linkedOrder->update([
+                        'status' => 'Selesai',
+                        'payment_status' => 'Lunas',
+                        'customer_name' => trim($validated['customer_name']),
+                        'id_card_number' => !empty($validated['customer_nik']) ? trim($validated['customer_nik']) : ($linkedOrder->id_card_number ?: '-'),
+                        'customer_phone' => !empty($validated['customer_phone']) ? trim($validated['customer_phone']) : $linkedOrder->customer_phone,
+                        'address' => $address !== '-' ? $address : $linkedOrder->address,
+                        'village' => $wilayah ?: $linkedOrder->village,
+                        'package_name' => $packageName,
+                        'speed' => $speed,
+                        'price' => $servicePrice,
+                        'total' => $servicePrice,
+                        'pppoe' => $pppoeUsername,
+                        'assigned_odp' => $assignedOdp,
+                        'ont_sn' => !empty($validated['ont_sn']) ? trim($validated['ont_sn']) : $linkedOrder->ont_sn,
+                        'opm_dbm' => !empty($validated['rx_power']) ? trim($validated['rx_power']) : $linkedOrder->opm_dbm,
+                        'technician' => $validated['technician_name'],
+                        'technician_id' => auth()->id() ?? $linkedOrder->technician_id,
+                        'installed_at' => $linkedOrder->installed_at ?: now(),
+                    ]);
+                } else {
+                    $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
+                    while (Order::where('order_number', $orderNumber)->exists()) {
+                        $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + rand(1, 99), 4, '0', STR_PAD_LEFT);
+                    }
+
+                    $linkedOrder = Order::create([
+                        'order_number' => $orderNumber,
+                        'customer_name' => trim($validated['customer_name']),
+                        'pppoe' => $pppoeUsername,
+                        'id_card_number' => !empty($validated['customer_nik']) ? trim($validated['customer_nik']) : '-',
+                        'birth_place' => 'Banyumas',
+                        'customer_phone' => !empty($validated['customer_phone']) ? trim($validated['customer_phone']) : '-',
+                        'customer_email' => '-',
+                        'package_name' => $packageName,
+                        'speed' => $speed,
+                        'price' => $servicePrice,
+                        'total' => $servicePrice,
+                        'address' => $address,
+                        'village' => $wilayah,
+                        'status' => 'Selesai',
+                        'payment_status' => 'Lunas',
+                        'payment_method' => $validated['payment_method'] ?? 'Tunai (Cash)',
+                        'installation_date' => $validated['report_date'] ?? now()->toDateString(),
+                        'installation_time' => 'pagi',
+                        'installed_at' => now(),
+                        'technician' => $validated['technician_name'],
+                        'technician_id' => auth()->id(),
+                        'assigned_odp' => $assignedOdp,
+                        'ont_sn' => $validated['ont_sn'] ?? null,
+                        'opm_dbm' => $validated['rx_power'] ?? null,
+                        'admin_notes' => 'Pelanggan otomatis terdaftar dari Daily Report Mitra BANTERPOL.',
+                    ]);
+                }
+
+                if ($linkedOrder) {
+                    $orderId = $linkedOrder->id;
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Gagal auto-sync order Banterpol: ' . $e->getMessage());
+            }
         }
 
-        $report = DailyReport::create([
+        $reportData = [
             'report_date' => $validated['report_date'],
             'technician_name' => $validated['technician_name'],
             'technician_id' => auth()->id(),
             'partner_company' => $validated['partner_company'],
             'job_type' => $validated['job_type'],
             'customer_name' => $validated['customer_name'],
-            'customer_nik' => $validated['customer_nik'] ?? null,
             'customer_phone' => $validated['customer_phone'] ?? null,
             'customer_address' => $validated['customer_address'] ?? null,
             'pppoe_username' => $validated['pppoe_username'] ?? null,
-            'service_plan' => $validated['service_plan'] ?? null,
-            'service_price' => (float)($validated['service_price'] ?? 0),
             'odp_port' => $validated['odp_port'] ?? null,
             'rx_power' => $validated['rx_power'] ?? null,
             'ont_sn' => $validated['ont_sn'] ?? null,
@@ -492,10 +487,23 @@ class DailyReportController extends Controller
             'payment_method' => $validated['payment_method'],
             'cash_deposit_status' => $validated['cash_deposit_status'],
             'order_id' => $orderId,
-            'synced_to_sheets' => true, // marked as synced
+            'synced_to_sheets' => true,
             'synced_at' => now(),
             'notes' => $validated['notes'] ?? null,
-        ]);
+        ];
+
+        // Hanya sertakan kolom jika memang ada di database tabel saat ini (anti-crash di hosting)
+        if (Schema::hasColumn('daily_reports', 'customer_nik')) {
+            $reportData['customer_nik'] = $validated['customer_nik'] ?? null;
+        }
+        if (Schema::hasColumn('daily_reports', 'service_plan')) {
+            $reportData['service_plan'] = $validated['service_plan'] ?? null;
+        }
+        if (Schema::hasColumn('daily_reports', 'service_price')) {
+            $reportData['service_price'] = (float)($validated['service_price'] ?? 0);
+        }
+
+        $report = DailyReport::create($reportData);
 
         $successMsg = $isBanterpol
             ? "Laporan {$report->job_type} untuk {$report->customer_name} berhasil disimpan dan otomatis masuk ke Data Pelanggan Admin!"
@@ -707,5 +715,48 @@ class DailyReportController extends Controller
             ],
             'mutation' => $mutation,
         ]);
+    }
+
+    /**
+     * Auto-heal schema database: Pastikan tabel dan kolom terbaru selalu ada di hosting/produksi
+     */
+    private function ensureDatabaseSchema(): void
+    {
+        try {
+            if (!Schema::hasTable('daily_reports')) {
+                Artisan::call('migrate', ['--force' => true]);
+                if (!User::where('email', 'admindaily')->exists()) {
+                    Artisan::call('db:seed', ['--class' => 'AdminDailySeeder', '--force' => true]);
+                }
+                return;
+            }
+
+            // Jika tabel sudah ada tapi kolom baru belum ada (setelah git pull ke server hosting)
+            if (!Schema::hasColumn('daily_reports', 'customer_nik') || 
+                !Schema::hasColumn('daily_reports', 'service_plan') || 
+                !Schema::hasColumn('daily_reports', 'service_price')) {
+
+                try {
+                    Artisan::call('migrate', ['--force' => true]);
+                } catch (\Throwable $e) {
+                    // Fallback ke direct Schema::table
+                }
+
+                // Fallback langsung jika Artisan migrasi tidak diizinkan atau terlewat di server
+                Schema::table('daily_reports', function ($table) {
+                    if (!Schema::hasColumn('daily_reports', 'customer_nik')) {
+                        $table->string('customer_nik', 30)->nullable()->after('customer_name');
+                    }
+                    if (!Schema::hasColumn('daily_reports', 'service_plan')) {
+                        $table->string('service_plan', 100)->nullable()->after('pppoe_username');
+                    }
+                    if (!Schema::hasColumn('daily_reports', 'service_price')) {
+                        $table->decimal('service_price', 15, 2)->default(0)->after('service_plan');
+                    }
+                });
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Auto-heal schema daily_reports: ' . $e->getMessage());
+        }
     }
 }
