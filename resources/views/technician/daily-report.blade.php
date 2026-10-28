@@ -1777,10 +1777,16 @@
 
               <!-- Biaya Material & Kas Lapangan -->
               <div class="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <span class="text-[9px] text-gray-400 font-bold uppercase block">Material Digunakan</span>
                   <span class="font-extrabold text-gray-900 text-xs">{{ $r->formatted_material_cost }}</span>
-                  <span class="text-[10px] text-gray-500 block truncate max-w-[150px] sm:max-w-[200px]" title="{{ $r->materials_summary_text }}">{{ $r->materials_summary_text }}</span>
+                  @if($r->materials_count > 0)
+                    <span class="text-[10px] text-gray-500 block truncate mt-0.5" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $r->materials_summary_text }}">
+                      {{ $r->materials_short_summary }}
+                    </span>
+                  @else
+                    <span class="text-gray-400 text-[10px] block">—</span>
+                  @endif
                 </div>
                 <div class="text-right shrink-0">
                   <span class="text-[9px] text-gray-400 font-bold uppercase block">Kas Lapangan</span>
@@ -1874,11 +1880,15 @@
                     <span class="text-[10px] text-gray-500 font-mono block">{{ $r->ont_sn ?: '-' }}</span>
                   </td>
 
-                  <td class="whitespace-nowrap">
-                    <span class="font-extrabold text-gray-900 block">{{ $r->formatted_material_cost }}</span>
-                    <span class="text-[10px] text-gray-500 block truncate max-w-[170px]" title="{{ $r->materials_summary_text }}">
-                      {{ $r->materials_summary_text }}
-                    </span>
+                  <td style="max-width: 200px; min-width: 130px;">
+                    <span class="font-extrabold text-gray-900 block whitespace-nowrap">{{ $r->formatted_material_cost }}</span>
+                    @if($r->materials_count > 0)
+                      <span class="text-[10px] text-gray-500 block truncate mt-0.5" style="max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $r->materials_summary_text }}">
+                        {{ $r->materials_short_summary }}
+                      </span>
+                    @else
+                      <span class="text-gray-400 text-xs block">—</span>
+                    @endif
                   </td>
 
                   <td class="whitespace-nowrap">

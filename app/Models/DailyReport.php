@@ -97,4 +97,60 @@ class DailyReport extends Model
 
         return implode(', ', $parts);
     }
+
+    public function getMaterialsCountAttribute(): int
+    {
+        if (empty($this->materials_json) || !is_array($this->materials_json)) {
+            return !empty($this->additional_materials) ? 1 : 0;
+        }
+
+        $count = 0;
+        foreach ($this->materials_json as $item) {
+            if ((float)($item['qty'] ?? 0) > 0) {
+                $count++;
+            }
+        }
+        if (!empty($this->additional_materials)) {
+            $count++;
+        }
+        return $count;
+    }
+
+    public function getMaterialsShortSummaryAttribute(): string
+    {
+        if (empty($this->materials_json) || !is_array($this->materials_json)) {
+            return !empty($this->additional_materials) ? $this->additional_materials : '-';
+        }
+
+        $items = [];
+        foreach ($this->materials_json as $item) {
+            $name = trim($item['name'] ?? '');
+            $qty = (float)($item['qty'] ?? 0);
+            $unit = trim($item['unit'] ?? '');
+            if ($qty > 0 && !empty($name)) {
+                $u = strtolower($unit) === 'meter' || strtolower($unit) === 'm' ? 'm' : (strtolower($unit) === 'unit' ? ' unit' : ' pcs');
+                $items[] = "{$name} ({$qty}{$u})";
+            }
+        }
+
+        if (!empty($this->additional_materials)) {
+            $items[] = trim($this->additional_materials);
+        }
+
+        $totalItems = count($items);
+        if ($totalItems === 0) {
+            return '-';
+        }
+
+        if ($totalItems === 1) {
+            return $items[0];
+        }
+
+        if ($totalItems === 2) {
+            return $items[0] . ', ' . $items[1];
+        }
+
+        $sisa = $totalItems - 2;
+        return $items[0] . ', ' . $items[1] . " (+{$sisa} lainnya)";
+    }
 }
