@@ -40,6 +40,9 @@
       min-height: 100%;
       background-color: var(--bg);
       color: var(--text);
+      max-width: 100%;
+      overflow-x: hidden;
+      position: relative;
     }
 
     body {
@@ -52,10 +55,9 @@
     /* ── Latar Belakang Gelombang Garis Merah Banterpool ── */
     .bg-wave-container {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      inset: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       pointer-events: none;
       z-index: 0;
@@ -64,8 +66,8 @@
     .bg-wave-pattern {
       position: absolute;
       top: 0;
-      left: -15%;
-      width: 130%;
+      left: -10%;
+      width: 120%;
       height: 260%;
       background-image: url('{{ asset('image/bg-red-wave.jpg') }}');
       background-size: cover;
@@ -91,6 +93,18 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* ── No Scrollbar Utility ── */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* ── Line Clamp Utility ── */
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
 
     /* ── Dropdown Text Styling (Light Theme) ── */
     select,
@@ -121,12 +135,17 @@
       border: 1px solid var(--border);
       border-radius: 18px;
       box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+      max-width: 100%;
     }
-    .card-lg { border-radius: 24px; }
+    .card-lg { border-radius: 18px; }
+    @media (min-width: 640px) {
+      .card-lg { border-radius: 24px; }
+    }
 
     /* ── Inputs ── */
     .inp {
       width: 100%;
+      max-width: 100%;
       background: #ffffff;
       border: 1px solid #d1d5db;
       border-radius: 12px;
@@ -180,12 +199,18 @@
     .metric-card {
       background: #ffffff;
       border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 22px;
+      border-radius: 18px;
+      padding: 16px;
       position: relative;
       overflow: hidden;
       box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.04);
       transition: border-color .2s, transform .15s, box-shadow .2s;
+    }
+    @media (min-width: 640px) {
+      .metric-card {
+        border-radius: 20px;
+        padding: 22px;
+      }
     }
     .metric-card:hover {
       border-color: #cbd5e1;
@@ -269,7 +294,7 @@
     }
 
     .icon-btn {
-      width: 38px; height: 38px;
+      width: 36px; height: 36px;
       border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
       background: #ffffff;
@@ -278,6 +303,12 @@
       cursor: pointer;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
       transition: background .15s, color .15s, border-color .15s, transform .1s;
+    }
+    @media (min-width: 640px) {
+      .icon-btn {
+        width: 38px;
+        height: 38px;
+      }
     }
     .icon-btn:hover {
       background: #f8fafc;
@@ -729,30 +760,30 @@
   <!-- 1. TOPBAR / HEADER NAVIGATION (BANTERPOOL THEME) -->
   <!-- ============================================== -->
   <header class="sticky top-0 z-40 border-b border-gray-200/80 bg-white/90 backdrop-blur-md shadow-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 gap-4">
+    <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
 
       <!-- Left Branding: Banterpool Logo & Slogan -->
-      <a href="{{ route('daily-report.index') }}" class="flex items-center gap-3 shrink-0">
-        <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 border border-red-200/80 text-brand shadow-xs">
-          <i class="fa-solid fa-wifi text-lg"></i>
+      <a href="{{ route('daily-report.index') }}" class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-red-50 border border-red-200/80 text-brand shadow-xs shrink-0">
+          <i class="fa-solid fa-wifi text-base sm:text-lg"></i>
         </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="font-extrabold text-base sm:text-lg text-black tracking-tight">
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <span class="font-extrabold text-sm sm:text-base md:text-lg text-black tracking-tight whitespace-nowrap">
               BANTER<span class="text-brand">POOL</span>
             </span>
-            <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-50 text-brand border border-red-200">
+            <span class="text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-red-50 text-brand border border-red-200 whitespace-nowrap">
               DAILY REPORT
             </span>
           </div>
-          <p class="text-[11px] text-gray-500 hidden sm:block font-medium">
+          <p class="text-[11px] text-gray-500 hidden sm:block font-medium truncate">
             ISP Field <span class="text-brand font-semibold">Technician</span> Portal &bull; Sinkronisasi Stok &amp; Kas
           </p>
         </div>
       </a>
 
       <!-- Right Action Controls -->
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         
         <!-- Google Sheets Demo Mode Badge -->
         <button type="button" @click="openSettings = true"
@@ -781,7 +812,7 @@
         <!-- User Menu Avatar Dropdown -->
         <div class="relative" @click.outside="openUserMenu = false">
           <button type="button" @click="openUserMenu = !openUserMenu"
-                  class="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-md shadow-brand/20 bg-brand hover:bg-[#b01010] transition"
+                  class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-md shadow-brand/20 bg-brand hover:bg-[#b01010] transition"
                   title="Menu Pengguna & Switch POV">
             {{ strtoupper(substr(auth()->user()->name ?? 'TK', 0, 2)) }}
           </button>
@@ -791,7 +822,7 @@
                x-transition:enter="transition ease-out duration-100"
                x-transition:enter-start="opacity-0 scale-95"
                x-transition:enter-end="opacity-100 scale-100"
-               class="absolute right-0 top-12 w-64 card p-2 z-50 text-xs shadow-2xl divide-y divide-gray-100">
+               class="absolute right-0 top-11 sm:top-12 w-64 max-w-[calc(100vw-2rem)] card p-2 z-50 text-xs shadow-2xl divide-y divide-gray-100">
             
             <div class="px-3 py-2.5">
               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Masuk Sebagai</span>
@@ -848,24 +879,24 @@
   <!-- ============================================== -->
   <!-- 2. MAIN CONTENT CONTAINER                      -->
   <!-- ============================================== -->
-  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10">
+  <main class="flex-1 max-w-7xl mx-auto w-full px-3.5 sm:px-6 lg:px-8 py-5 sm:py-7 lg:py-8 space-y-6 sm:space-y-8 relative z-10 min-w-0">
 
     <!-- Flash Messages -->
     @if(session('success'))
-      <div class="flex items-center gap-3 p-4 rounded-2xl text-sm bg-emerald-50 border border-emerald-200 text-emerald-800 shadow-xs"
+      <div class="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm bg-emerald-50 border border-emerald-200 text-emerald-800 shadow-xs"
            x-data="{ show: true }" x-show="show">
-        <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-          <i class="fa-solid fa-circle-check text-base"></i>
+        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-circle-check text-sm sm:text-base"></i>
         </div>
-        <span class="flex-1 font-semibold">{{ session('success') }}</span>
-        <button type="button" @click="show = false" class="text-emerald-500 hover:text-emerald-800">
+        <span class="flex-1 font-semibold leading-snug">{{ session('success') }}</span>
+        <button type="button" @click="show = false" class="text-emerald-500 hover:text-emerald-800 shrink-0">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
     @endif
 
     @if($errors->any())
-      <div class="p-4 rounded-2xl text-sm bg-red-50 border border-red-200 text-red-800 shadow-xs"
+      <div class="p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm bg-red-50 border border-red-200 text-red-800 shadow-xs"
            x-data="{ show: true }" x-show="show">
         <div class="flex items-center justify-between mb-2">
           <span class="font-extrabold flex items-center gap-2 text-brand">
@@ -886,20 +917,20 @@
     <!-- ============================================== -->
     <!-- 3. KPI METRIC CARDS (CLEAN BANTERPOOL AESTHETICS) -->
     <!-- ============================================== -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
 
       <!-- Card 1: Total Pekerjaan Hari Ini -->
       <div class="metric-card">
-        <div class="flex items-center justify-between mb-3">
-          <span class="lbl mb-0">Total Pekerjaan Hari Ini</span>
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center bg-red-50 text-brand border border-red-100 shadow-xs">
-            <i class="fa-solid fa-briefcase text-sm"></i>
+        <div class="flex items-center justify-between mb-2.5 sm:mb-3">
+          <span class="lbl mb-0 text-[10px] sm:text-[11px]">Total Pekerjaan Hari Ini</span>
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center bg-red-50 text-brand border border-red-100 shadow-xs shrink-0">
+            <i class="fa-solid fa-briefcase text-xs sm:text-sm"></i>
           </div>
         </div>
-        <div class="flex items-baseline justify-between mt-2">
-          <span class="text-3xl sm:text-4xl font-black text-black tracking-tight leading-none">{{ $totalJobsToday }}</span>
-          <span class="text-xs font-bold text-brand bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-            <i class="fa-solid fa-arrow-trend-up text-[10px]"></i> +{{ $totalJobsToday }}
+        <div class="flex items-baseline justify-between mt-1 sm:mt-2">
+          <span class="text-2xl sm:text-3xl lg:text-4xl font-black text-black tracking-tight leading-none">{{ $totalJobsToday }}</span>
+          <span class="text-[10px] sm:text-xs font-bold text-brand bg-red-50 border border-red-200 px-2 sm:px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+            <i class="fa-solid fa-arrow-trend-up text-[9px]"></i> +{{ $totalJobsToday }}
           </span>
         </div>
         <p class="text-[11px] text-gray-500 mt-2 font-medium">Order instalasi &amp; tiket lapangan</p>
@@ -907,14 +938,14 @@
 
       <!-- Card 2: Kas Terkumpul (Teknisi) -->
       <div class="metric-card">
-        <div class="flex items-center justify-between mb-3">
-          <span class="lbl mb-0">Kas Terkumpul (Teknisi)</span>
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-xs">
-            <i class="fa-solid fa-wallet text-sm"></i>
+        <div class="flex items-center justify-between mb-2.5 sm:mb-3">
+          <span class="lbl mb-0 text-[10px] sm:text-[11px]">Kas Terkumpul (Teknisi)</span>
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-xs shrink-0">
+            <i class="fa-solid fa-wallet text-xs sm:text-sm"></i>
           </div>
         </div>
-        <div class="flex items-baseline justify-between mt-2">
-          <span class="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight leading-none">
+        <div class="flex items-baseline justify-between mt-1 sm:mt-2">
+          <span class="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-600 tracking-tight leading-none truncate" title="Rp {{ number_format($cashCollectedToday, 0, ',', '.') }}">
             Rp {{ number_format($cashCollectedToday, 0, ',', '.') }}
           </span>
         </div>
@@ -923,29 +954,29 @@
 
       <!-- Card 3: Perlu Penyetoran / Pending -->
       <div class="metric-card">
-        <div class="flex items-center justify-between mb-3">
-          <span class="lbl mb-0">Perlu Penyetoran / Pending</span>
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-xs">
-            <i class="fa-regular fa-clock text-sm"></i>
+        <div class="flex items-center justify-between mb-2.5 sm:mb-3">
+          <span class="lbl mb-0 text-[10px] sm:text-[11px]">Perlu Penyetoran / Pending</span>
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-xs shrink-0">
+            <i class="fa-regular fa-clock text-xs sm:text-sm"></i>
           </div>
         </div>
-        <div class="flex items-baseline justify-between mt-2">
-          <span class="text-3xl sm:text-4xl font-black text-black tracking-tight leading-none">{{ $pendingDepositCount }}</span>
-          <span class="badge badge-amber font-bold">Belum Setor</span>
+        <div class="flex items-baseline justify-between mt-1 sm:mt-2">
+          <span class="text-2xl sm:text-3xl lg:text-4xl font-black text-black tracking-tight leading-none">{{ $pendingDepositCount }}</span>
+          <span class="badge badge-amber font-bold text-[10px] sm:text-xs">Belum Setor</span>
         </div>
         <p class="text-[11px] text-gray-500 mt-2 font-medium">Menunggu konfirmasi setor ke admin</p>
       </div>
 
       <!-- Card 4: Est. Biaya Material (Hari Ini) -->
       <div class="metric-card">
-        <div class="flex items-center justify-between mb-3">
-          <span class="lbl mb-0">Est. Biaya Material (Hari Ini)</span>
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center bg-red-50 text-brand border border-red-100 shadow-xs">
-            <i class="fa-solid fa-boxes-stacked text-sm"></i>
+        <div class="flex items-center justify-between mb-2.5 sm:mb-3">
+          <span class="lbl mb-0 text-[10px] sm:text-[11px]">Est. Biaya Material (Hari Ini)</span>
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center bg-red-50 text-brand border border-red-100 shadow-xs shrink-0">
+            <i class="fa-solid fa-boxes-stacked text-xs sm:text-sm"></i>
           </div>
         </div>
-        <div class="flex items-baseline justify-between mt-2">
-          <span class="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-none">
+        <div class="flex items-baseline justify-between mt-1 sm:mt-2">
+          <span class="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 tracking-tight leading-none truncate" title="Rp {{ number_format($materialCostToday, 0, ',', '.') }}">
             Rp {{ number_format($materialCostToday, 0, ',', '.') }}
           </span>
         </div>
@@ -957,13 +988,13 @@
     <!-- ============================================== -->
     <!-- 4. FORM INPUT LAPORAN & PEMBUKUAN              -->
     <!-- ============================================== -->
-    <div class="card card-lg p-6 sm:p-8">
+    <div class="card card-lg p-4 sm:p-6 lg:p-8">
 
       <!-- Form Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-200 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-5 border-b border-gray-200 mb-5 sm:mb-6">
         <div>
-          <h2 class="text-lg sm:text-xl font-black text-black flex items-center gap-2.5">
-            <span class="w-8 h-8 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm shadow-xs border border-red-100">
+          <h2 class="text-base sm:text-lg md:text-xl font-black text-black flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm shadow-xs border border-red-100 shrink-0">
               <i class="fa-solid fa-pen-to-square"></i>
             </span>
             <span>Input Laporan & Pembukuan</span>
@@ -973,18 +1004,18 @@
           </p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
           <!-- Quick Autofill from Recent Tickets -->
           @if($recentOrders->isNotEmpty())
-            <div class="relative" x-data="{ openPick: false }">
+            <div class="relative w-full sm:w-auto" x-data="{ openPick: false }">
               <button type="button" @click="openPick = !openPick"
-                      class="btn-ghost flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-brand hover:border-brand/40">
+                      class="btn-ghost w-full sm:w-auto justify-center flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-brand hover:border-brand/40">
                 <i class="fa-solid fa-bolt text-brand"></i>
                 <span>Pilih Tiket Pemasangan</span>
                 <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
               </button>
               <div x-show="openPick" @click.outside="openPick = false" x-cloak
-                   class="absolute right-0 z-30 mt-2 w-80 card p-2 text-xs divide-y divide-gray-100 max-h-72 overflow-y-auto shadow-2xl">
+                   class="absolute left-0 sm:left-auto right-0 z-30 mt-2 w-full sm:w-80 max-w-[calc(100vw-2.5rem)] card p-2 text-xs divide-y divide-gray-100 max-h-72 overflow-y-auto shadow-2xl">
                 @foreach($recentOrders as $ro)
                   <button type="button" @click="autofillFromOrder({{ Js::from($ro) }}); openPick = false"
                           class="w-full text-left p-2.5 rounded-xl hover:bg-red-50/60 transition flex flex-col gap-0.5 group">
@@ -999,14 +1030,14 @@
       </div>
 
       <!-- Form Element -->
-      <form action="{{ route('daily-report.store') }}" method="POST" class="space-y-6">
+      <form action="{{ route('daily-report.store') }}" method="POST" class="space-y-5 sm:space-y-6">
         @csrf
         <input type="hidden" name="order_id" :value="selectedOrderId">
         <input type="hidden" name="materials_json" :value="materialsJsonPayload">
         <input type="hidden" name="material_total_cost" :value="totalMaterialCost">
 
         <!-- Baris 1: Tanggal & Nama Teknisi -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
           <div>
             <label class="lbl">
               <i class="fa-regular fa-calendar text-brand"></i> Hari & Tanggal
@@ -1023,7 +1054,7 @@
         </div>
 
         <!-- Baris 2: Mitra Perusahaan & Tipe Pekerjaan -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
           <div>
             <label class="lbl">
               <i class="fa-solid fa-building text-brand"></i> Perusahaan / PT Mitra (ISP)
@@ -1068,7 +1099,7 @@
             <span>Informasi Pelanggan & Kredensial</span>
           </p>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div>
               <label class="lbl">Nama Pelanggan / ID</label>
               <input type="text" name="customer_name" x-model="customerName" required placeholder="Bpk Herman / CST-109" class="inp font-semibold">
@@ -1107,7 +1138,7 @@
             <span>Parameter Teknis & Harga Material</span>
           </p>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mb-5">
             <div>
               <label class="lbl">Rx Power (dBm)</label>
               <input type="text" name="rx_power" x-model="rxPower" placeholder="-19.5"
@@ -1122,44 +1153,44 @@
           </div>
 
           <!-- KATALOG MATERIAL (Sinkron dengan Stok Admin + Edit Manual + Tambah Manual) -->
-          <div class="p-5 rounded-2xl bg-gray-50/70 border border-gray-200 space-y-4">
+          <div class="p-3.5 sm:p-5 rounded-2xl bg-gray-50/70 border border-gray-200 space-y-4">
             
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-200">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl bg-red-50 text-brand flex items-center justify-center text-xs border border-red-100">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-red-50 text-brand flex items-center justify-center text-xs border border-red-100 shrink-0">
                   <i class="fa-solid fa-boxes-stacked"></i>
                 </div>
-                <div>
-                  <span class="font-extrabold text-black text-sm block">Katalog Material & Harga Satuan</span>
+                <div class="min-w-0">
+                  <span class="font-extrabold text-black text-xs sm:text-sm block truncate">Katalog Material & Harga Satuan</span>
                   <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                      <i class="fa-solid fa-arrow-down-long text-[9px] text-emerald-600"></i>
+                    <span class="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      <i class="fa-solid fa-arrow-down-long text-[8px] text-emerald-600"></i>
                       Barang Masuk: {{ $currentMonthName ?? 'Bulan Sekarang' }}
                     </span>
-                    <span class="text-[10px] text-gray-500 font-medium">(Sinkron Log Mutasi Stok POV Admin)</span>
+                    <span class="text-[9px] sm:text-[10px] text-gray-500 font-medium">(POV Admin)</span>
                   </div>
                 </div>
               </div>
 
-              <div class="flex items-center gap-2.5 flex-wrap">
+              <div class="flex items-center justify-between sm:justify-end gap-2 flex-wrap">
                 <!-- Total Biaya Badge -->
-                <span class="text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl shadow-xs">
-                  Total Est: <span x-text="rp(totalMaterialCost)"></span>
+                <span class="text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl shadow-xs whitespace-nowrap">
+                  Total: <span x-text="rp(totalMaterialCost)"></span>
                 </span>
 
                 <!-- Tambah Barang Manual Button -->
                 <button type="button" @click="openAddMaterialModal = true"
-                        class="btn-ghost flex items-center gap-1.5 text-xs py-1.5 px-3 border-red-200 text-brand hover:bg-red-50 font-bold">
-                  <i class="fa-solid fa-plus text-[11px]"></i>
-                  <span>Tambah Barang Manual</span>
+                        class="btn-ghost flex items-center gap-1.5 text-xs py-1.5 px-3 border-red-200 text-brand hover:bg-red-50 font-bold shrink-0">
+                  <i class="fa-solid fa-plus text-[10px]"></i>
+                  <span>Tambah Barang</span>
                 </button>
               </div>
             </div>
 
-            <!-- Kategori-Kategori Tersusun 2 Berjejer Mengikuti Urutan Stok Barang -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 items-start">
+            <!-- Kategori-Kategori Tersusun Mengikuti Urutan Stok Barang -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3.5 sm:gap-4 pt-1 items-start">
               <template x-for="group in categorizedCatalog" :key="group.name">
-                <div class="p-4 sm:p-5 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-3 flex flex-col justify-between">
+                <div class="p-3.5 sm:p-5 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-3 flex flex-col justify-between">
                   
                   <!-- Header Kategori -->
                   <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-gray-100">
@@ -1188,7 +1219,7 @@
                     </button>
                   </div>
 
-                  <!-- Daftar Barang dalam Kategori Ini (Rapi Menyesuaikan Kartu 2 Berjejer) -->
+                  <!-- Daftar Barang dalam Kategori Ini -->
                   <div class="space-y-2.5 pt-1">
                     <template x-for="item in group.items" :key="item.key">
                       <div class="mat-card flex flex-col justify-between gap-2.5"
@@ -1199,20 +1230,20 @@
                           <div class="flex items-start justify-between gap-2">
                             
                             <!-- Checkbox & Name -->
-                            <label class="flex items-start gap-3 cursor-pointer flex-1 min-w-0 select-none">
+                            <label class="flex items-start gap-2.5 sm:gap-3 cursor-pointer flex-1 min-w-0 select-none">
                               <input type="checkbox" x-model="item.checked"
                                      class="w-4 h-4 rounded text-brand border-gray-300 mt-0.5 accent-brand shrink-0 focus:ring-brand">
                               <div class="min-w-0">
                                 <p class="text-xs font-extrabold truncate leading-tight"
                                    :class="item.checked ? 'text-black' : 'text-gray-800'"
                                    x-text="item.name"></p>
-                                <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                  <span class="text-[11px] font-mono font-medium text-gray-500" x-text="rp(item.price) + ' / ' + item.unit"></span>
+                                <div class="flex items-center gap-1.5 sm:gap-2 mt-1 flex-wrap">
+                                  <span class="text-[10px] sm:text-[11px] font-mono font-medium text-gray-500" x-text="rp(item.price) + ' / ' + item.unit"></span>
                                   <template x-if="item.max_qty !== undefined && item.max_qty !== null">
-                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md"
+                                    <span class="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md"
                                           :title="'Batas stok barang masuk periode ini: ' + item.max_qty + ' ' + item.unit">
-                                      <i class="fa-solid fa-boxes-stacked text-[9px] text-amber-600"></i>
-                                      Stok Masuk: <span x-text="item.max_qty + ' ' + item.unit"></span>
+                                      <i class="fa-solid fa-boxes-stacked text-[8px] sm:text-[9px] text-amber-600"></i>
+                                      Stok: <span x-text="item.max_qty + ' ' + item.unit"></span>
                                     </span>
                                   </template>
                                 </div>
@@ -1236,7 +1267,7 @@
                           </div>
 
                           <!-- Quantity Input & Subtotal (Visible when checked) -->
-                          <div class="flex items-center justify-between pt-2 mt-2 border-t border-gray-100" x-show="item.checked" x-cloak>
+                          <div class="flex flex-wrap items-center justify-between gap-2 pt-2 mt-2 border-t border-gray-100" x-show="item.checked" x-cloak>
                             <div class="flex flex-col min-w-0">
                               <span class="text-[11px] text-gray-600 font-medium">
                                 Subtotal: <strong class="text-emerald-700 font-extrabold" x-text="rp(item.price * item.qty)"></strong>
@@ -1248,7 +1279,7 @@
                                 </span>
                               </template>
                             </div>
-                            <div class="flex items-center gap-1.5 shrink-0">
+                            <div class="flex items-center gap-1.5 shrink-0 ml-auto">
                               <span class="text-[10px] text-gray-500 font-bold uppercase">Qty:</span>
                               <input type="number" x-model="item.qty" min="1" step="any"
                                      :max="item.max_qty || null"
@@ -1278,7 +1309,7 @@
                             <input type="text" x-model="item.name" class="inp py-1.5 text-xs">
                           </div>
 
-                          <div class="grid grid-cols-2 gap-2">
+                          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                               <label class="text-[10px] font-bold text-gray-600 block mb-1">Kategori:</label>
                               <select x-model="item.category" class="inp py-1.5 text-xs">
@@ -1294,7 +1325,7 @@
                             </div>
                           </div>
 
-                          <div class="grid grid-cols-2 gap-2">
+                          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                               <label class="text-[10px] font-bold text-gray-600 block mb-1">Harga Satuan (Rp):</label>
                               <input type="number" x-model="item.price" min="0" step="500" class="inp py-1.5 text-xs font-mono font-bold">
@@ -1349,7 +1380,7 @@
             <span>Pembukuan / Transaksi Lapangan</span>
           </p>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div>
               <label class="lbl">Jenis Transaksi</label>
               <div class="relative">
@@ -1407,7 +1438,7 @@
         <!-- Submit Button (Matching Banterpool Brand CTA) -->
         <div class="pt-3">
           <button type="submit"
-                  class="btn-primary w-full flex items-center justify-center gap-2.5 text-sm sm:text-base py-3.5 rounded-xl shadow-lg shadow-brand/25">
+                  class="btn-primary w-full flex items-center justify-center gap-2.5 text-sm sm:text-base py-3 sm:py-3.5 rounded-xl shadow-lg shadow-brand/25">
             <i class="fa-solid fa-paper-plane text-sm"></i>
             <span>Simpan & Kirim ke Spreadsheet</span>
           </button>
@@ -1419,45 +1450,48 @@
     <!-- ============================================== -->
     <!-- 5. LOG PEKERJAAN & PEMBUKUAN (TABS & TABLE)    -->
     <!-- ============================================== -->
-    <div class="card card-lg p-6 sm:p-8">
+    <div class="card card-lg p-4 sm:p-6 lg:p-8 min-w-0">
 
       <!-- Search & Action Bar -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5 sm:mb-6">
         
         <!-- Search Input Form -->
-        <form method="GET" action="{{ route('daily-report.index') }}" class="flex-1 flex items-center gap-2">
+        <form method="GET" action="{{ route('daily-report.index') }}" class="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <input type="hidden" name="tab" :value="activeTab">
-          <div class="relative flex-1">
+          
+          <div class="relative flex-1 min-w-0">
             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
             <input type="text" name="q" value="{{ $search }}" placeholder="Cari Pelanggan, PPPoE, Alamat, atau Mitra..."
-                   class="inp pl-9 text-xs">
+                   class="inp pl-9 text-xs w-full">
           </div>
 
-          <!-- Filter Job Type Dropdown -->
-          <div class="relative w-48 sm:w-60">
-            <select name="job_type" onchange="this.form.submit()"
-                    class="inp pr-8 text-xs font-semibold text-gray-800">
-              <option value="all" {{ $jobTypeFilter === 'all' ? 'selected' : '' }}>
-                Semua Tipe Pekerjaan
-              </option>
-              @foreach($jobTypes as $jt)
-                <option value="{{ $jt }}" {{ $jobTypeFilter === $jt ? 'selected' : '' }}>
-                  {{ $jt }}
+          <div class="flex items-center gap-2">
+            <!-- Filter Job Type Dropdown -->
+            <div class="relative flex-1 sm:w-56 md:w-60">
+              <select name="job_type" onchange="this.form.submit()"
+                      class="inp pr-8 text-xs font-semibold text-gray-800 w-full truncate">
+                <option value="all" {{ $jobTypeFilter === 'all' ? 'selected' : '' }}>
+                  Semua Tipe Pekerjaan
                 </option>
-              @endforeach
-            </select>
-            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[10px]"></i>
-          </div>
+                @foreach($jobTypes as $jt)
+                  <option value="{{ $jt }}" {{ $jobTypeFilter === $jt ? 'selected' : '' }}>
+                    {{ $jt }}
+                  </option>
+                @endforeach
+              </select>
+              <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[10px]"></i>
+            </div>
 
-          @if(!empty($search) || $jobTypeFilter !== 'all')
-            <a href="{{ route('daily-report.index') }}" class="icon-btn shrink-0" title="Reset Filter">
-              <i class="fa-solid fa-xmark text-xs"></i>
-            </a>
-          @endif
+            @if(!empty($search) || $jobTypeFilter !== 'all')
+              <a href="{{ route('daily-report.index') }}" class="icon-btn shrink-0" title="Reset Filter">
+                <i class="fa-solid fa-xmark text-xs"></i>
+              </a>
+            @endif
+          </div>
         </form>
 
         <!-- Export CSV Button -->
-        <a href="{{ route('daily-report.export') }}" class="btn-ghost flex items-center gap-2 text-xs font-bold text-emerald-700 border-emerald-200 hover:bg-emerald-50 shrink-0 shadow-xs">
+        <a href="{{ route('daily-report.export') }}" class="btn-ghost flex items-center justify-center gap-2 text-xs font-bold text-emerald-700 border-emerald-200 hover:bg-emerald-50 shrink-0 shadow-xs py-2.5 sm:py-2">
           <i class="fa-solid fa-file-csv text-base text-emerald-600"></i>
           <span>Export Spreadsheet</span>
         </a>
@@ -1465,8 +1499,8 @@
       </div>
 
       <!-- Tabs Navigation -->
-      <div class="flex items-center gap-6 border-b border-gray-200 mb-6">
-        <button type="button" class="tab-btn" :class="activeTab === 'jobs' ? 'active' : ''" @click="activeTab = 'jobs'">
+      <div class="flex items-center gap-2 sm:gap-6 border-b border-gray-200 mb-5 sm:mb-6 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+        <button type="button" class="tab-btn whitespace-nowrap text-xs sm:text-sm py-2.5 sm:py-3" :class="activeTab === 'jobs' ? 'active' : ''" @click="activeTab = 'jobs'">
           <i class="fa-solid fa-wrench" :class="activeTab === 'jobs' ? 'text-brand' : 'text-gray-400'"></i>
           <span>Log Pekerjaan Teknis</span>
           <span class="badge" :class="activeTab === 'jobs' ? 'badge-brand' : 'badge-slate'">
@@ -1474,7 +1508,7 @@
           </span>
         </button>
 
-        <button type="button" class="tab-btn" :class="activeTab === 'cash' ? 'active' : ''" @click="activeTab = 'cash'">
+        <button type="button" class="tab-btn whitespace-nowrap text-xs sm:text-sm py-2.5 sm:py-3" :class="activeTab === 'cash' ? 'active' : ''" @click="activeTab = 'cash'">
           <i class="fa-solid fa-wallet" :class="activeTab === 'cash' ? 'text-emerald-600' : 'text-gray-400'"></i>
           <span>Pembukuan Kas Lapangan</span>
           <span class="badge" :class="activeTab === 'cash' ? 'badge-green' : 'badge-slate'">
@@ -1484,111 +1518,298 @@
       </div>
 
       <!-- TAB 1: Log Pekerjaan Teknis -->
-      <div x-show="activeTab === 'jobs'" class="overflow-x-auto">
-        <table class="tbl">
-          <thead>
-            <tr>
-              <th>TGL &amp; MITRA</th>
-              <th>PELANGGAN / ID</th>
-              <th>TIPE PEKERJAAN</th>
-              <th>RX POWER</th>
-              <th>BIAYA MATERIAL</th>
-              <th>KAS LAPANGAN</th>
-              <th>STATUS SETOR</th>
-              <th style="text-align: center;">AKSI</th>
-            </tr>
-          </thead>
-          <tbody>
-            @forelse($reports as $r)
-              <tr>
-                <td class="whitespace-nowrap">
-                  <span class="font-extrabold text-gray-900 block">{{ $r->report_date ? $r->report_date->format('d/m/Y') : '-' }}</span>
-                  <span class="text-[11px] text-brand font-bold block">{{ $r->partner_company }}</span>
-                  <span class="text-[10px] text-gray-500 block">Oleh: {{ $r->technician_name }}</span>
-                </td>
-
-                <td>
-                  <span class="font-extrabold text-gray-900 block">{{ $r->customer_name }}</span>
-                  <span class="text-[11px] text-gray-500 block font-mono font-medium">{{ $r->pppoe_username ?: '-' }}</span>
-                  <span class="text-[10px] text-gray-400 block truncate max-w-[200px]">{{ $r->customer_address }}</span>
-                </td>
-
-                <td class="whitespace-nowrap">
-                  <span class="badge badge-slate font-semibold">{{ $r->job_type }}</span>
-                  <span class="text-[10px] text-gray-500 block mt-1 font-mono font-medium">{{ $r->odp_port ?: '-' }}</span>
-                </td>
-
-                <td class="whitespace-nowrap">
-                  <span class="font-mono font-bold text-amber-700 block">{{ $r->rx_power ? $r->rx_power . ' dBm' : '-' }}</span>
-                  <span class="text-[10px] text-gray-500 font-mono block">{{ $r->ont_sn ?: '-' }}</span>
-                </td>
-
-                <td class="whitespace-nowrap">
-                  <span class="font-extrabold text-gray-900 block">{{ $r->formatted_material_cost }}</span>
-                  <span class="text-[10px] text-gray-500 block truncate max-w-[170px]" title="{{ $r->materials_summary_text }}">
-                    {{ $r->materials_summary_text }}
-                  </span>
-                </td>
-
-                <td class="whitespace-nowrap">
-                  <span class="font-black {{ $r->cash_amount > 0 ? 'text-emerald-700' : 'text-gray-400' }} block text-sm">
-                    {{ $r->formatted_cash }}
-                  </span>
-                  <span class="text-[10px] text-gray-500 block font-medium">{{ $r->payment_method }}</span>
-                </td>
-
-                <td class="whitespace-nowrap">
+      <div x-show="activeTab === 'jobs'">
+        
+        <!-- Mobile Card View (HP: screen < 768px) -->
+        <div class="md:hidden space-y-3">
+          @forelse($reports as $r)
+            <div class="p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-white shadow-2xs space-y-2.5 transition hover:border-gray-300">
+              
+              <!-- Card Header: Tgl & Mitra + Status Setor -->
+              <div class="flex items-start justify-between gap-2 border-b border-gray-100 pb-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs font-black text-gray-900">{{ $r->report_date ? $r->report_date->format('d/m/Y') : '-' }}</span>
+                    <span class="badge badge-brand text-[9px] font-bold">{{ $r->partner_company }}</span>
+                  </div>
+                  <p class="text-[10px] sm:text-[11px] text-gray-500 font-medium mt-0.5">Oleh: <strong class="text-gray-700">{{ $r->technician_name }}</strong></p>
+                </div>
+                
+                <div class="shrink-0">
                   @if($r->cash_amount > 0)
                     @if($r->cash_deposit_status === 'Sudah Disetor')
-                      <span class="badge badge-green font-bold">Disetor</span>
+                      <span class="badge badge-green font-bold text-[9px]">
+                        <i class="fa-solid fa-check text-[8px]"></i> Disetor
+                      </span>
                     @else
-                      <span class="badge badge-amber font-bold">Belum Setor</span>
+                      <span class="badge badge-amber font-bold text-[9px]">
+                        <i class="fa-regular fa-clock text-[8px]"></i> Belum Setor
+                      </span>
                     @endif
                   @else
-                    <span class="text-gray-400 text-xs">—</span>
+                    <span class="text-gray-400 text-[10px]">—</span>
                   @endif
-                </td>
+                </div>
+              </div>
 
-                <td style="text-align: center;" class="whitespace-nowrap">
-                  <div class="flex items-center justify-center gap-1.5">
-                    @if($r->cash_amount > 0 && $r->cash_deposit_status !== 'Sudah Disetor')
-                      <form action="{{ route('daily-report.setor', $r->id) }}" method="POST" onsubmit="return confirm('Tandai kas sebesar {{ $r->formatted_cash }} sudah disetor?')">
+              <!-- Pelanggan & Alamat -->
+              <div>
+                <h4 class="font-extrabold text-xs sm:text-sm text-gray-900">{{ $r->customer_name }}</h4>
+                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span class="text-xs font-mono text-brand font-semibold">{{ $r->pppoe_username ?: '-' }}</span>
+                  @if($r->customer_phone)
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $r->customer_phone) }}" target="_blank"
+                       class="text-[11px] text-emerald-600 font-semibold hover:underline flex items-center gap-1">
+                      <i class="fa-brands fa-whatsapp"></i> {{ $r->customer_phone }}
+                    </a>
+                  @endif
+                </div>
+                @if($r->customer_address)
+                  <p class="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-snug">{{ $r->customer_address }}</p>
+                @endif
+              </div>
+
+              <!-- Detail Grid: Tipe Pekerjaan & Rx Power -->
+              <div class="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-gray-50/80 text-xs">
+                <div class="min-w-0">
+                  <span class="text-[9px] text-gray-400 font-bold uppercase block">Pekerjaan</span>
+                  <span class="font-bold text-gray-800 text-[11px] block truncate mt-0.5">{{ $r->job_type }}</span>
+                  <span class="text-[10px] text-gray-500 font-mono block mt-0.5 truncate">{{ $r->odp_port ?: '-' }}</span>
+                </div>
+                <div class="min-w-0">
+                  <span class="text-[9px] text-gray-400 font-bold uppercase block">Rx Power / ONT</span>
+                  <span class="font-mono font-bold text-amber-700 text-[11px] block mt-0.5 truncate">{{ $r->rx_power ? $r->rx_power . ' dBm' : '-' }}</span>
+                  <span class="text-[10px] text-gray-500 font-mono block mt-0.5 truncate">{{ $r->ont_sn ?: '-' }}</span>
+                </div>
+              </div>
+
+              <!-- Biaya Material & Kas Lapangan -->
+              <div class="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
+                <div class="min-w-0">
+                  <span class="text-[9px] text-gray-400 font-bold uppercase block">Material Digunakan</span>
+                  <span class="font-extrabold text-gray-900 text-xs">{{ $r->formatted_material_cost }}</span>
+                  <span class="text-[10px] text-gray-500 block truncate max-w-[150px] sm:max-w-[200px]" title="{{ $r->materials_summary_text }}">{{ $r->materials_summary_text }}</span>
+                </div>
+                <div class="text-right shrink-0">
+                  <span class="text-[9px] text-gray-400 font-bold uppercase block">Kas Lapangan</span>
+                  <span class="font-black {{ $r->cash_amount > 0 ? 'text-emerald-700' : 'text-gray-400' }} text-xs sm:text-sm block">
+                    {{ $r->formatted_cash }}
+                  </span>
+                  <span class="text-[10px] text-gray-500 font-medium block">{{ $r->payment_method }}</span>
+                </div>
+              </div>
+
+              <!-- Action Buttons Row -->
+              <div class="flex items-center justify-end gap-2 pt-1.5 border-t border-gray-100">
+                @if($r->cash_amount > 0 && $r->cash_deposit_status !== 'Sudah Disetor')
+                  <form action="{{ route('daily-report.setor', $r->id) }}" method="POST" onsubmit="return confirm('Tandai kas sebesar {{ $r->formatted_cash }} sudah disetor?')">
+                    @csrf
+                    <button type="submit" class="btn-ghost flex items-center gap-1.5 text-xs py-1.5 px-3 font-bold text-emerald-700 border-emerald-300 hover:bg-emerald-50">
+                      <i class="fa-solid fa-check text-xs"></i>
+                      <span>Setor Kas</span>
+                    </button>
+                  </form>
+                @endif
+
+                <form action="{{ route('daily-report.destroy', $r->id) }}" method="POST" onsubmit="return confirm('Hapus data laporan harian ini?')">
+                  @csrf
+                  @method('DELETE')
+                  <button type="submit" class="icon-btn w-8 h-8 text-brand hover:border-red-300 hover:bg-red-50" title="Hapus Laporan">
+                    <i class="fa-regular fa-trash-can text-xs"></i>
+                  </button>
+                </form>
+              </div>
+
+            </div>
+          @empty
+            <div class="text-center py-10 text-gray-400 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+              <i class="fa-regular fa-folder-open text-3xl mb-2 text-gray-300 block"></i>
+              <span class="text-xs">Belum ada data log pekerjaan teknis tercatat.</span>
+            </div>
+          @endforelse
+        </div>
+
+        <!-- Tablet & Desktop Table View (screen >= 768px) -->
+        <div class="hidden md:block overflow-x-auto w-full rounded-xl border border-gray-100 shadow-2xs">
+          <table class="tbl min-w-[780px]">
+            <thead>
+              <tr>
+                <th>TGL &amp; MITRA</th>
+                <th>PELANGGAN / ID</th>
+                <th>TIPE PEKERJAAN</th>
+                <th>RX POWER</th>
+                <th>BIAYA MATERIAL</th>
+                <th>KAS LAPANGAN</th>
+                <th>STATUS SETOR</th>
+                <th style="text-align: center;">AKSI</th>
+              </tr>
+            </thead>
+            <tbody>
+              @forelse($reports as $r)
+                <tr>
+                  <td class="whitespace-nowrap">
+                    <span class="font-extrabold text-gray-900 block">{{ $r->report_date ? $r->report_date->format('d/m/Y') : '-' }}</span>
+                    <span class="text-[11px] text-brand font-bold block">{{ $r->partner_company }}</span>
+                    <span class="text-[10px] text-gray-500 block">Oleh: {{ $r->technician_name }}</span>
+                  </td>
+
+                  <td>
+                    <span class="font-extrabold text-gray-900 block">{{ $r->customer_name }}</span>
+                    <span class="text-[11px] text-gray-500 block font-mono font-medium">{{ $r->pppoe_username ?: '-' }}</span>
+                    <span class="text-[10px] text-gray-400 block truncate max-w-[200px]">{{ $r->customer_address }}</span>
+                  </td>
+
+                  <td class="whitespace-nowrap">
+                    <span class="badge badge-slate font-semibold">{{ $r->job_type }}</span>
+                    <span class="text-[10px] text-gray-500 block mt-1 font-mono font-medium">{{ $r->odp_port ?: '-' }}</span>
+                  </td>
+
+                  <td class="whitespace-nowrap">
+                    <span class="font-mono font-bold text-amber-700 block">{{ $r->rx_power ? $r->rx_power . ' dBm' : '-' }}</span>
+                    <span class="text-[10px] text-gray-500 font-mono block">{{ $r->ont_sn ?: '-' }}</span>
+                  </td>
+
+                  <td class="whitespace-nowrap">
+                    <span class="font-extrabold text-gray-900 block">{{ $r->formatted_material_cost }}</span>
+                    <span class="text-[10px] text-gray-500 block truncate max-w-[170px]" title="{{ $r->materials_summary_text }}">
+                      {{ $r->materials_summary_text }}
+                    </span>
+                  </td>
+
+                  <td class="whitespace-nowrap">
+                    <span class="font-black {{ $r->cash_amount > 0 ? 'text-emerald-700' : 'text-gray-400' }} block text-sm">
+                      {{ $r->formatted_cash }}
+                    </span>
+                    <span class="text-[10px] text-gray-500 block font-medium">{{ $r->payment_method }}</span>
+                  </td>
+
+                  <td class="whitespace-nowrap">
+                    @if($r->cash_amount > 0)
+                      @if($r->cash_deposit_status === 'Sudah Disetor')
+                        <span class="badge badge-green font-bold">Disetor</span>
+                      @else
+                        <span class="badge badge-amber font-bold">Belum Setor</span>
+                      @endif
+                    @else
+                      <span class="text-gray-400 text-xs">—</span>
+                    @endif
+                  </td>
+
+                  <td style="text-align: center;" class="whitespace-nowrap">
+                    <div class="flex items-center justify-center gap-1.5">
+                      @if($r->cash_amount > 0 && $r->cash_deposit_status !== 'Sudah Disetor')
+                        <form action="{{ route('daily-report.setor', $r->id) }}" method="POST" onsubmit="return confirm('Tandai kas sebesar {{ $r->formatted_cash }} sudah disetor?')">
+                          @csrf
+                          <button type="submit" class="icon-btn w-8 h-8 text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50" title="Tandai Sudah Disetor">
+                            <i class="fa-solid fa-check text-xs"></i>
+                          </button>
+                        </form>
+                      @endif
+
+                      <form action="{{ route('daily-report.destroy', $r->id) }}" method="POST" onsubmit="return confirm('Hapus data laporan harian ini?')">
                         @csrf
-                        <button type="submit" class="icon-btn w-8 h-8 text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50" title="Tandai Sudah Disetor">
-                          <i class="fa-solid fa-check text-xs"></i>
+                        @method('DELETE')
+                        <button type="submit" class="icon-btn w-8 h-8 text-brand hover:border-red-300 hover:bg-red-50" title="Hapus Laporan">
+                          <i class="fa-regular fa-trash-can text-xs"></i>
                         </button>
                       </form>
-                    @endif
+                    </div>
+                  </td>
+                </tr>
+              @empty
+                <tr>
+                  <td colspan="8" class="text-center py-12 text-gray-400">
+                    <i class="fa-regular fa-folder-open text-3xl mb-2 text-gray-300 block"></i>
+                    <span>Belum ada data log pekerjaan teknis tercatat.</span>
+                  </td>
+                </tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
 
-                    <form action="{{ route('daily-report.destroy', $r->id) }}" method="POST" onsubmit="return confirm('Hapus data laporan harian ini?')">
-                      @csrf
-                      @method('DELETE')
-                      <button type="submit" class="icon-btn w-8 h-8 text-brand hover:border-red-300 hover:bg-red-50" title="Hapus Laporan">
-                        <i class="fa-regular fa-trash-can text-xs"></i>
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            @empty
-              <tr>
-                <td colspan="8" class="text-center py-12 text-gray-400">
-                  <i class="fa-regular fa-folder-open text-3xl mb-2 text-gray-300 block"></i>
-                  <span>Belum ada data log pekerjaan teknis tercatat.</span>
-                </td>
-              </tr>
-            @endforelse
-          </tbody>
-        </table>
-
-        <div class="pt-4">
+        <div class="pt-4 overflow-x-auto w-full">
           {{ $reports->links() }}
         </div>
       </div>
 
       <!-- TAB 2: Pembukuan Kas Lapangan -->
-      <div x-show="activeTab === 'cash'" x-cloak class="overflow-x-auto">
-        <table class="tbl">
+      <div x-show="activeTab === 'cash'" x-cloak>
+        
+        <!-- Mobile Card View (HP: screen < 768px) -->
+        <div class="md:hidden space-y-3">
+          @forelse($cashTransactions as $c)
+            <div class="p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-white shadow-2xs space-y-2.5 transition hover:border-gray-300">
+              
+              <!-- Card Header: Tgl, Jam, Status -->
+              <div class="flex items-start justify-between gap-2 border-b border-gray-100 pb-2">
+                <div>
+                  <span class="text-xs font-black text-gray-900 block">{{ $c->report_date ? $c->report_date->format('d/m/Y') : '-' }}</span>
+                  <span class="text-[10px] text-gray-500 font-medium">{{ $c->created_at ? $c->created_at->format('H:i') : '' }} WIB</span>
+                </div>
+                <div>
+                  @if($c->cash_deposit_status === 'Sudah Disetor')
+                    <span class="badge badge-green font-bold text-[9px]">
+                      <i class="fa-solid fa-check text-[8px]"></i> Disetor
+                    </span>
+                  @else
+                    <span class="badge badge-amber font-bold text-[9px]">
+                      <i class="fa-regular fa-clock text-[8px]"></i> Belum Setor
+                    </span>
+                  @endif
+                </div>
+              </div>
+
+              <!-- Detail Teknisi & Mitra & Pelanggan -->
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="min-w-0">
+                  <span class="text-[9px] text-gray-400 font-bold uppercase block">Teknisi &amp; Mitra</span>
+                  <span class="font-extrabold text-gray-900 text-xs block truncate mt-0.5">{{ $c->technician_name }}</span>
+                  <span class="text-[10px] text-brand font-bold block mt-0.5 truncate">{{ $c->partner_company }}</span>
+                </div>
+                <div class="min-w-0">
+                  <span class="text-[9px] text-gray-400 font-bold uppercase block">Pelanggan</span>
+                  <span class="font-extrabold text-gray-900 text-xs block truncate mt-0.5">{{ $c->customer_name }}</span>
+                  <span class="text-[10px] text-gray-500 block mt-0.5 truncate">{{ $c->customer_phone ?: '-' }}</span>
+                </div>
+              </div>
+
+              <!-- Transaksi & Nominal -->
+              <div class="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-100 text-xs">
+                <div class="min-w-0">
+                  <span class="badge badge-slate text-[9px] font-semibold truncate">{{ $c->transaction_type }}</span>
+                  <span class="text-[10px] text-gray-600 block mt-1 font-medium">{{ $c->payment_method }}</span>
+                </div>
+                <div class="text-right shrink-0">
+                  <span class="text-[9px] text-emerald-800 font-bold uppercase block">Nominal Kas</span>
+                  <span class="font-black text-emerald-700 text-sm sm:text-base block">{{ $c->formatted_cash }}</span>
+                </div>
+              </div>
+
+              <!-- Action Button (if not yet deposited) -->
+              @if($c->cash_deposit_status !== 'Sudah Disetor')
+                <div class="flex items-center justify-end pt-1">
+                  <form action="{{ route('daily-report.setor', $c->id) }}" method="POST" onsubmit="return confirm('Konfirmasi setor kas sebesar {{ $c->formatted_cash }}?')">
+                    @csrf
+                    <button type="submit" class="btn-ghost w-full sm:w-auto text-xs py-1.5 px-3 font-bold text-emerald-700 border-emerald-300 hover:bg-emerald-50 flex items-center justify-center gap-1.5">
+                      <i class="fa-solid fa-check text-xs"></i>
+                      <span>Konfirmasi Setor Kas</span>
+                    </button>
+                  </form>
+                </div>
+              @endif
+            </div>
+          @empty
+            <div class="text-center py-10 text-gray-400 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+              <i class="fa-solid fa-wallet text-3xl mb-2 text-gray-300 block"></i>
+              <span class="text-xs">Tidak ada catatan kas lapangan.</span>
+            </div>
+          @endforelse
+        </div>
+
+        <!-- Tablet & Desktop Table View (screen >= 768px) -->
+        <div class="hidden md:block overflow-x-auto w-full rounded-xl border border-gray-100 shadow-2xs">
+          <table class="tbl min-w-[780px]">
           <thead>
             <tr>
               <th>TGL &amp; JAM</th>
@@ -1666,11 +1887,12 @@
             @endforelse
           </tbody>
         </table>
-
-        <div class="pt-4">
-          {{ $cashTransactions->links() }}
-        </div>
       </div>
+
+      <div class="pt-4 overflow-x-auto w-full">
+        {{ $cashTransactions->links() }}
+      </div>
+    </div>
 
     </div>
 
@@ -1679,21 +1901,21 @@
   <!-- ============================================== -->
   <!-- MODAL: TAMBAH BARANG MANUAL / DARI STOK ADMIN  -->
   <!-- ============================================== -->
-  <div x-show="openAddMaterialModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div x-show="openAddMaterialModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="fixed inset-0 bg-black/40 backdrop-blur-xs" @click="openAddMaterialModal = false"></div>
-    <div class="relative card card-lg w-full max-w-lg p-6 text-gray-800 z-10 shadow-2xl">
+    <div class="relative card card-lg w-full max-w-lg p-4 sm:p-6 text-gray-800 z-10 shadow-2xl max-h-[92vh] overflow-y-auto">
       
       <div class="flex items-center justify-between pb-4 border-b border-gray-200">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm border border-red-100">
+          <div class="w-9 h-9 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm border border-red-100 shrink-0">
             <i class="fa-solid fa-boxes-packing"></i>
           </div>
           <div>
-            <h3 class="font-extrabold text-black text-base">Tambah Barang ke Laporan</h3>
-            <p class="text-xs text-gray-500 font-medium">Pilih dari Stok Barang POV Admin atau input manual</p>
+            <h3 class="font-extrabold text-black text-sm sm:text-base">Tambah Barang ke Laporan</h3>
+            <p class="text-[11px] sm:text-xs text-gray-500 font-medium">Pilih dari Stok Barang POV Admin atau input manual</p>
           </div>
         </div>
-        <button type="button" @click="openAddMaterialModal = false" class="icon-btn w-8 h-8">
+        <button type="button" @click="openAddMaterialModal = false" class="icon-btn w-8 h-8 shrink-0">
           <i class="fa-solid fa-xmark text-xs"></i>
         </button>
       </div>
@@ -1768,7 +1990,7 @@
           </div>
         </template>
 
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
           <div>
             <label class="lbl">Satuan</label>
             <input type="text" x-model="newMat.unit" placeholder="pcs, m, unit" class="inp text-xs font-semibold">
@@ -1809,12 +2031,12 @@
   <!-- ============================================== -->
   <!-- MODAL: PENGATURAN SPREADSHEET & WEBHOOK        -->
   <!-- ============================================== -->
-  <div x-show="openSettings" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div x-show="openSettings" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="fixed inset-0 bg-black/40 backdrop-blur-xs" @click="openSettings = false"></div>
-    <div class="relative card card-lg w-full max-w-md p-6 text-gray-800 z-10 shadow-2xl">
+    <div class="relative card card-lg w-full max-w-md p-4 sm:p-6 text-gray-800 z-10 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex items-center justify-between pb-4 border-b border-gray-200">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm border border-red-100">
+          <div class="w-9 h-9 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm border border-red-100 shrink-0">
             <i class="fa-solid fa-sliders"></i>
           </div>
           <div>
@@ -1822,7 +2044,7 @@
             <p class="text-[11px] text-gray-500 font-medium">Google Sheets / Apps Script Webhook</p>
           </div>
         </div>
-        <button type="button" @click="openSettings = false" class="icon-btn w-8 h-8">
+        <button type="button" @click="openSettings = false" class="icon-btn w-8 h-8 shrink-0">
           <i class="fa-solid fa-xmark text-xs"></i>
         </button>
       </div>
@@ -1855,8 +2077,8 @@
   <!-- ============================================== -->
   <!-- FOOTER (BANTERPOOL THEME)                      -->
   <!-- ============================================== -->
-  <footer class="border-t border-gray-200/80 py-5 text-center text-xs text-gray-500 bg-white/80 relative z-10">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+  <footer class="border-t border-gray-200/80 py-4 sm:py-5 text-center text-xs text-gray-500 bg-white/80 relative z-10">
+    <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
       <span class="font-semibold text-gray-700">WiFi <strong class="text-brand">BANTERPOOL</strong> &bull; Daily Report Portal v2.6</span>
       <span>Sinkronisasi Master Stok Barang &amp; Mutasi Lapangan</span>
     </div>
