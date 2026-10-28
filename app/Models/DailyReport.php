@@ -17,9 +17,12 @@ class DailyReport extends Model
         'partner_company',
         'job_type',
         'customer_name',
+        'customer_nik',
         'customer_phone',
         'customer_address',
         'pppoe_username',
+        'service_plan',
+        'service_price',
         'odp_port',
         'rx_power',
         'ont_sn',
@@ -38,6 +41,7 @@ class DailyReport extends Model
 
     protected $casts = [
         'report_date' => 'date',
+        'service_price' => 'float',
         'materials_json' => 'array',
         'material_total_cost' => 'float',
         'cash_amount' => 'float',
@@ -58,6 +62,11 @@ class DailyReport extends Model
     public function getFormattedMaterialCostAttribute(): string
     {
         return 'Rp ' . number_format($this->material_total_cost, 0, ',', '.');
+    }
+
+    public function getFormattedServicePriceAttribute(): string
+    {
+        return 'Rp ' . number_format($this->service_price, 0, ',', '.');
     }
 
     public function getFormattedCashAttribute(): string

@@ -36,20 +36,26 @@
       --subtle:      #94a3b8;
     }
 
-    html, body {
-      min-height: 100%;
-      background-color: var(--bg);
-      color: var(--text);
-      max-width: 100%;
-      overflow-x: hidden;
-      position: relative;
+    html {
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden !important;
+      overflow-y: auto;
+      box-sizing: border-box;
+      -webkit-text-size-adjust: 100%;
     }
 
     body {
+      width: 100%;
+      max-width: 100vw;
+      min-height: 100%;
+      overflow-x: hidden !important;
+      position: relative;
+      background-color: var(--bg);
+      color: var(--text);
       font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      overflow-x: hidden;
     }
 
     /* ── Latar Belakang Gelombang Garis Merah Banterpool ── */
@@ -66,14 +72,14 @@
     .bg-wave-pattern {
       position: absolute;
       top: 0;
-      left: -10%;
-      width: 120%;
+      left: 0;
+      width: 100%;
       height: 260%;
       background-image: url('{{ asset('image/bg-red-wave.jpg') }}');
       background-size: cover;
       background-position: center top;
       background-repeat: repeat-y;
-      opacity: 0.30;
+      opacity: 0.28;
       pointer-events: none;
       will-change: transform;
       transform-origin: center center;
@@ -82,10 +88,9 @@
 
     .bg-wave-glow {
       position: absolute;
-      inset: -10%;
+      inset: 0;
       background: radial-gradient(circle at 70% 30%, rgba(211, 24, 24, 0.06) 0%, rgba(239, 68, 68, 0.02) 40%, transparent 70%);
       pointer-events: none;
-      will-change: transform;
     }
 
     /* ── Custom Scrollbar ── */
@@ -135,9 +140,14 @@
       border: 1px solid var(--border);
       border-radius: 18px;
       box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
-      max-width: 100%;
+      box-sizing: border-box;
     }
-    .card-lg { border-radius: 18px; }
+    .card-lg {
+      border-radius: 18px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
     @media (min-width: 640px) {
       .card-lg { border-radius: 24px; }
     }
@@ -146,6 +156,7 @@
     .inp {
       width: 100%;
       max-width: 100%;
+      box-sizing: border-box;
       background: #ffffff;
       border: 1px solid #d1d5db;
       border-radius: 12px;
@@ -162,6 +173,46 @@
       box-shadow: 0 0 0 3px rgba(211, 24, 24, 0.15);
     }
     .inp::placeholder { color: #94a3b8; }
+
+    /* ── Prefix & Icon Inputs ── */
+    .inp-prefix {
+      padding-left: 44px !important;
+    }
+    .inp-search {
+      padding-left: 38px !important;
+    }
+
+    /* ── Dedicated Qty Input (Anti-Blowup on Mobile) ── */
+    .inp-qty {
+      width: 58px !important;
+      min-width: 48px !important;
+      max-width: 64px !important;
+      height: 32px !important;
+      background: #ffffff !important;
+      border: 1px solid #d1d5db !important;
+      border-radius: 10px !important;
+      padding: 2px 6px !important;
+      color: #0f172a !important;
+      font-size: 13px !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-weight: 800 !important;
+      text-align: center !important;
+      outline: none !important;
+      box-sizing: border-box !important;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+      transition: border-color .15s, box-shadow .15s, background-color .15s !important;
+      -moz-appearance: textfield !important;
+    }
+    .inp-qty:focus {
+      border-color: var(--brand) !important;
+      box-shadow: 0 0 0 3px rgba(211, 24, 24, 0.15) !important;
+      background-color: #ffffff !important;
+    }
+    .inp-qty::-webkit-outer-spin-button,
+    .inp-qty::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
 
     /* ── Labels ── */
     .lbl {
@@ -340,6 +391,10 @@
       padding: 12px 14px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
       transition: border-color .15s, background-color .15s, box-shadow .15s;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: clip;
+      box-sizing: border-box;
     }
     .mat-card:hover {
       border-color: #cbd5e1;
@@ -377,9 +432,12 @@
         partnerCompany: 'BANTERPOL',
         jobType: 'Pasang Baru (PSB / Installation)',
         customerName: 'Bpk Herman / CST-109',
+        customerNik: '3302123456780001',
         customerPhone: '081234567890',
         customerAddress: 'Jl. Merdeka No. 45, Purwokerto',
         pppoeUsername: 'herman_net',
+        servicePlan: 'Paket 20 Mbps',
+        servicePrice: 110000,
         odpPort: 'ODP-TMB-04 / Port 2',
         rxPower: '-19.5',
         ontSn: 'ZTEGC819A2B',
@@ -705,12 +763,52 @@
           if (!order) return;
           this.selectedOrderId = order.id;
           this.customerName = order.customer_name + ' / ' + (order.order_number || '');
+          this.customerNik = order.id_card_number && order.id_card_number !== '-' ? order.id_card_number : '';
           this.customerPhone = order.customer_phone || '';
           this.customerAddress = order.address || '';
           this.pppoeUsername = order.pppoe || '';
+          this.servicePlan = order.package_name || 'Paket 20 Mbps';
+          this.servicePrice = order.price ? Number(order.price) : 110000;
           this.odpPort = order.assigned_odp || '';
           this.rxPower = order.opm_dbm ? order.opm_dbm.replace(/[^0-9.\-]/g, '') : '-19.5';
           this.ontSn = order.ont_sn || 'ZTEGC' + Math.floor(100000 + Math.random() * 900000);
+        },
+
+        // Kirim data langsung ke Webhook Google Sheets jika dikonfigurasi
+        sendToGoogleSheetsWebhook() {
+          if (this.gsWebhook && this.gsWebhook.startsWith('http')) {
+            try {
+              fetch(this.gsWebhook, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  tanggal: this.reportDate,
+                  teknisi: this.technicianName,
+                  mitra: this.partnerCompany,
+                  tipe_pekerjaan: this.jobType,
+                  nama_pelanggan: this.customerName,
+                  nik: this.customerNik,
+                  jenis_layanan: this.servicePlan,
+                  harga_layanan: this.servicePrice,
+                  telepon: this.customerPhone,
+                  alamat: this.customerAddress,
+                  pppoe: this.pppoeUsername,
+                  odp: this.odpPort,
+                  rx_power: this.rxPower,
+                  ont_sn: this.ontSn,
+                  material: this.materialSummary,
+                  biaya_material: this.totalMaterialCost,
+                  jenis_transaksi: this.transactionType,
+                  nominal_kas: this.cashAmount,
+                  metode_bayar: this.paymentMethod,
+                  status_setor: this.cashDepositStatus,
+                })
+              }).catch(e => console.log('Sheets Webhook:', e));
+            } catch (e) {
+              console.log('Sheets Webhook error:', e);
+            }
+          }
         },
 
         // Fullscreen Toggle
@@ -784,14 +882,6 @@
 
       <!-- Right Action Controls -->
       <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-        
-        <!-- Google Sheets Demo Mode Badge -->
-        <button type="button" @click="openSettings = true"
-                class="hidden md:flex items-center gap-2 btn-ghost text-xs bg-amber-50/70 text-amber-800 border-amber-200 hover:bg-amber-100"
-                title="Status Sinkronisasi Spreadsheet">
-          <span class="dot-pulse bg-amber-500"></span>
-          <span>Google Sheets: Demo Mode</span>
-        </button>
 
         <!-- Sync Button -->
         <button type="button" @click="refreshSync()" class="icon-btn" title="Sinkronkan dengan Database & Stok">
@@ -822,7 +912,8 @@
                x-transition:enter="transition ease-out duration-100"
                x-transition:enter-start="opacity-0 scale-95"
                x-transition:enter-end="opacity-100 scale-100"
-               class="absolute right-0 top-11 sm:top-12 w-64 max-w-[calc(100vw-2rem)] card p-2 z-50 text-xs shadow-2xl divide-y divide-gray-100">
+               class="absolute right-0 top-11 sm:top-12 z-50 bg-white rounded-2xl border border-gray-200/90 p-2 text-xs shadow-2xl divide-y divide-gray-100"
+               style="width: 256px !important; min-width: 240px !important; max-width: calc(100vw - 1.5rem) !important;">
             
             <div class="px-3 py-2.5">
               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Masuk Sebagai</span>
@@ -1015,7 +1106,7 @@
                 <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
               </button>
               <div x-show="openPick" @click.outside="openPick = false" x-cloak
-                   class="absolute left-0 sm:left-auto right-0 z-30 mt-2 w-full sm:w-80 max-w-[calc(100vw-2.5rem)] card p-2 text-xs divide-y divide-gray-100 max-h-72 overflow-y-auto shadow-2xl">
+                   class="absolute left-0 sm:left-auto right-0 z-30 mt-2 w-full sm:w-80 max-w-[calc(100vw-2.5rem)] bg-white rounded-2xl border border-gray-200/90 p-2 text-xs divide-y divide-gray-100 max-h-72 overflow-y-auto shadow-2xl">
                 @foreach($recentOrders as $ro)
                   <button type="button" @click="autofillFromOrder({{ Js::from($ro) }}); openPick = false"
                           class="w-full text-left p-2.5 rounded-xl hover:bg-red-50/60 transition flex flex-col gap-0.5 group">
@@ -1030,7 +1121,7 @@
       </div>
 
       <!-- Form Element -->
-      <form action="{{ route('daily-report.store') }}" method="POST" class="space-y-5 sm:space-y-6">
+      <form action="{{ route('daily-report.store') }}" method="POST" @submit="sendToGoogleSheetsWebhook()" class="space-y-5 sm:space-y-6">
         @csrf
         <input type="hidden" name="order_id" :value="selectedOrderId">
         <input type="hidden" name="materials_json" :value="materialsJsonPayload">
@@ -1106,13 +1197,13 @@
             </div>
 
             <div>
-              <label class="lbl">Nomor HP / WhatsApp</label>
-              <input type="text" name="customer_phone" x-model="customerPhone" placeholder="08xxxxxxxxxx" class="inp font-medium">
+              <label class="lbl">NIK Pelanggan (KTP)</label>
+              <input type="text" name="customer_nik" x-model="customerNik" placeholder="3302xxxxxxxxxxxx" maxlength="20" class="inp font-mono font-medium">
             </div>
 
-            <div class="sm:col-span-2">
-              <label class="lbl">Alamat Lengkap</label>
-              <input type="text" name="customer_address" x-model="customerAddress" placeholder="Jl. Merdeka No. 45, Purwokerto" class="inp font-medium">
+            <div>
+              <label class="lbl">Nomor HP / WhatsApp</label>
+              <input type="text" name="customer_phone" x-model="customerPhone" placeholder="08xxxxxxxxxx" class="inp font-medium">
             </div>
 
             <div>
@@ -1121,7 +1212,35 @@
                      class="inp font-mono font-semibold text-brand">
             </div>
 
+            <div class="sm:col-span-2">
+              <label class="lbl">Alamat Lengkap</label>
+              <input type="text" name="customer_address" x-model="customerAddress" placeholder="Jl. Merdeka No. 45, Purwokerto" class="inp font-medium">
+            </div>
+
             <div>
+              <label class="lbl">Jenis Layanan / Paket</label>
+              <div class="relative">
+                <input type="text" name="service_plan" x-model="servicePlan" list="servicePlanOptions" placeholder="Contoh: Paket 20 Mbps" class="inp font-semibold text-gray-800">
+                <datalist id="servicePlanOptions">
+                  <option value="Paket 20 Mbps">
+                  <option value="Paket 30 Mbps">
+                  <option value="Paket 50 Mbps">
+                  <option value="Paket 100 Mbps">
+                  <option value="Paket Dedicated">
+                </datalist>
+              </div>
+            </div>
+
+            <div>
+              <label class="lbl">Harga Layanan / Biaya (Rp)</label>
+              <div class="relative flex items-center">
+                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none select-none z-10">Rp</span>
+                <input type="number" name="service_price" x-model="servicePrice" min="0" step="1000" placeholder="110000"
+                       class="inp inp-prefix font-mono font-bold text-emerald-700 w-full">
+              </div>
+            </div>
+
+            <div class="sm:col-span-2">
               <label class="lbl">ID ODP & Port</label>
               <input type="text" name="odp_port" x-model="odpPort" placeholder="ODP-TMB-04 / Port 2"
                      class="inp font-mono font-semibold text-gray-900">
@@ -1279,15 +1398,15 @@
                                 </span>
                               </template>
                             </div>
-                            <div class="flex items-center gap-1.5 shrink-0 ml-auto">
-                              <span class="text-[10px] text-gray-500 font-bold uppercase">Qty:</span>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                              <span class="text-[10px] text-gray-500 font-bold uppercase whitespace-nowrap">Qty:</span>
                               <input type="number" x-model="item.qty" min="1" step="any"
                                      :max="item.max_qty || null"
                                      @input="if (item.max_qty !== undefined && item.max_qty !== null && Number(item.qty) > Number(item.max_qty)) { item.qty = item.max_qty; }"
                                      @change="validateItemQty(item)"
-                                     class="w-16 inp text-center py-1 px-1.5 text-xs font-bold font-mono"
-                                     :class="item.max_qty && Number(item.qty) >= Number(item.max_qty) ? 'border-amber-400 bg-amber-50/40' : ''">
-                              <span class="text-[11px] text-gray-600 font-semibold" x-text="item.unit"></span>
+                                     class="inp-qty"
+                                     :class="item.max_qty && Number(item.qty) >= Number(item.max_qty) ? '!border-amber-400 !bg-amber-50/60' : ''">
+                              <span class="text-[11px] text-gray-600 font-semibold whitespace-nowrap" x-text="item.unit"></span>
                             </div>
                           </div>
                         </div>
@@ -1462,12 +1581,28 @@
           <div class="relative flex-1 min-w-0">
             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
             <input type="text" name="q" value="{{ $search }}" placeholder="Cari Pelanggan, PPPoE, Alamat, atau Mitra..."
-                   class="inp pl-9 text-xs w-full">
+                   class="inp inp-search text-xs w-full">
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <!-- Filter Mitra Dropdown (Di sebelah kiri Semua Tipe Pekerjaan) -->
+            <div class="relative flex-1 sm:w-44 md:w-48">
+              <select name="partner" onchange="this.form.submit()"
+                      class="inp pr-8 text-xs font-semibold text-gray-800 w-full truncate">
+                <option value="all" {{ ($partnerFilter ?? 'all') === 'all' ? 'selected' : '' }}>
+                  Semua Mitra
+                </option>
+                @foreach($partners as $p)
+                  <option value="{{ $p }}" {{ ($partnerFilter ?? 'all') === $p ? 'selected' : '' }}>
+                    {{ $p }}
+                  </option>
+                @endforeach
+              </select>
+              <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[10px]"></i>
+            </div>
+
             <!-- Filter Job Type Dropdown -->
-            <div class="relative flex-1 sm:w-56 md:w-60">
+            <div class="relative flex-1 sm:w-52 md:w-56">
               <select name="job_type" onchange="this.form.submit()"
                       class="inp pr-8 text-xs font-semibold text-gray-800 w-full truncate">
                 <option value="all" {{ $jobTypeFilter === 'all' ? 'selected' : '' }}>
@@ -1482,7 +1617,7 @@
               <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[10px]"></i>
             </div>
 
-            @if(!empty($search) || $jobTypeFilter !== 'all')
+            @if(!empty($search) || $jobTypeFilter !== 'all' || ($partnerFilter ?? 'all') !== 'all')
               <a href="{{ route('daily-report.index') }}" class="icon-btn shrink-0" title="Reset Filter">
                 <i class="fa-solid fa-xmark text-xs"></i>
               </a>
@@ -1499,7 +1634,7 @@
       </div>
 
       <!-- Tabs Navigation -->
-      <div class="flex items-center gap-2 sm:gap-6 border-b border-gray-200 mb-5 sm:mb-6 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div class="w-full flex items-center gap-2 sm:gap-6 border-b border-gray-200 mb-5 sm:mb-6 overflow-x-auto no-scrollbar pb-0.5">
         <button type="button" class="tab-btn whitespace-nowrap text-xs sm:text-sm py-2.5 sm:py-3" :class="activeTab === 'jobs' ? 'active' : ''" @click="activeTab = 'jobs'">
           <i class="fa-solid fa-wrench" :class="activeTab === 'jobs' ? 'text-brand' : 'text-gray-400'"></i>
           <span>Log Pekerjaan Teknis</span>
@@ -1555,8 +1690,11 @@
               <!-- Pelanggan & Alamat -->
               <div>
                 <h4 class="font-extrabold text-xs sm:text-sm text-gray-900">{{ $r->customer_name }}</h4>
-                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
                   <span class="text-xs font-mono text-brand font-semibold">{{ $r->pppoe_username ?: '-' }}</span>
+                  @if($r->customer_nik)
+                    <span class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono font-medium">NIK: {{ $r->customer_nik }}</span>
+                  @endif
                   @if($r->customer_phone)
                     <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $r->customer_phone) }}" target="_blank"
                        class="text-[11px] text-emerald-600 font-semibold hover:underline flex items-center gap-1">
@@ -1564,6 +1702,14 @@
                     </a>
                   @endif
                 </div>
+                @if($r->service_plan || $r->service_price > 0)
+                  <div class="flex items-center gap-1.5 mt-1 text-[11px] flex-wrap">
+                    <span class="font-bold text-gray-800">{{ $r->service_plan ?: 'Paket Internet' }}</span>
+                    @if($r->service_price > 0)
+                      <span class="text-emerald-700 font-extrabold">({{ $r->formatted_service_price }})</span>
+                    @endif
+                  </div>
+                @endif
                 @if($r->customer_address)
                   <p class="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-snug">{{ $r->customer_address }}</p>
                 @endif
@@ -1655,8 +1801,21 @@
 
                   <td>
                     <span class="font-extrabold text-gray-900 block">{{ $r->customer_name }}</span>
-                    <span class="text-[11px] text-gray-500 block font-mono font-medium">{{ $r->pppoe_username ?: '-' }}</span>
-                    <span class="text-[10px] text-gray-400 block truncate max-w-[200px]">{{ $r->customer_address }}</span>
+                    <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                      <span class="text-[11px] text-brand font-mono font-semibold">{{ $r->pppoe_username ?: '-' }}</span>
+                      @if($r->customer_nik)
+                        <span class="text-[10px] text-gray-500 font-mono">NIK: {{ $r->customer_nik }}</span>
+                      @endif
+                    </div>
+                    @if($r->service_plan || $r->service_price > 0)
+                      <div class="text-[11px] text-gray-700 mt-0.5 flex items-center gap-1 flex-wrap">
+                        <span class="font-semibold">{{ $r->service_plan }}</span>
+                        @if($r->service_price > 0)
+                          <span class="text-emerald-700 font-bold">({{ $r->formatted_service_price }})</span>
+                        @endif
+                      </div>
+                    @endif
+                    <span class="text-[10px] text-gray-400 block truncate max-w-[200px] mt-0.5">{{ $r->customer_address }}</span>
                   </td>
 
                   <td class="whitespace-nowrap">

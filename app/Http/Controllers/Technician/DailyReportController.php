@@ -35,6 +35,7 @@ class DailyReportController extends Controller
         }
 
         $search = $request->input('q', '');
+        $partnerFilter = $request->input('partner', 'all');
         $jobTypeFilter = $request->input('job_type', 'all');
         $tab = $request->input('tab', 'jobs'); // 'jobs' or 'cash'
 
@@ -57,6 +58,8 @@ class DailyReportController extends Controller
             $s = trim($search);
             $query->where(function ($q) use ($s) {
                 $q->where('customer_name', 'like', "%{$s}%")
+                  ->orWhere('customer_nik', 'like', "%{$s}%")
+                  ->orWhere('service_plan', 'like', "%{$s}%")
                   ->orWhere('pppoe_username', 'like', "%{$s}%")
                   ->orWhere('customer_phone', 'like', "%{$s}%")
                   ->orWhere('customer_address', 'like', "%{$s}%")
@@ -65,6 +68,10 @@ class DailyReportController extends Controller
                   ->orWhere('odp_port', 'like', "%{$s}%")
                   ->orWhere('ont_sn', 'like', "%{$s}%");
             });
+        }
+
+        if ($partnerFilter !== 'all') {
+            $query->where('partner_company', $partnerFilter);
         }
 
         if ($jobTypeFilter !== 'all') {
@@ -246,7 +253,7 @@ class DailyReportController extends Controller
         ];
 
         // 5. Active orders for quick autofill
-        $recentOrders = Order::latest('id')->take(20)->get(['id', 'order_number', 'customer_name', 'customer_phone', 'address', 'pppoe', 'assigned_odp', 'ont_sn', 'opm_dbm']);
+        $recentOrders = Order::latest('id')->take(20)->get(['id', 'order_number', 'customer_name', 'customer_phone', 'address', 'pppoe', 'assigned_odp', 'ont_sn', 'opm_dbm', 'id_card_number', 'package_name', 'price']);
 
         return view('technician.daily-report', compact(
             'reports',
@@ -256,6 +263,7 @@ class DailyReportController extends Controller
             'pendingDepositCount',
             'materialCostToday',
             'search',
+            'partnerFilter',
             'jobTypeFilter',
             'tab',
             'defaultCatalog',
@@ -279,9 +287,12 @@ class DailyReportController extends Controller
             'partner_company' => 'required|string|max:150',
             'job_type' => 'required|string|max:100',
             'customer_name' => 'required|string|max:150',
+            'customer_nik' => 'nullable|string|max:30',
             'customer_phone' => 'nullable|string|max:30',
             'customer_address' => 'nullable|string|max:500',
             'pppoe_username' => 'nullable|string|max:100',
+            'service_plan' => 'nullable|string|max:100',
+            'service_price' => 'nullable|numeric|min:0',
             'odp_port' => 'nullable|string|max:100',
             'rx_power' => 'nullable|string|max:50',
             'ont_sn' => 'nullable|string|max:100',
@@ -334,6 +345,129 @@ class DailyReportController extends Controller
             }
         }
 
+        // =========================================================================
+        // KHUSUS MITRA BANTERPOL: Otomatis masuk ke Data Pelanggan pada POV Admin
+        // =========================================================================
+        $orderId = $validated['order_id'] ?? null;
+        $isBanterpol = strtoupper(trim($validated['partner_company'])) === 'BANTERPOL';
+
+        if ($isBanterpol) {
+            $linkedOrder = null;
+
+            // 1. Cek apakah ada order_id yang valid
+            if (!empty($orderId)) {
+                $linkedOrder = Order::find($orderId);
+            }
+
+            // 2. Cari berdasarkan PPPoE username
+            if (!$linkedOrder && !empty($validated['pppoe_username'])) {
+                $linkedOrder = Order::where('pppoe', trim($validated['pppoe_username']))->first();
+            }
+
+            // 3. Cari berdasarkan nomor telepon
+            if (!$linkedOrder && !empty($validated['customer_phone'])) {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $validated['customer_phone']);
+                if (strlen($cleanPhone) >= 8) {
+                    $linkedOrder = Order::where(function ($q) use ($cleanPhone) {
+                        $q->where('customer_phone', 'like', "%{$cleanPhone}%");
+                    })->first();
+                }
+            }
+
+            // 4. Cari berdasarkan kesamaan nama pelanggan
+            if (!$linkedOrder && !empty($validated['customer_name'])) {
+                $cName = trim($validated['customer_name']);
+                $cleanName = preg_replace('/\s*[\(\/\-].*$/', '', $cName);
+                if (strlen($cleanName) >= 4) {
+                    $linkedOrder = Order::where('customer_name', 'like', "%{$cleanName}%")->first();
+                }
+            }
+
+            $packageName = !empty($validated['service_plan']) ? trim($validated['service_plan']) : 'Paket 20 Mbps';
+            $speed = '20 Mbps';
+            if (str_contains($packageName, '100')) {
+                $speed = '100 Mbps';
+            } elseif (str_contains($packageName, '50')) {
+                $speed = '50 Mbps';
+            } elseif (str_contains($packageName, '30')) {
+                $speed = '30 Mbps';
+            }
+
+            $servicePrice = isset($validated['service_price']) && is_numeric($validated['service_price']) && (float)$validated['service_price'] > 0
+                ? (float) $validated['service_price']
+                : (!empty($validated['cash_amount']) && (float)$validated['cash_amount'] > 0 ? (float)$validated['cash_amount'] : 110000);
+
+            $pppoeUsername = !empty($validated['pppoe_username'])
+                ? trim($validated['pppoe_username'])
+                : Order::generatePppoeUsername($validated['customer_name']);
+
+            $address = !empty($validated['customer_address']) ? trim($validated['customer_address']) : '-';
+            $wilayah = \App\Services\CustomerImportService::resolveVillage(null, null, $address);
+            $assignedOdp = !empty($validated['odp_port'])
+                ? trim($validated['odp_port'])
+                : (!empty($wilayah) ? ('ODP-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $wilayah), 0, 3)) . '-01') : 'ODP-BTR-01');
+
+            if ($linkedOrder) {
+                // Update order yang ada agar berstatus 'Selesai' (sehingga langsung masuk ke Data Pelanggan Admin)
+                $linkedOrder->update([
+                    'status' => 'Selesai',
+                    'payment_status' => 'Lunas',
+                    'customer_name' => trim($validated['customer_name']),
+                    'id_card_number' => !empty($validated['customer_nik']) ? trim($validated['customer_nik']) : ($linkedOrder->id_card_number ?: '-'),
+                    'customer_phone' => !empty($validated['customer_phone']) ? trim($validated['customer_phone']) : $linkedOrder->customer_phone,
+                    'address' => $address !== '-' ? $address : $linkedOrder->address,
+                    'village' => $wilayah ?: $linkedOrder->village,
+                    'package_name' => $packageName,
+                    'speed' => $speed,
+                    'price' => $servicePrice,
+                    'total' => $servicePrice,
+                    'pppoe' => $pppoeUsername,
+                    'assigned_odp' => $assignedOdp,
+                    'ont_sn' => !empty($validated['ont_sn']) ? trim($validated['ont_sn']) : $linkedOrder->ont_sn,
+                    'opm_dbm' => !empty($validated['rx_power']) ? trim($validated['rx_power']) : $linkedOrder->opm_dbm,
+                    'technician' => $validated['technician_name'],
+                    'technician_id' => auth()->id() ?? $linkedOrder->technician_id,
+                    'installed_at' => $linkedOrder->installed_at ?: now(),
+                ]);
+            } else {
+                // Buat Order baru dengan status 'Selesai' dan nomor pesanan unik
+                $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
+                while (Order::where('order_number', $orderNumber)->exists()) {
+                    $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + rand(1, 99), 4, '0', STR_PAD_LEFT);
+                }
+
+                $linkedOrder = Order::create([
+                    'order_number' => $orderNumber,
+                    'customer_name' => trim($validated['customer_name']),
+                    'pppoe' => $pppoeUsername,
+                    'id_card_number' => !empty($validated['customer_nik']) ? trim($validated['customer_nik']) : '-',
+                    'birth_place' => 'Banyumas',
+                    'customer_phone' => !empty($validated['customer_phone']) ? trim($validated['customer_phone']) : '-',
+                    'customer_email' => '-',
+                    'package_name' => $packageName,
+                    'speed' => $speed,
+                    'price' => $servicePrice,
+                    'total' => $servicePrice,
+                    'address' => $address,
+                    'village' => $wilayah,
+                    'status' => 'Selesai',
+                    'payment_status' => 'Lunas',
+                    'payment_method' => $validated['payment_method'] ?? 'Tunai (Cash)',
+                    'installation_date' => $validated['report_date'] ?? now()->toDateString(),
+                    'installation_time' => 'pagi',
+                    'installed_at' => now(),
+                    'technician' => $validated['technician_name'],
+                    'technician_id' => auth()->id(),
+                    'assigned_odp' => $assignedOdp,
+                    'ont_sn' => $validated['ont_sn'] ?? null,
+                    'opm_dbm' => $validated['rx_power'] ?? null,
+                    'admin_notes' => 'Pelanggan otomatis terdaftar dari Daily Report Mitra BANTERPOL.',
+                ]);
+            }
+
+            $orderId = $linkedOrder->id;
+        }
+
         $report = DailyReport::create([
             'report_date' => $validated['report_date'],
             'technician_name' => $validated['technician_name'],
@@ -341,9 +475,12 @@ class DailyReportController extends Controller
             'partner_company' => $validated['partner_company'],
             'job_type' => $validated['job_type'],
             'customer_name' => $validated['customer_name'],
+            'customer_nik' => $validated['customer_nik'] ?? null,
             'customer_phone' => $validated['customer_phone'] ?? null,
             'customer_address' => $validated['customer_address'] ?? null,
             'pppoe_username' => $validated['pppoe_username'] ?? null,
+            'service_plan' => $validated['service_plan'] ?? null,
+            'service_price' => (float)($validated['service_price'] ?? 0),
             'odp_port' => $validated['odp_port'] ?? null,
             'rx_power' => $validated['rx_power'] ?? null,
             'ont_sn' => $validated['ont_sn'] ?? null,
@@ -354,14 +491,18 @@ class DailyReportController extends Controller
             'cash_amount' => (float)($validated['cash_amount'] ?? 0),
             'payment_method' => $validated['payment_method'],
             'cash_deposit_status' => $validated['cash_deposit_status'],
-            'order_id' => $validated['order_id'] ?? null,
+            'order_id' => $orderId,
             'synced_to_sheets' => true, // marked as synced
             'synced_at' => now(),
             'notes' => $validated['notes'] ?? null,
         ]);
 
+        $successMsg = $isBanterpol
+            ? "Laporan {$report->job_type} untuk {$report->customer_name} berhasil disimpan dan otomatis masuk ke Data Pelanggan Admin!"
+            : "Laporan {$report->job_type} untuk {$report->customer_name} berhasil disimpan dan disinkronkan!";
+
         return redirect()->route('daily-report.index')
-            ->with('success', "Laporan {$report->job_type} untuk {$report->customer_name} berhasil disimpan dan disinkronkan!");
+            ->with('success', $successMsg);
     }
 
     /**
@@ -414,9 +555,12 @@ class DailyReportController extends Controller
                 'Perusahaan Mitra',
                 'Tipe Pekerjaan',
                 'Nama Pelanggan',
+                'NIK Pelanggan',
                 'No WhatsApp',
                 'Alamat',
                 'PPPoE',
+                'Jenis Layanan',
+                'Harga Layanan (Rp)',
                 'ODP & Port',
                 'Rx Power (dBm)',
                 'SN ONT',
@@ -435,9 +579,12 @@ class DailyReportController extends Controller
                     $r->partner_company,
                     $r->job_type,
                     $r->customer_name,
+                    $r->customer_nik,
                     $r->customer_phone,
                     $r->customer_address,
                     $r->pppoe_username,
+                    $r->service_plan,
+                    $r->service_price,
                     $r->odp_port,
                     $r->rx_power,
                     $r->ont_sn,
