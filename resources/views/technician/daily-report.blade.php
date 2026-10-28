@@ -425,6 +425,7 @@
         activeTab: '{{ $tab === 'cash' ? 'cash' : 'jobs' }}',
         gsWebhook: localStorage.getItem('gs_webhook_url') || '',
         isSyncing: false,
+        isSubmitting: false,
 
         // Form fields
         reportDate: '{{ now()->format('Y-m-d') }}',
@@ -774,7 +775,7 @@
           this.ontSn = order.ont_sn || 'ZTEGC' + Math.floor(100000 + Math.random() * 900000);
         },
 
-        // Kirim data langsung ke Webhook Google Sheets jika dikonfigurasi
+        // Kirim data langsung ke Webhook Google Sheets jika dikonfigurasi (aman & non-blocking)
         sendToGoogleSheetsWebhook() {
           try {
             if (this.gsWebhook && this.gsWebhook.startsWith('http')) {
@@ -782,7 +783,7 @@
                 method: 'POST',
                 mode: 'no-cors',
                 keepalive: true,
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
                   tanggal: this.reportDate,
                   teknisi: this.technicianName,
@@ -810,6 +811,35 @@
           } catch (e) {
             console.log('Sheets Webhook:', e);
           }
+        },
+
+        // Submit form laporan harian secara pasti (anti-blocking)
+        submitDailyReport(event) {
+          if (!this.technicianName || !this.technicianName.trim()) {
+            if (event) event.preventDefault();
+            alert('Mohon isi Nama Teknisi terlebih dahulu.');
+            return;
+          }
+          if (!this.customerName || !this.customerName.trim()) {
+            if (event) event.preventDefault();
+            alert('Mohon isi Nama Pelanggan terlebih dahulu.');
+            return;
+          }
+
+          this.isSubmitting = true;
+
+          // 1. Kirim ke Google Sheets webhook di latar belakang
+          this.sendToGoogleSheetsWebhook();
+
+          // 2. Submit form secara pasti ke Laravel backend
+          setTimeout(() => {
+            const form = document.getElementById('dailyReportForm');
+            if (form) {
+              form.submit();
+            } else {
+              this.isSubmitting = false;
+            }
+          }, 80);
         },
 
         // Fullscreen Toggle
@@ -1122,7 +1152,7 @@
       </div>
 
       <!-- Form Element -->
-      <form action="{{ route('daily-report.store') }}" method="POST" class="space-y-5 sm:space-y-6">
+      <form id="dailyReportForm" action="{{ route('daily-report.store') }}" method="POST" novalidate class="space-y-5 sm:space-y-6">
         @csrf
         <input type="hidden" name="order_id" :value="selectedOrderId">
         <input type="hidden" name="materials_json" :value="materialsJsonPayload">
@@ -1236,7 +1266,7 @@
               <label class="lbl">Harga Layanan / Biaya (Rp)</label>
               <div class="relative flex items-center">
                 <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none select-none z-10">Rp</span>
-                <input type="number" name="service_price" x-model="servicePrice" min="0" step="1000" placeholder="110000"
+                <input type="number" name="service_price" x-model="servicePrice" min="0" step="any" placeholder="110000"
                        class="inp inp-prefix font-mono font-bold text-emerald-700 w-full">
               </div>
             </div>
@@ -1401,7 +1431,7 @@
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
                               <span class="text-[10px] text-gray-500 font-bold uppercase whitespace-nowrap">Qty:</span>
-                              <input type="number" x-model="item.qty" min="1" step="any"
+                              <input type="number" x-model="item.qty" step="any"
                                      :max="item.max_qty || null"
                                      @input="if (item.max_qty !== undefined && item.max_qty !== null && Number(item.qty) > Number(item.max_qty)) { item.qty = item.max_qty; }"
                                      @change="validateItemQty(item)"
@@ -1448,7 +1478,7 @@
                           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                               <label class="text-[10px] font-bold text-gray-600 block mb-1">Harga Satuan (Rp):</label>
-                              <input type="number" x-model="item.price" min="0" step="500" class="inp py-1.5 text-xs font-mono font-bold">
+                              <input type="number" x-model="item.price" min="0" step="any" class="inp py-1.5 text-xs font-mono font-bold">
                             </div>
 
                             <div>
@@ -1458,7 +1488,7 @@
                                   <span class="text-[9px] text-amber-700 font-bold" x-text="'Maks. ' + item.max_qty + ' ' + item.unit"></span>
                                 </template>
                               </div>
-                              <input type="number" x-model="item.qty" min="1" step="any"
+                              <input type="number" x-model="item.qty" step="any"
                                      :max="item.max_qty || null"
                                      @input="if (item.max_qty !== undefined && item.max_qty !== null && Number(item.qty) > Number(item.max_qty)) { item.qty = item.max_qty; }"
                                      @change="validateItemQty(item)"
@@ -1518,7 +1548,7 @@
 
             <div>
               <label class="lbl">Nominal Kas (Rp)</label>
-              <input type="number" name="cash_amount" x-model="cashAmount" required min="0" step="1000"
+              <input type="number" name="cash_amount" x-model="cashAmount" required min="0" step="any"
                      class="inp font-mono font-black text-emerald-600 text-base">
             </div>
 
@@ -1557,10 +1587,14 @@
 
         <!-- Submit Button (Matching Banterpool Brand CTA) -->
         <div class="pt-3">
-          <button type="submit" @click="sendToGoogleSheetsWebhook()"
-                  class="btn-primary w-full flex items-center justify-center gap-2.5 text-sm sm:text-base py-3 sm:py-3.5 rounded-xl shadow-lg shadow-brand/25">
-            <i class="fa-solid fa-paper-plane text-sm"></i>
-            <span>Simpan & Kirim ke Spreadsheet</span>
+          <button type="button"
+                  id="btnSubmitDailyReport"
+                  @click="submitDailyReport($event)"
+                  :disabled="isSubmitting"
+                  class="btn-primary w-full flex items-center justify-center gap-2.5 text-sm sm:text-base py-3 sm:py-3.5 rounded-xl shadow-lg shadow-brand/25 disabled:opacity-60 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-spinner fa-spin text-sm" x-show="isSubmitting" x-cloak></i>
+            <i class="fa-solid fa-paper-plane text-sm" x-show="!isSubmitting"></i>
+            <span x-text="isSubmitting ? 'Menyimpan Laporan...' : 'Simpan & Kirim ke Spreadsheet'">Simpan & Kirim ke Spreadsheet</span>
           </button>
         </div>
 

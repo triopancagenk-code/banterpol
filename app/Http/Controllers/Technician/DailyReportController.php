@@ -49,8 +49,6 @@ class DailyReportController extends Controller
             $s = trim($search);
             $query->where(function ($q) use ($s) {
                 $q->where('customer_name', 'like', "%{$s}%")
-                  ->orWhere('customer_nik', 'like', "%{$s}%")
-                  ->orWhere('service_plan', 'like', "%{$s}%")
                   ->orWhere('pppoe_username', 'like', "%{$s}%")
                   ->orWhere('customer_phone', 'like', "%{$s}%")
                   ->orWhere('customer_address', 'like', "%{$s}%")
@@ -58,6 +56,13 @@ class DailyReportController extends Controller
                   ->orWhere('partner_company', 'like', "%{$s}%")
                   ->orWhere('odp_port', 'like', "%{$s}%")
                   ->orWhere('ont_sn', 'like', "%{$s}%");
+
+                if (Schema::hasColumn('daily_reports', 'customer_nik')) {
+                    $q->orWhere('customer_nik', 'like', "%{$s}%");
+                }
+                if (Schema::hasColumn('daily_reports', 'service_plan')) {
+                    $q->orWhere('service_plan', 'like', "%{$s}%");
+                }
             });
         }
 
