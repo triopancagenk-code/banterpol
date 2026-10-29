@@ -230,7 +230,7 @@
             <div class="legend-box">
                 <div style="font-weight: bold; margin-bottom: 6px; color: #00ffff; font-size: 11px;">PERANGKAT</div>
                 <div class="legend-row">
-                    <div class="legend-sym"><img src="{{ asset('peta_jaringan/files/odp.png') }}" alt="ODP" onerror="this.style.display='none'"></div>
+                    <div class="legend-sym"><img src="/peta_jaringan/files/odp.png" alt="ODP" onerror="this.style.display='none'"></div>
                     <span>ODP</span>
                 </div>
                 <div class="legend-row">
@@ -242,7 +242,7 @@
                     <span>Tiang (Bendera)</span>
                 </div>
                 <div class="legend-row">
-                    <div class="legend-sym"><img src="{{ asset('peta_jaringan/files/location_4985966.png') }}" alt="Klien" onerror="this.style.display='none'"></div>
+                    <div class="legend-sym"><img src="/peta_jaringan/files/location_4985966.png" alt="Klien" onerror="this.style.display='none'"></div>
                     <span>Klien / Pelanggan</span>
                 </div>
 
@@ -295,7 +295,6 @@
     var odpIcon, clientIcon, flagPoleIcon;
     var markersList = {};
 
-    // State untuk menggambar kabel interaktif
     var isDrawingCable = false;
     var cablePoints = [];
     var tempCablePolyline = null;
@@ -389,9 +388,8 @@
             else if (cLower.includes('cikidang') || cLower.includes('batuanten')) currentCableClass = 'cable-cikidang';
             else currentCableClass = 'cable-default';
 
-            // Memulai penarikan kabel
             isDrawingCable = true;
-            cablePoints = [[lat, lng]]; // Titik awal dari klik pertama
+            cablePoints = [[lat, lng]];
             document.getElementById('cableDrawingBanner').style.display = 'block';
 
             tempCablePolyline = L.polyline(cablePoints, {
@@ -410,7 +408,7 @@
         // 1. Inisialisasi Peta
         map = L.map('odcGisMap', {
             preferCanvas: false,
-            doubleClickZoom: false // Dimatikan agar double click bisa dipakai untuk menyelesaikan kabel
+            doubleClickZoom: false
         }).setView([-7.43261, 109.14656], 14);
 
         // 2. Basemap Dark Mode
@@ -420,16 +418,16 @@
             className: 'map-dark-theme'
         }).addTo(map);
 
-        // 3. Definisi Ikon
+        // 3. Ikon Menggunakan Path Relatif (Aman HTTPS & Bebas Mixed Content)
         odpIcon = L.icon({
-            iconUrl: "{{ asset('peta_jaringan/files/odp.png') }}",
+            iconUrl: '/peta_jaringan/files/odp.png',
             iconSize: [22, 22],
             iconAnchor: [11, 11],
             popupAnchor: [0, -11]
         });
 
         clientIcon = L.icon({
-            iconUrl: "{{ asset('peta_jaringan/files/location_4985966.png') }}",
+            iconUrl: '/peta_jaringan/files/location_4985966.png',
             iconSize: [20, 20],
             iconAnchor: [10, 10],
             popupAnchor: [0, -10]
@@ -549,17 +547,16 @@
             }
         });
 
-        // 5. Muat file doc.kml
-        var kmlLayer = omnivore.kml("{{ asset('peta_jaringan/doc.kml') }}", null, customLayer)
+        // 5. Muat KML Menggunakan Path Relatif (Aman HTTPS & Bebas Mixed Content)
+        var kmlLayer = omnivore.kml('/peta_jaringan/doc.kml', null, customLayer)
             .on('ready', function() {
                 map.fitBounds(kmlLayer.getBounds());
             })
             .addTo(map);
 
-        // 6. Event Klik Peta: Mode Normal vs Mode Tarik Kabel
+        // 6. Klik Peta
         map.on('click', function(e) {
             if (isDrawingCable) {
-                // Menambahkan titik berikutnya pada kabel yang sedang ditarik
                 cablePoints.push([e.latlng.lat, e.latlng.lng]);
                 tempCablePolyline.setLatLngs(cablePoints);
                 return;
@@ -621,7 +618,6 @@
                     </div>
                 `);
 
-                // Reset mode
                 isDrawingCable = false;
                 cablePoints = [];
                 tempCablePolyline = null;
@@ -634,4 +630,4 @@
         }, 300);
     });
 </script>
-@endpush
+@endpush  
