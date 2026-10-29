@@ -2088,7 +2088,7 @@ class MaterialController extends Controller
 
             $row1 = [
                 '',
-                "LAPORAN STOK BARANG ({$monthName} {$selectedYear})",
+                "LAPORAN STOK BARANG ",
                 '',
                 '', '', '', '', '', '',
                 'BARANG MASUK',

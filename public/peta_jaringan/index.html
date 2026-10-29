@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Jaringan Dark Mode</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { height: 100%; width: 100%; overflow: hidden; background-color: #0b0e14; }
+        #map { width: 100vw; height: 100vh; }
+
+        /* Dark Mode Basemap */
+        .map-dark-theme {
+            filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+        }
+
+        /* Animasi Aliran Kabel FO */
+        @keyframes cableFlow {
+            to { stroke-dashoffset: -28; }
+        }
+
+        .cable-flow {
+            stroke-dasharray: 6 8;
+            animation: cableFlow 1.5s linear infinite;
+        }
+
+        /* 1. Kasegeran: Ungu / Magenta Menyala */
+        .cable-kasegeran {
+            stroke: #d946ef !important;
+            filter: drop-shadow(0 0 5px #d946ef) drop-shadow(0 0 8px #a855f7);
+        }
+
+        /* 2. Jatisaba: Kuning / Lime Terang */
+        .cable-jatisaba {
+            stroke: #a3e635 !important;
+            filter: drop-shadow(0 0 5px #a3e635) drop-shadow(0 0 8px #84cc16);
+        }
+
+        /* 3. Pageraji: Biru Cyan Menyala */
+        .cable-pageraji {
+            stroke: #00f3ff !important;
+            filter: drop-shadow(0 0 5px #00f3ff) drop-shadow(0 0 8px #0284c7);
+        }
+
+        /* 4. Karangendep: Oranye Terang */
+        .cable-karangendep {
+            stroke: #fb923c !important;
+            filter: drop-shadow(0 0 5px #fb923c) drop-shadow(0 0 8px #ea580c);
+        }
+
+        /* 5. Panusupan: Hijau Daun / Emerald */
+        .cable-panusupan {
+            stroke: #22c55e !important;
+            filter: drop-shadow(0 0 5px #22c55e) drop-shadow(0 0 8px #16a34a);
+        }
+
+        /* 6. Cipete: Pink Cerah */
+        .cable-cipete {
+            stroke: #f43f5e !important;
+            filter: drop-shadow(0 0 5px #f43f5e);
+        }
+
+        /* 7. Cikidang / Batuanten: Kuning Emas */
+        .cable-cikidang {
+            stroke: #facc15 !important;
+            filter: drop-shadow(0 0 5px #facc15);
+        }
+
+        /* 8. Default Rute Lain: Putih Terang */
+        .cable-default {
+            stroke: #ffffff !important;
+            filter: drop-shadow(0 0 4px #ffffff);
+        }
+
+        /* Ikon Bendera Tiang (Kuning Menyala) */
+        .flag-pole-icon {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 0 4px #ffeb3b) drop-shadow(0 0 8px #f57f17);
+        }
+        .flag-pole-icon svg {
+            width: 100%;
+            height: 100%;
+            fill: #ffeb3b;
+        }
+
+        /* Legenda */
+        .legend-box {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            background: rgba(13, 17, 23, 0.94);
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #ffffff;
+            font-family: sans-serif;
+            font-size: 11px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+        .legend-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .legend-row:last-child {
+            margin-bottom: 0;
+        }
+        .legend-sym {
+            width: 24px;
+            margin-right: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .legend-sym img {
+            max-width: 18px;
+            max-height: 18px;
+        }
+        .line-badge {
+            width: 18px;
+            height: 3px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <!-- UI Legenda -->
+    <div class="legend-box">
+        <div style="font-weight: bold; margin-bottom: 8px; color: #00ffff; font-size: 12px;">PERANGKAT</div>
+        <div class="legend-row">
+            <div class="legend-sym"><img src="files/odp.png" alt="ODP" onerror="this.style.display='none'"></div>
+            <span>ODP</span>
+        </div>
+        <div class="legend-row">
+            <div class="legend-sym">
+                <div class="flag-pole-icon">
+                    <svg viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
+                </div>
+            </div>
+            <span>Tiang (Bendera)</span>
+        </div>
+        <div class="legend-row">
+            <div class="legend-sym"><img src="files/location_4985966.png" alt="Klien" onerror="this.style.display='none'"></div>
+            <span>Klien / Pelanggan</span>
+        </div>
+
+        <div style="font-weight: bold; margin: 10px 0 6px 0; color: #00ffff; font-size: 12px;">RUTE KABEL FO (DESA)</div>
+        <div class="legend-row">
+            <div class="legend-sym"><div class="line-badge" style="background: #d946ef; box-shadow: 0 0 5px #d946ef;"></div></div>
+            <span>Kasegeran (Ungu)</span>
+        </div>
+        <div class="legend-row">
+            <div class="legend-sym"><div class="line-badge" style="background: #a3e635; box-shadow: 0 0 5px #a3e635;"></div></div>
+            <span>Jatisaba (Lime)</span>
+        </div>
+        <div class="legend-row">
+            <div class="legend-sym"><div class="line-badge" style="background: #00f3ff; box-shadow: 0 0 5px #00f3ff;"></div></div>
+            <span>Pageraji (Cyan)</span>
+        </div>
+        <div class="legend-row">
+            <div class="legend-sym"><div class="line-badge" style="background: #fb923c; box-shadow: 0 0 5px #fb923c;"></div></div>
+            <span>Karangendep (Oranye)</span>
+        </div>
+        <div class="legend-row">
+            <div class="legend-sym"><div class="line-badge" style="background: #22c55e; box-shadow: 0 0 5px #22c55e;"></div></div>
+            <span>Panusupan (Hijau)</span>
+        </div>
+        <div class="legend-row">
+            <div class="legend-sym"><div class="line-badge" style="background: #f43f5e; box-shadow: 0 0 5px #f43f5e;"></div></div>
+            <span>Cipete (Pink)</span>
+        </div>
+        <div class="legend-row">
+            <div class="legend-sym"><div class="line-badge" style="background: #facc15; box-shadow: 0 0 5px #facc15;"></div></div>
+            <span>Cikidang / Batuanten</span>
+        </div>
+        <div class="legend-row">
+            <div class="legend-sym"><div class="line-badge" style="background: #ffffff; box-shadow: 0 0 5px #ffffff;"></div></div>
+            <span>Backbone Lainnya</span>
+        </div>
+    </div>
+
+    <!-- Leaflet & Omnivore JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
+
+    <script>
+        const map = L.map('map', {
+            center: [-7.43261, 109.14656],
+            zoom: 17
+        });
+
+        // Basemap OSM Dark Mode
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors',
+            className: 'map-dark-theme'
+        }).addTo(map);
+
+        // 1. Ikon ODP
+        const odpIcon = L.icon({
+            iconUrl: 'files/odp.png',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+            popupAnchor: [0, -11]
+        });
+
+        // 2. Ikon Klien / Pelanggan
+        const clientIcon = L.icon({
+            iconUrl: 'files/location_4985966.png',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+            popupAnchor: [0, -10]
+        });
+
+        // 3. Ikon Tiang (Bendera Kuning)
+        const flagPoleIcon = L.divIcon({
+            className: '',
+            html: `<div class="flag-pole-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/>
+                    </svg>
+                   </div>`,
+            iconSize: [18, 18],
+            iconAnchor: [4, 18]
+        });
+
+        // Parser Layer KML
+        const customLayer = L.geoJson(null, {
+            pointToLayer: function (feature, latlng) {
+                const props = feature.properties || {};
+                const name = (props.name || '').trim().toLowerCase();
+                const desc = (props.description || '').toLowerCase();
+                const styleUrl = (props.styleUrl || '').toLowerCase();
+
+                // Deteksi ODP
+                if (name.includes('odp') || desc.includes('odp') || styleUrl.includes('odp')) {
+                    return L.marker(latlng, { icon: odpIcon });
+                }
+                
+                // Deteksi Tiang (Untitled Placemark, T-TF, tiang, t., pole)
+                if (
+                    name.includes('untitled placemark') ||
+                    name.includes('t-tf') ||
+                    name.startsWith('ttf') ||
+                    name.includes('tiang') ||
+                    name.startsWith('t.') ||
+                    name.startsWith('t ') ||
+                    name.includes('pole') ||
+                    desc.includes('tiang') ||
+                    desc.includes('t-tf') ||
+                    styleUrl.includes('flag')
+                ) {
+                    return L.marker(latlng, { icon: flagPoleIcon });
+                }
+
+                // Default: Klien / Pelanggan
+                return L.marker(latlng, { icon: clientIcon });
+            },
+            style: function (feature) {
+                const props = feature.properties || {};
+                const name = (props.name || '').toLowerCase();
+                const desc = (props.description || '').toLowerCase();
+
+                let colorClass = 'cable-default';
+
+                // Pemilihan Warna Kabel Berdasarkan Nama Desa / Rute
+                if (name.includes('kasegeran') || desc.includes('kasegeran')) {
+                    colorClass = 'cable-kasegeran'; // Ungu / Magenta
+                } else if (name.includes('jatisaba') || desc.includes('jatisaba')) {
+                    colorClass = 'cable-jatisaba'; // Lime
+                } else if (name.includes('pageraji') || desc.includes('pageraji')) {
+                    colorClass = 'cable-pageraji'; // Cyan
+                } else if (name.includes('karangendep') || desc.includes('karangendep')) {
+                    colorClass = 'cable-karangendep'; // Oranye
+                } else if (name.includes('panusupan') || desc.includes('panusupan')) {
+                    colorClass = 'cable-panusupan'; // Hijau
+                } else if (name.includes('cipete') || desc.includes('cipete')) {
+                    colorClass = 'cable-cipete'; // Pink
+                } else if (name.includes('cikidang') || name.includes('batuanten') || desc.includes('cikidang')) {
+                    colorClass = 'cable-cikidang'; // Kuning Emas
+                }
+
+                return {
+                    weight: 2.5,
+                    className: `cable-flow ${colorClass}`
+                };
+            },
+            onEachFeature: function (feature, layer) {
+                if (feature.properties && feature.properties.name) {
+                    layer.bindPopup('<b>' + feature.properties.name + '</b><br>' + (feature.properties.description || ''));
+                }
+            }
+        });
+
+        // Muat file doc.kml
+        const kmlLayer = omnivore.kml('doc.kml', null, customLayer)
+            .on('ready', function() {
+                map.fitBounds(kmlLayer.getBounds());
+            })
+            .addTo(map);
+
+        setTimeout(() => { map.invalidateSize(); }, 200);
+    </script>
+</body>
+</html>

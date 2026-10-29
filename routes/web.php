@@ -72,6 +72,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('/laporan-masalah/{id}', [AdminController::class, 'deleteLaporan'])->name('laporan.delete');
     Route::get('/mrtg', [AdminController::class, 'mrtg'])->name('mrtg');
     Route::get('/odc-map', [AdminController::class, 'odcMap'])->name('odc-map');
+    Route::post('/odc-map/save-marker', [AdminController::class, 'saveOdcMarker'])->name('odc-map.save-marker');
+    Route::post('/odc-map/delete-marker', [AdminController::class, 'deleteOdcMarker'])->name('odc-map.delete-marker');
+    Route::get('/odc-map/export-kml', [AdminController::class, 'exportOdcKml'])->name('odc-map.export-kml');
 
     // WhatsApp Gateway
     Route::get('/whatsapp-gateway', [WhatsappGatewayController::class, 'index'])->name('whatsapp');
@@ -124,6 +127,8 @@ Route::prefix('teknisi')->name('teknisi.')->middleware(['auth', 'technician'])->
     Route::post('/daily-report/{id}/setor', [\App\Http\Controllers\Technician\DailyReportController::class, 'setorKas'])->name('daily-report.setor');
     Route::delete('/daily-report/{id}', [\App\Http\Controllers\Technician\DailyReportController::class, 'destroy'])->name('daily-report.destroy');
     Route::get('/daily-report/export', [\App\Http\Controllers\Technician\DailyReportController::class, 'export'])->name('daily-report.export');
+    Route::get('/daily-report/invoice', [\App\Http\Controllers\Technician\DailyReportController::class, 'invoice'])->name('daily-report.invoice-alias');
+    Route::get('/daily-report/invoice/{id}', [\App\Http\Controllers\Technician\DailyReportController::class, 'invoice'])->name('daily-report.invoice-detail-alias');
 });
 
 // ==========================================
@@ -136,6 +141,8 @@ Route::prefix('daily-report')->name('daily-report.')->middleware(['auth'])->grou
     Route::post('/{id}/setor', [\App\Http\Controllers\Technician\DailyReportController::class, 'setorKas'])->name('setor');
     Route::delete('/{id}', [\App\Http\Controllers\Technician\DailyReportController::class, 'destroy'])->name('destroy');
     Route::get('/export', [\App\Http\Controllers\Technician\DailyReportController::class, 'export'])->name('export');
+    Route::get('/invoice', [\App\Http\Controllers\Technician\DailyReportController::class, 'invoice'])->name('invoice');
+    Route::get('/invoice/{id}', [\App\Http\Controllers\Technician\DailyReportController::class, 'invoice'])->name('invoice.show');
 });
 
 // Helper migrasi cepat untuk server produksi (bisa diakses via browser)

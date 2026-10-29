@@ -253,6 +253,9 @@ class DailyReportController extends Controller
         // 5. Active orders for quick autofill
         $recentOrders = Order::latest('id')->take(20)->get(['id', 'order_number', 'customer_name', 'customer_phone', 'address', 'pppoe', 'assigned_odp', 'ont_sn', 'opm_dbm', 'id_card_number', 'package_name', 'price']);
 
+        // 6. Recent daily reports for invoice selection (POV Admin Daily)
+        $recentReportsForInvoice = DailyReport::latest('id')->take(30)->get(['id', 'report_date', 'partner_company', 'customer_name', 'customer_phone', 'customer_address', 'job_type', 'material_total_cost', 'cash_amount']);
+
         return view('technician.daily-report', compact(
             'reports',
             'cashTransactions',
@@ -270,6 +273,7 @@ class DailyReportController extends Controller
             'partners',
             'jobTypes',
             'recentOrders',
+            'recentReportsForInvoice',
             'currentMonthName'
         ));
     }
@@ -898,6 +902,296 @@ class DailyReportController extends Controller
 
             fclose($handle);
         }, 200, $headers);
+    }
+
+    /**
+     * Tampilan Cetak Invoice Resmi (Mengikuti Template Invoice.pdf)
+     */
+    public function invoice(Request $request, $id = null)
+    {
+        $reportId = $id ?: $request->input('report_id');
+        $report = null;
+        if (!empty($reportId)) {
+            $report = DailyReport::find($reportId);
+        }
+        if (!$report) {
+            $report = DailyReport::latest('id')->first();
+        }
+
+        $recentReports = DailyReport::latest('id')->take(40)->get([
+            'id', 'report_date', 'partner_company', 'customer_name', 'customer_phone', 'customer_address', 'job_type', 'material_total_cost', 'cash_amount'
+        ]);
+
+        // Daftar Perusahaan Penerbit yang Tersedia
+        $issuers = [
+            'Three Five' => [
+                'name' => 'THREE FIVE',
+                'tagline' => "The Best you're network solution",
+                'address' => 'Kasegeran, RT 06 RW 03, Kec. Cilongok',
+                'phone' => '+123-456-7890',
+                'email' => 'adminthreefive@gmail.com',
+                'bank_name' => 'BCA',
+                'account_name' => 'Nurokhman',
+                'account_number' => '4240442219',
+                'signer_name' => 'NUROKHMAN',
+                'signer_title' => 'Hormat Kami',
+                'logo_type' => 'threefive',
+            ],
+            'BANTERPOL' => [
+                'name' => 'BANTERPOL',
+                'tagline' => 'ISP & Fiber Optic Management Solution',
+                'address' => 'Jl. Raya Pernasidi, RT 02 RW 01, Kec. Cilongok, Kab. Banyumas',
+                'phone' => '+62 812-3456-7890',
+                'email' => 'admin@banterpool.net',
+                'bank_name' => 'BCA / BRI',
+                'account_name' => 'Banterpool Official',
+                'account_number' => '4240442219',
+                'signer_name' => 'NUROKHMAN',
+                'signer_title' => 'Hormat Kami',
+                'logo_type' => 'banterpol',
+            ],
+        ];
+
+        // Pilihan Perusahaan Penerbit
+        $selectedIssuerKey = $request->input('issuer_company', 'Three Five');
+        $issuer = $issuers[$selectedIssuerKey] ?? $issuers['Three Five'];
+
+        // Jika user custom pengirim via query
+        if ($request->filled('issuer_name')) {
+            $issuer['name'] = $request->input('issuer_name');
+        }
+        if ($request->filled('issuer_address')) {
+            $issuer['address'] = $request->input('issuer_address');
+        }
+        if ($request->filled('issuer_phone')) {
+            $issuer['phone'] = $request->input('issuer_phone');
+        }
+        if ($request->filled('issuer_email')) {
+            $issuer['email'] = $request->input('issuer_email');
+        }
+        if ($request->filled('bank_name')) {
+            $issuer['bank_name'] = $request->input('bank_name');
+        }
+        if ($request->filled('account_name')) {
+            $issuer['account_name'] = $request->input('account_name');
+        }
+        if ($request->filled('account_number')) {
+            $issuer['account_number'] = $request->input('account_number');
+        }
+        if ($request->filled('signer_name')) {
+            $issuer['signer_name'] = $request->input('signer_name');
+        }
+
+        // Pilihan Perusahaan Tujuan (To: ...)
+        $targetCompany = $request->input('target_company');
+        if (empty($targetCompany) && $report) {
+            $targetCompany = $report->partner_company;
+        }
+        if (empty($targetCompany)) {
+            $targetCompany = 'OBORNET'; // Default persis Invoice.pdf
+        }
+
+        $targetAddress = $request->input('target_address');
+        if (empty($targetAddress) && $report) {
+            $targetAddress = $report->customer_address ?: 'Sudimara';
+        }
+        if (empty($targetAddress)) {
+            $targetAddress = 'Sudimara';
+        }
+
+        $targetPhone = $request->input('target_phone');
+        if (empty($targetPhone) && $report) {
+            $targetPhone = $report->customer_phone ?: '+62 896-3656-8909';
+        }
+        if (empty($targetPhone)) {
+            $targetPhone = '+62 896-3656-8909';
+        }
+
+        $targetEmail = $request->input('target_email', '-');
+
+        // Nomor Faktur & Tanggal
+        $invoiceNumber = $request->input('invoice_number');
+        if (empty($invoiceNumber)) {
+            $invoiceNumber = $report ? ('inv-' . ($report->id ? str_pad($report->id, 8, '0', STR_PAD_LEFT) : '1234567890')) : 'inv-1234567890';
+        }
+
+        $invoiceDate = $request->input('invoice_date');
+        if (empty($invoiceDate)) {
+            $invoiceDate = $report && $report->report_date ? $report->report_date->translatedFormat('d F Y') : '12 Desember 2026';
+        } else {
+            try {
+                $invoiceDate = Carbon::parse($invoiceDate)->translatedFormat('d F Y');
+            } catch (\Throwable $e) {}
+        }
+
+        $dueDate = $request->input('due_date');
+        if (empty($dueDate)) {
+            $dueDate = $report && $report->report_date ? $report->report_date->copy()->addDays(5)->translatedFormat('d F Y') : '17 Desember 2026';
+        } else {
+            try {
+                $dueDate = Carbon::parse($dueDate)->translatedFormat('d F Y');
+            } catch (\Throwable $e) {}
+        }
+
+        $signatureDate = $request->input('signature_date');
+        if (empty($signatureDate)) {
+            $signatureDate = now()->translatedFormat('d F Y');
+        } else {
+            try {
+                $signatureDate = Carbon::parse($signatureDate)->translatedFormat('d F Y');
+            } catch (\Throwable $e) {}
+        }
+
+        // Item Material (A. Material) & Jasa (B. Jasa)
+        $materials = [];
+        $services = [];
+
+        if ($report) {
+            // Ambil dari data report
+            if (!empty($report->materials_json)) {
+                $mArray = is_array($report->materials_json) ? $report->materials_json : json_decode($report->materials_json, true);
+                if (is_array($mArray)) {
+                    $no = 1;
+                    foreach ($mArray as $m) {
+                        $qty = (float)($m['qty'] ?? 0);
+                        if ($qty <= 0) continue;
+                        $price = (float)($m['price'] ?? 0);
+                        $total = (float)($m['total'] ?? ($qty * $price));
+                        $materials[] = [
+                            'no' => $no++,
+                            'name' => $m['name'] ?? 'Material FO',
+                            'vol' => $qty,
+                            'sat' => $m['unit'] ?? 'Pcs',
+                            'price' => $price,
+                            'total' => $total,
+                        ];
+                    }
+                }
+            }
+
+            // Jasa dari report
+            $jobPrice = (float)($report->service_price > 0 ? $report->service_price : ($report->cash_amount > 0 ? $report->cash_amount : 150000));
+            $services[] = [
+                'no' => 1,
+                'name' => $report->job_type ?: 'Jasa Pemasangan Baru',
+                'vol' => 1,
+                'sat' => 'User',
+                'price' => $jobPrice,
+                'total' => $jobPrice,
+            ];
+        } elseif ($request->filled('partner') && $request->input('partner') !== 'all') {
+            // Rekap berdasarkan partner yang dipilih
+            $pName = $request->input('partner');
+            $partnerReports = DailyReport::where('partner_company', $pName)->latest('report_date')->take(10)->get();
+            $matList = [];
+            $no = 1;
+            foreach ($partnerReports as $pr) {
+                if (!empty($pr->materials_json)) {
+                    $mArray = is_array($pr->materials_json) ? $pr->materials_json : json_decode($pr->materials_json, true);
+                    if (is_array($mArray)) {
+                        foreach ($mArray as $m) {
+                            $qty = (float)($m['qty'] ?? 0);
+                            if ($qty <= 0) continue;
+                            $name = trim($m['name'] ?? '');
+                            $price = (float)($m['price'] ?? 0);
+                            if (isset($matList[$name])) {
+                                $matList[$name]['vol'] += $qty;
+                                $matList[$name]['total'] += ($qty * $price);
+                            } else {
+                                $matList[$name] = [
+                                    'no' => $no++,
+                                    'name' => $name,
+                                    'vol' => $qty,
+                                    'sat' => $m['unit'] ?? 'Pcs',
+                                    'price' => $price,
+                                    'total' => $qty * $price,
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+            $materials = array_values($matList);
+
+            $jobCount = $partnerReports->count() ?: 1;
+            $services[] = [
+                'no' => 1,
+                'name' => 'Jasa Pemasangan & Perbaikan Jaringan (' . $pName . ')',
+                'vol' => $jobCount,
+                'sat' => 'User',
+                'price' => 150000,
+                'total' => $jobCount * 150000,
+            ];
+        }
+
+        // Fallback Default persis template Invoice.pdf jika belum ada material/jasa
+        if (empty($materials)) {
+            $materials = [
+                ['no' => 1, 'name' => 'Drop Core', 'vol' => 100, 'sat' => 'Meter', 'price' => 800, 'total' => 80000],
+                ['no' => 2, 'name' => 'Modem Zvolin', 'vol' => 1, 'sat' => 'Unit', 'price' => 200000, 'total' => 200000],
+                ['no' => 3, 'name' => 'Smurf', 'vol' => 2, 'sat' => 'Pcs', 'price' => 400, 'total' => 800],
+            ];
+        }
+
+        if (empty($services)) {
+            $services = [
+                ['no' => 1, 'name' => 'Jasa Pemasangan Baru', 'vol' => 1, 'sat' => 'User', 'price' => 150000, 'total' => 150000],
+            ];
+        }
+
+        // Kalkulasi Total
+        $totalMaterial = array_sum(array_column($materials, 'total'));
+        $totalJasa = array_sum(array_column($services, 'total'));
+        $subtotal = $totalMaterial + $totalJasa;
+
+        $ppnPercent = (float)$request->input('ppn', 0);
+        $ppnAmount = ($subtotal * $ppnPercent) / 100;
+
+        $discountPercent = (float)$request->input('diskon', 0);
+        $discountAmount = ($subtotal * $discountPercent) / 100;
+
+        $grandTotal = $subtotal + $ppnAmount - $discountAmount;
+
+        $allPartners = [
+            'OBORNET',
+            'BANTERPOL',
+            'ThreeFive',
+            'TRIPANCA',
+            'INKA',
+            'DANA ID',
+            'JANE HOME',
+            'KIDANG MAS',
+            'BUMDES PERNASIDI',
+            'TX ID',
+            'BUMDES CIPETE',
+            'MAHSUS',
+            'BERKAH JAYA',
+        ];
+
+        return view('technician.invoice', compact(
+            'issuer',
+            'issuers',
+            'selectedIssuerKey',
+            'targetCompany',
+            'targetAddress',
+            'targetPhone',
+            'targetEmail',
+            'invoiceNumber',
+            'invoiceDate',
+            'dueDate',
+            'signatureDate',
+            'materials',
+            'services',
+            'subtotal',
+            'ppnPercent',
+            'ppnAmount',
+            'discountPercent',
+            'discountAmount',
+            'grandTotal',
+            'allPartners',
+            'report',
+            'recentReports'
+        ));
     }
 
     /**

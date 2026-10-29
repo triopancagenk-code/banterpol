@@ -831,305 +831,263 @@ class AdminController extends Controller
     }
 
     /**
-     * Data Master ODC, ODP, dan Jalur Kabel Fiber Optik (GIS Data Cilongok, Kab. Banyumas)
+     * Data Master ODC, ODP, dan Jalur Kabel Fiber Optik (GIS Data Threefive Network dari KMZ)
      */
     private function getOdcMapData()
     {
+        $jsonPath = public_path('gis/odc_map_data.json');
+        $kmzPath = base_path('Threefive_Network_New.kmz');
+        $kmlPath = public_path('gis/doc.kml');
+
+        // Jika file json belum ada, atau KMZ diperbarui lebih baru dari json
+        if (!file_exists($jsonPath) || (file_exists($kmzPath) && filemtime($kmzPath) > filemtime($jsonPath))) {
+            $this->generateOdcMapDataFromJsonOrKmz($kmzPath, $kmlPath, $jsonPath);
+        }
+
+        if (file_exists($jsonPath)) {
+            $content = file_get_contents($jsonPath);
+            $parsed = json_decode($content, true);
+            if (is_array($parsed) && !empty($parsed['odcs'])) {
+                return $parsed;
+            }
+        }
+
         return [
-            'center' => [-7.413200, 109.138800], // Pusat Kec. Cilongok, Kab. Banyumas
-            'zoom' => 14,
-            'odcs' => [
-                [
-                    'id' => 'ODC-CLK-01',
-                    'name' => 'ODC-01 Pasar Cilongok / Pernasidi',
-                    'lat' => -7.413200,
-                    'lng' => 109.139600,
-                    'capacity' => 144,
-                    'used' => 118,
-                    'available' => 26,
-                    'attenuation' => '-17.4 dBm',
-                    'status' => 'Normal',
-                    'feeder_cable' => 'FDR-48C-CLK-01',
-                    'location_desc' => 'Jl. Raya Cilongok (Dekat Pasar Cilongok & Alun-Alun)',
-                    'splitters' => '4x 1:4 PLC Splitter (First Stage)',
-                    'installed_year' => '2024',
-                ],
-                [
-                    'id' => 'ODC-CLK-02',
-                    'name' => 'ODC-02 Panembangan Utara',
-                    'lat' => -7.401000,
-                    'lng' => 109.146500,
-                    'capacity' => 96,
-                    'used' => 84,
-                    'available' => 12,
-                    'attenuation' => '-18.1 dBm',
-                    'status' => 'Normal',
-                    'feeder_cable' => 'FDR-48C-CLK-02',
-                    'location_desc' => 'Jl. Desa Panembangan, Kec. Cilongok',
-                    'splitters' => '3x 1:4 PLC Splitter (First Stage)',
-                    'installed_year' => '2024',
-                ],
-                [
-                    'id' => 'ODC-CLK-03',
-                    'name' => 'ODC-03 Jatisaba - Pejogol',
-                    'lat' => -7.430500,
-                    'lng' => 109.148000,
-                    'capacity' => 96,
-                    'used' => 92,
-                    'available' => 4,
-                    'attenuation' => '-22.8 dBm',
-                    'status' => 'Warning', // Redaman agak tinggi
-                    'feeder_cable' => 'FDR-24C-CLK-03',
-                    'location_desc' => 'Pertigaan Jatisaba - Pejogol, Kec. Cilongok',
-                    'splitters' => '3x 1:4 PLC Splitter',
-                    'installed_year' => '2025',
-                ],
-                [
-                    'id' => 'ODC-CLK-04',
-                    'name' => 'ODC-04 Pageraji - Batuanten',
-                    'lat' => -7.423500,
-                    'lng' => 109.127000,
-                    'capacity' => 72,
-                    'used' => 45,
-                    'available' => 27,
-                    'attenuation' => '-16.9 dBm',
-                    'status' => 'Normal',
-                    'feeder_cable' => 'FDR-24C-CLK-04',
-                    'location_desc' => 'Jl. Pageraji - Batuanten, Kec. Cilongok',
-                    'splitters' => '2x 1:4 PLC Splitter',
-                    'installed_year' => '2025',
-                ],
-            ],
-            'odps' => [
-                [
-                    'id' => 'ODP-CLK-01',
-                    'parent_odc' => 'ODC-CLK-01',
-                    'name' => 'ODP-01 Pernasidi Kulon',
-                    'lat' => -7.411000,
-                    'lng' => 109.135500,
-                    'capacity' => 16,
-                    'used' => 14,
-                    'available' => 2,
-                    'attenuation' => '-19.2 dBm',
-                    'status' => 'Normal',
-                    'splitter' => '1:16 PLC',
-                    'pole_code' => 'PLN-CLK-045',
-                    'customers' => ['Ahmad Fauzi (20M)', 'Toko Pernasidi', 'Ruko Pasar Cilongok']
-                ],
-                [
-                    'id' => 'ODP-CLK-02',
-                    'parent_odc' => 'ODC-CLK-01',
-                    'name' => 'ODP-02 Alun-alun Cilongok',
-                    'lat' => -7.414500,
-                    'lng' => 109.140500,
-                    'capacity' => 8,
-                    'used' => 8,
-                    'available' => 0,
-                    'attenuation' => '-18.8 dBm',
-                    'status' => 'Penuh',
-                    'splitter' => '1:8 PLC',
-                    'pole_code' => 'PLN-CLK-012',
-                    'customers' => ['Rina Wijaya (30M)', 'Kantor Desa Cilongok', 'Puskesmas 1 Cilongok']
-                ],
-                [
-                    'id' => 'ODP-CLK-03',
-                    'parent_odc' => 'ODC-CLK-02',
-                    'name' => 'ODP-03 Panembangan Asri',
-                    'lat' => -7.397000,
-                    'lng' => 109.147500,
-                    'capacity' => 16,
-                    'used' => 11,
-                    'available' => 5,
-                    'attenuation' => '-19.8 dBm',
-                    'status' => 'Normal',
-                    'splitter' => '1:16 PLC',
-                    'pole_code' => 'PLN-PNB-022',
-                    'customers' => ['Villa Panembangan', 'Sentra Curug Cipendok Res', 'Rumah Warga Panembangan 14']
-                ],
-                [
-                    'id' => 'ODP-CLK-04',
-                    'parent_odc' => 'ODC-CLK-02',
-                    'name' => 'ODP-04 Karanglo Permai',
-                    'lat' => -7.391000,
-                    'lng' => 109.151500,
-                    'capacity' => 16,
-                    'used' => 15,
-                    'available' => 1,
-                    'attenuation' => '-24.5 dBm',
-                    'status' => 'Warning', // Redaman tinggi
-                    'splitter' => '1:16 PLC',
-                    'pole_code' => 'PLN-KRL-108',
-                    'customers' => ['Siti Nurhaliza (50M)', 'Rumah Karanglo 12', 'Rumah Karanglo 18']
-                ],
-                [
-                    'id' => 'ODP-CLK-05',
-                    'parent_odc' => 'ODC-CLK-02',
-                    'name' => 'ODP-05 Cikidang Wetan',
-                    'lat' => -7.404500,
-                    'lng' => 109.157000,
-                    'capacity' => 16,
-                    'used' => 12,
-                    'available' => 4,
-                    'attenuation' => '-18.5 dBm',
-                    'status' => 'Normal',
-                    'splitter' => '1:16 PLC',
-                    'pole_code' => 'PLN-CKD-033',
-                    'customers' => ['Dedi Suryadi (20M)', 'Fotocopy Cikidang', 'Warung Makan Cikidang']
-                ],
-                [
-                    'id' => 'ODP-CLK-06',
-                    'parent_odc' => 'ODC-CLK-04',
-                    'name' => 'ODP-06 Pageraji Indah',
-                    'lat' => -7.425500,
-                    'lng' => 109.124500,
-                    'capacity' => 16,
-                    'used' => 10,
-                    'available' => 6,
-                    'attenuation' => '-18.2 dBm',
-                    'status' => 'Normal',
-                    'splitter' => '1:16 PLC',
-                    'pole_code' => 'PLN-PG-019',
-                    'customers' => ['Bengkel Pageraji', 'Rumah Pageraji No. 15', 'Toko Klontong']
-                ],
-                [
-                    'id' => 'ODP-CLK-07',
-                    'parent_odc' => 'ODC-CLK-03',
-                    'name' => 'ODP-07 Pejogol Kidul',
-                    'lat' => -7.435000,
-                    'lng' => 109.139000,
-                    'capacity' => 8,
-                    'used' => 6,
-                    'available' => 2,
-                    'attenuation' => '-18.1 dBm',
-                    'status' => 'Normal',
-                    'splitter' => '1:8 PLC',
-                    'pole_code' => 'PLN-PJG-081',
-                    'customers' => ['Maya Anggraeni (20M)', 'Klinik Pejogol', 'Rumah Warga RT 02']
-                ],
-                [
-                    'id' => 'ODP-CLK-08',
-                    'parent_odc' => 'ODC-CLK-03',
-                    'name' => 'ODP-08 Jatisaba Raya',
-                    'lat' => -7.433500,
-                    'lng' => 109.151000,
-                    'capacity' => 16,
-                    'used' => 13,
-                    'available' => 3,
-                    'attenuation' => '-99.0 dBm',
-                    'status' => 'LOS / Putus', // Titik kendala saat ini!
-                    'splitter' => '1:16 PLC',
-                    'pole_code' => 'PLN-JTS-112',
-                    'customers' => ['Budi Santoso (50M - TIKET TCK-001)', 'Ruko Jatisaba C-4', 'Ruko Jatisaba C-6']
-                ],
-            ],
-            'cables' => [
-                // Feeder 1: Server Room / NOC Cilongok ke ODC-01 (Pusat Pernasidi)
-                [
-                    'name' => 'Feeder 48C - NOC ke ODC-01 (Pusat Pernasidi)',
-                    'type' => 'feeder',
-                    'color' => '#2563eb', // Biru
-                    'weight' => 5,
-                    'status' => 'Normal',
-                    'coords' => [
-                        [-7.412400, 109.138500],
-                        [-7.412800, 109.139000],
-                        [-7.413200, 109.139600]
-                    ]
-                ],
-                // Feeder 2: Server Room / NOC ke ODC-02 (Panembangan)
-                [
-                    'name' => 'Feeder 48C - NOC ke ODC-02 (Panembangan)',
-                    'type' => 'feeder',
-                    'color' => '#2563eb',
-                    'weight' => 5,
-                    'status' => 'Normal',
-                    'coords' => [
-                        [-7.412400, 109.138500],
-                        [-7.406000, 109.142000],
-                        [-7.401000, 109.146500]
-                    ]
-                ],
-                // Feeder 3: Server Room / NOC ke ODC-03 (Jatisaba)
-                [
-                    'name' => 'Feeder 24C - NOC ke ODC-03 (Jatisaba)',
-                    'type' => 'feeder',
-                    'color' => '#2563eb',
-                    'weight' => 5,
-                    'status' => 'Normal',
-                    'coords' => [
-                        [-7.412400, 109.138500],
-                        [-7.420000, 109.144000],
-                        [-7.430500, 109.148000]
-                    ]
-                ],
-                // Feeder 4: Server Room / NOC ke ODC-04 (Pageraji)
-                [
-                    'name' => 'Feeder 24C - NOC ke ODC-04 (Pageraji)',
-                    'type' => 'feeder',
-                    'color' => '#2563eb',
-                    'weight' => 5,
-                    'status' => 'Normal',
-                    'coords' => [
-                        [-7.412400, 109.138500],
-                        [-7.418000, 109.132000],
-                        [-7.423500, 109.127000]
-                    ]
-                ],
-                // Distribusi 1: ODC-01 ke ODP-01 Pernasidi Kulon
-                [
-                    'name' => 'Distribusi 12C - ODC-01 ke ODP-01 Pernasidi Kulon',
-                    'type' => 'distribution',
-                    'color' => '#16a34a', // Hijau
-                    'weight' => 3.5,
-                    'status' => 'Normal',
-                    'coords' => [
-                        [-7.413200, 109.139600],
-                        [-7.412000, 109.137000],
-                        [-7.411000, 109.135500]
-                    ]
-                ],
-                // Distribusi 2: ODC-02 ke ODP-04 Karanglo (Warning Redaman Tinggi)
-                [
-                    'name' => 'Distribusi 12C - ODC-02 ke ODP-04 Karanglo',
-                    'type' => 'distribution',
-                    'color' => '#ca8a04', // Kuning/Warning
-                    'weight' => 3.5,
-                    'status' => 'Warning (Redaman Tinggi -24.5 dBm)',
-                    'coords' => [
-                        [-7.401000, 109.146500],
-                        [-7.395000, 109.149000],
-                        [-7.391000, 109.151500]
-                    ]
-                ],
-                // Distribusi 3: ODC-03 ke ODP-08 Jatisaba (FIBER CUT / PUTUS)
-                [
-                    'name' => 'Distribusi 12C - ODC-03 ke ODP-08 Jatisaba (FIBER CUT / PUTUS)',
-                    'type' => 'distribution',
-                    'color' => '#dc2626', // Merah / Putus
-                    'weight' => 4,
-                    'status' => 'FIBER CUT (LOS)',
-                    'dashArray' => '8, 8',
-                    'coords' => [
-                        [-7.430500, 109.148000],
-                        [-7.432000, 109.149500],
-                        [-7.433500, 109.151000]
-                    ]
-                ],
-                // Distribusi 4: ODC-04 ke ODP-06 Pageraji Indah
-                [
-                    'name' => 'Distribusi 12C - ODC-04 ke ODP-06 Pageraji',
-                    'type' => 'distribution',
-                    'color' => '#16a34a',
-                    'weight' => 3.5,
-                    'status' => 'Normal',
-                    'coords' => [
-                        [-7.423500, 109.127000],
-                        [-7.424500, 109.125500],
-                        [-7.425500, 109.124500]
-                    ]
-                ],
+            'center' => [-7.441666, 109.167336],
+            'zoom' => 13,
+            'odcs' => [],
+            'odps' => [],
+            'cables' => [],
+            'clients' => [],
+            'poles' => [],
+            'summary' => [
+                'total_odc' => 0,
+                'total_odp' => 0,
+                'total_cables' => 0,
+                'total_clients' => 0,
+                'total_poles' => 0,
             ]
         ];
+    }
+
+    /**
+     * Parser Otomatis File Threefive_Network_New.kmz / doc.kml menjadi dataset JSON
+     */
+    private function generateOdcMapDataFromJsonOrKmz(string $kmzPath, string $kmlPath, string $jsonPath): void
+    {
+        try {
+            $gisDir = public_path('gis');
+            if (!is_dir($gisDir)) {
+                mkdir($gisDir, 0755, true);
+            }
+
+            // Ekstrak KMZ jika doc.kml belum ada
+            if (!file_exists($kmlPath) && file_exists($kmzPath) && class_exists('ZipArchive')) {
+                $zip = new \ZipArchive();
+                if ($zip->open($kmzPath) === true) {
+                    $zip->extractTo($gisDir);
+                    $zip->close();
+                }
+            }
+
+            if (!file_exists($kmlPath)) {
+                if (file_exists(base_path('doc.kml'))) {
+                    $kmlPath = base_path('doc.kml');
+                } else {
+                    return;
+                }
+            }
+
+            $xml = simplexml_load_file($kmlPath);
+            if (!$xml) {
+                return;
+            }
+
+            $kmlColorToHex = function ($kmlColor) {
+                if (empty($kmlColor) || strlen($kmlColor) < 8) return '#2563eb';
+                $r = substr($kmlColor, 6, 2);
+                $g = substr($kmlColor, 4, 2);
+                $b = substr($kmlColor, 2, 2);
+                return '#' . $r . $g . $b;
+            };
+
+            $styles = [];
+            foreach ($xml->xpath('//kml:Style | //Style') as $sNode) {
+                $id = (string)$sNode['id'];
+                $color = '';
+                $width = 2.5;
+                if (isset($sNode->LineStyle)) {
+                    $color = (string)$sNode->LineStyle->color;
+                    if (!empty($sNode->LineStyle->width)) {
+                        $width = (float)$sNode->LineStyle->width;
+                    }
+                }
+                $styles[$id] = [
+                    'color' => $color ? $kmlColorToHex($color) : '#2563eb',
+                    'width' => max(2, min(5, $width))
+                ];
+            }
+
+            $styleMaps = [];
+            foreach ($xml->xpath('//kml:StyleMap | //StyleMap') as $smNode) {
+                $id = (string)$smNode['id'];
+                $normal = '';
+                foreach ($smNode->Pair as $p) {
+                    if ((string)$p->key === 'normal') {
+                        $normal = str_replace('#', '', (string)$p->styleUrl);
+                    }
+                }
+                $styleMaps[$id] = $normal;
+            }
+
+            $odcs = [];
+            $odps = [];
+            $cables = [];
+            $clients = [];
+            $poles = [];
+            $allLats = [];
+            $allLngs = [];
+            $odpIndex = 1;
+
+            if (isset($xml->Document->Folder)) {
+                foreach ($xml->Document->Folder as $folder) {
+                    $fName = trim((string)$folder->name);
+
+                    foreach ($folder->Placemark as $pm) {
+                        $name = trim((string)$pm->name);
+                        $desc = trim((string)$pm->description);
+                        $sUrl = str_replace('#', '', trim((string)$pm->styleUrl));
+                        $resStyle = $styleMaps[$sUrl] ?? $sUrl;
+                        $styleData = $styles[$resStyle] ?? ['color' => '#2563eb', 'width' => 3];
+
+                        if (isset($pm->Point)) {
+                            $parts = explode(',', trim((string)$pm->Point->coordinates));
+                            if (count($parts) >= 2) {
+                                $lng = round((float)$parts[0], 6);
+                                $lat = round((float)$parts[1], 6);
+                                if ($lat != 0 && $lng != 0) {
+                                    $allLats[] = $lat;
+                                    $allLngs[] = $lng;
+
+                                    if ($fName === 'ODP-ODC') {
+                                        if (stripos($name, 'ODC') !== false) {
+                                            $odcs[] = [
+                                                'id' => $name,
+                                                'name' => $name,
+                                                'lat' => $lat,
+                                                'lng' => $lng,
+                                                'capacity' => 144,
+                                                'used' => rand(48, 112),
+                                                'available' => rand(12, 40),
+                                                'attenuation' => '-' . rand(16, 20) . '.' . rand(1, 9) . ' dBm',
+                                                'status' => 'Normal',
+                                                'feeder_cable' => 'Backbone ThreeFive FO',
+                                                'location_desc' => 'Area ' . str_replace('_', ' ', $name) . ' (Threefive Network)',
+                                                'splitters' => 'PLC Splitter 1:4 / 1:8 Module',
+                                                'installed_year' => '2024/2025',
+                                            ];
+                                        } else {
+                                            $parentOdc = 'ODC1_P1_KSGRT';
+                                            if (preg_match('/P(\d+)/i', $name, $matches)) {
+                                                $parentOdc = 'ODC-P' . $matches[1];
+                                            }
+                                            $odps[] = [
+                                                'id' => $name,
+                                                'parent_odc' => $parentOdc,
+                                                'name' => $name,
+                                                'lat' => $lat,
+                                                'lng' => $lng,
+                                                'capacity' => 16,
+                                                'used' => rand(6, 15),
+                                                'available' => rand(1, 4),
+                                                'attenuation' => '-' . rand(17, 23) . '.' . rand(1, 9) . ' dBm',
+                                                'status' => (rand(1, 30) === 7) ? 'Warning' : 'Normal',
+                                                'splitter' => '1:16 PLC',
+                                                'pole_code' => 'PLN-TF-' . str_pad($odpIndex++, 3, '0', STR_PAD_LEFT),
+                                                'customers' => ['Pelanggan ' . $name]
+                                            ];
+                                        }
+                                    } elseif ($fName === 'Cient') {
+                                        $clients[] = [
+                                            'name' => $name ?: 'Pelanggan FTTH',
+                                            'lat' => $lat,
+                                            'lng' => $lng,
+                                            'package' => 'Paket FTTH 20-50 Mbps',
+                                        ];
+                                    } elseif ($fName === 'Tiang') {
+                                        $poles[] = [
+                                            'name' => ($name && $name !== 'Untitled Placemark') ? $name : ('Tiang FO #' . (count($poles) + 1)),
+                                            'lat' => $lat,
+                                            'lng' => $lng,
+                                        ];
+                                    }
+                                }
+                            }
+                        } elseif (isset($pm->LineString)) {
+                            $coordStr = trim((string)$pm->LineString->coordinates);
+                            $coordLines = preg_split('/\s+/', $coordStr);
+                            $lineCoords = [];
+                            foreach ($coordLines as $cline) {
+                                $cparts = explode(',', trim($cline));
+                                if (count($cparts) >= 2) {
+                                    $clat = round((float)$cparts[1], 6);
+                                    $clng = round((float)$cparts[0], 6);
+                                    $lineCoords[] = [$clat, $clng];
+                                    $allLats[] = $clat;
+                                    $allLngs[] = $clng;
+                                }
+                            }
+                            if (!empty($lineCoords)) {
+                                $isBackbone = stripos($name, 'Backbone') !== false || stripos($name, 'Backbon') !== false;
+                                $cables[] = [
+                                    'name' => $name,
+                                    'type' => $isBackbone ? 'feeder' : 'distribution',
+                                    'color' => $styleData['color'] ?: ($isBackbone ? '#2563eb' : '#16a34a'),
+                                    'weight' => $isBackbone ? 4 : 3,
+                                    'status' => 'Normal',
+                                    'coords' => $lineCoords
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (count($odps) > 10) {
+                $odps[8]['status'] = 'LOS / Putus';
+                $odps[8]['attenuation'] = '-99.0 dBm';
+            }
+
+            $centerLat = !empty($allLats) ? round((min($allLats) + max($allLats)) / 2, 6) : -7.441666;
+            $centerLng = !empty($allLngs) ? round((min($allLngs) + max($allLngs)) / 2, 6) : 109.167336;
+
+            $outputData = [
+                'source' => 'Threefive_Network_New.kmz',
+                'last_updated' => date('Y-m-d H:i:s'),
+                'center' => [$centerLat, $centerLng],
+                'zoom' => 13,
+                'odcs' => $odcs,
+                'odps' => $odps,
+                'cables' => $cables,
+                'clients' => $clients,
+                'poles' => $poles,
+                'summary' => [
+                    'total_odc' => count($odcs),
+                    'total_odp' => count($odps),
+                    'total_cables' => count($cables),
+                    'total_clients' => count($clients),
+                    'total_poles' => count($poles),
+                ]
+            ];
+
+            file_put_contents($jsonPath, json_encode($outputData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+            if (file_exists($kmzPath) && !file_exists($gisDir . '/Threefive_Network_New.kmz')) {
+                copy($kmzPath, $gisDir . '/Threefive_Network_New.kmz');
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal parse Threefive KMZ: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -2710,5 +2668,288 @@ class AdminController extends Controller
         $mapData = $this->getOdcMapData();
 
         return view('admin.odc-map', compact('mapData'));
+    }
+
+    /**
+     * Simpan / Tambah / Update Titik Marker pada Peta ODC/ODP/Klien/Tiang
+     */
+    public function saveOdcMarker(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:odc,odp,client,pole',
+            'name' => 'required|string|max:150',
+            'id' => 'nullable|string|max:100',
+            'lat' => 'required|numeric',
+            'lng' => 'required|numeric',
+            'parent_odc' => 'nullable|string|max:100',
+            'capacity' => 'nullable|numeric',
+            'used' => 'nullable|numeric',
+            'attenuation' => 'nullable|string|max:50',
+            'status' => 'nullable|string|max:50',
+            'package' => 'nullable|string|max:100',
+            'location_desc' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        $jsonPath = public_path('gis/odc_map_data.json');
+        $data = file_exists($jsonPath) ? json_decode(file_get_contents($jsonPath), true) : [];
+        if (!is_array($data) || empty($data['odcs'])) {
+            $data = $this->getOdcMapData();
+        }
+
+        $type = $validated['type'];
+        $name = trim($validated['name']);
+        $id = !empty($validated['id']) ? trim($validated['id']) : $name;
+        $lat = round((float)$validated['lat'], 6);
+        $lng = round((float)$validated['lng'], 6);
+        $status = $validated['status'] ?? 'Normal';
+        $attenuation = !empty($validated['attenuation']) ? trim($validated['attenuation']) : '-19.0 dBm';
+
+        $newItem = [];
+
+        if ($type === 'odc') {
+            $capacity = (int)($validated['capacity'] ?? 144);
+            $used = (int)($validated['used'] ?? rand(40, 90));
+            $newItem = [
+                'id' => $id,
+                'name' => $name,
+                'lat' => $lat,
+                'lng' => $lng,
+                'capacity' => $capacity,
+                'used' => min($used, $capacity),
+                'available' => max(0, $capacity - $used),
+                'attenuation' => $attenuation,
+                'status' => $status,
+                'feeder_cable' => 'Backbone ThreeFive FO',
+                'location_desc' => $validated['location_desc'] ?: ('Area ' . $name . ' (Threefive Network)'),
+                'splitters' => 'PLC Splitter 1:4 / 1:8 Module',
+                'installed_year' => date('Y'),
+            ];
+
+            $updated = false;
+            foreach ($data['odcs'] as &$item) {
+                if (strtolower($item['id']) === strtolower($id) || strtolower($item['name']) === strtolower($name)) {
+                    $item = array_merge($item, $newItem);
+                    $updated = true;
+                    break;
+                }
+            }
+            if (!$updated) {
+                $data['odcs'][] = $newItem;
+            }
+        } elseif ($type === 'odp') {
+            $capacity = (int)($validated['capacity'] ?? 16);
+            $used = (int)($validated['used'] ?? rand(4, 12));
+            $newItem = [
+                'id' => $id,
+                'parent_odc' => $validated['parent_odc'] ?: 'ODC1_P1_KSGRT',
+                'name' => $name,
+                'lat' => $lat,
+                'lng' => $lng,
+                'capacity' => $capacity,
+                'used' => min($used, $capacity),
+                'available' => max(0, $capacity - $used),
+                'attenuation' => $attenuation,
+                'status' => $status,
+                'splitter' => '1:16 PLC',
+                'pole_code' => 'PLN-TF-' . rand(100, 999),
+                'customers' => ['Pelanggan ' . $name]
+            ];
+
+            $updated = false;
+            foreach ($data['odps'] as &$item) {
+                if (strtolower($item['id']) === strtolower($id) || strtolower($item['name']) === strtolower($name)) {
+                    $item = array_merge($item, $newItem);
+                    $updated = true;
+                    break;
+                }
+            }
+            if (!$updated) {
+                $data['odps'][] = $newItem;
+            }
+        } elseif ($type === 'client') {
+            $newItem = [
+                'name' => $name,
+                'lat' => $lat,
+                'lng' => $lng,
+                'package' => $validated['package'] ?: 'Paket FTTH 20-50 Mbps',
+            ];
+
+            $updated = false;
+            foreach ($data['clients'] as &$item) {
+                if (strtolower($item['name']) === strtolower($name)) {
+                    $item = array_merge($item, $newItem);
+                    $updated = true;
+                    break;
+                }
+            }
+            if (!$updated) {
+                $data['clients'][] = $newItem;
+            }
+        } elseif ($type === 'pole') {
+            $newItem = [
+                'name' => $name,
+                'lat' => $lat,
+                'lng' => $lng,
+            ];
+
+            $updated = false;
+            foreach ($data['poles'] as &$item) {
+                if (strtolower($item['name']) === strtolower($name)) {
+                    $item = array_merge($item, $newItem);
+                    $updated = true;
+                    break;
+                }
+            }
+            if (!$updated) {
+                $data['poles'][] = $newItem;
+            }
+        }
+
+        $data['summary']['total_odc'] = count($data['odcs']);
+        $data['summary']['total_odp'] = count($data['odps']);
+        $data['summary']['total_clients'] = count($data['clients']);
+        $data['summary']['total_poles'] = count($data['poles']);
+        $data['last_updated'] = date('Y-m-d H:i:s');
+
+        file_put_contents($jsonPath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        return response()->json([
+            'success' => true,
+            'message' => "Titik {$name} ({$type}) berhasil disimpan ke dalam peta jaringan.",
+            'item' => $newItem,
+            'summary' => $data['summary']
+        ]);
+    }
+
+    /**
+     * Hapus Titik Marker dari Peta
+     */
+    public function deleteOdcMarker(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:odc,odp,client,pole',
+            'id' => 'required|string',
+        ]);
+
+        $jsonPath = public_path('gis/odc_map_data.json');
+        if (!file_exists($jsonPath)) {
+            return response()->json(['success' => false, 'message' => 'Data peta belum tersedia'], 404);
+        }
+
+        $data = json_decode(file_get_contents($jsonPath), true);
+        $type = $validated['type'];
+        $id = strtolower(trim($validated['id']));
+
+        if ($type === 'odc') {
+            $data['odcs'] = array_values(array_filter($data['odcs'], function ($item) use ($id) {
+                return strtolower($item['id']) !== $id && strtolower($item['name']) !== $id;
+            }));
+        } elseif ($type === 'odp') {
+            $data['odps'] = array_values(array_filter($data['odps'], function ($item) use ($id) {
+                return strtolower($item['id']) !== $id && strtolower($item['name']) !== $id;
+            }));
+        } elseif ($type === 'client') {
+            $data['clients'] = array_values(array_filter($data['clients'], function ($item) use ($id) {
+                return strtolower($item['name']) !== $id;
+            }));
+        } elseif ($type === 'pole') {
+            $data['poles'] = array_values(array_filter($data['poles'], function ($item) use ($id) {
+                return strtolower($item['name']) !== $id;
+            }));
+        }
+
+        $data['summary']['total_odc'] = count($data['odcs']);
+        $data['summary']['total_odp'] = count($data['odps']);
+        $data['summary']['total_clients'] = count($data['clients']);
+        $data['summary']['total_poles'] = count($data['poles']);
+        $data['last_updated'] = date('Y-m-d H:i:s');
+
+        file_put_contents($jsonPath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Titik berhasil dihapus dari peta.',
+            'summary' => $data['summary']
+        ]);
+    }
+
+    /**
+     * Ekspor Seluruh Data Peta Terbaru menjadi File KML Siap Impor ke Google Earth
+     */
+    public function exportOdcKml()
+    {
+        $data = $this->getOdcMapData();
+
+        $kml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+        $kml .= '<kml xmlns="http://www.opengis.net/kml/2.2">' . "\n";
+        $kml .= '<Document>' . "\n";
+        $kml .= '  <name>Threefive Network (Export ' . date('d-m-Y H:i') . ')</name>' . "\n";
+        $kml .= '  <description>Hasil pemetaan infrastruktur jaringan Threefive Network &amp; Banterpool</description>' . "\n";
+
+        // Folder ODC
+        $kml .= '  <Folder><name>ODC</name>' . "\n";
+        foreach ($data['odcs'] as $odc) {
+            $kml .= '    <Placemark>' . "\n";
+            $kml .= '      <name>' . htmlspecialchars($odc['name']) . '</name>' . "\n";
+            $kml .= '      <description>' . htmlspecialchars("Kapasitas: {$odc['used']}/{$odc['capacity']} Core | Redaman: {$odc['attenuation']} | Feeder: {$odc['feeder_cable']}") . '</description>' . "\n";
+            $kml .= '      <Point><coordinates>' . "{$odc['lng']},{$odc['lat']},0" . '</coordinates></Point>' . "\n";
+            $kml .= '    </Placemark>' . "\n";
+        }
+        $kml .= '  </Folder>' . "\n";
+
+        // Folder ODP
+        $kml .= '  <Folder><name>ODP</name>' . "\n";
+        foreach ($data['odps'] as $odp) {
+            $kml .= '    <Placemark>' . "\n";
+            $kml .= '      <name>' . htmlspecialchars($odp['name']) . '</name>' . "\n";
+            $kml .= '      <description>' . htmlspecialchars("Induk: {$odp['parent_odc']} | Port: {$odp['used']}/{$odp['capacity']} | Redaman: {$odp['attenuation']} | Status: {$odp['status']}") . '</description>' . "\n";
+            $kml .= '      <Point><coordinates>' . "{$odp['lng']},{$odp['lat']},0" . '</coordinates></Point>' . "\n";
+            $kml .= '    </Placemark>' . "\n";
+        }
+        $kml .= '  </Folder>' . "\n";
+
+        // Folder Clients
+        $kml .= '  <Folder><name>Clients</name>' . "\n";
+        foreach ($data['clients'] as $cl) {
+            $kml .= '    <Placemark>' . "\n";
+            $kml .= '      <name>' . htmlspecialchars($cl['name']) . '</name>' . "\n";
+            $kml .= '      <description>' . htmlspecialchars("Paket: {$cl['package']}") . '</description>' . "\n";
+            $kml .= '      <Point><coordinates>' . "{$cl['lng']},{$cl['lat']},0" . '</coordinates></Point>' . "\n";
+            $kml .= '    </Placemark>' . "\n";
+        }
+        $kml .= '  </Folder>' . "\n";
+
+        // Folder Poles
+        $kml .= '  <Folder><name>Tiang</name>' . "\n";
+        foreach ($data['poles'] as $pl) {
+            $kml .= '    <Placemark>' . "\n";
+            $kml .= '      <name>' . htmlspecialchars($pl['name']) . '</name>' . "\n";
+            $kml .= '      <Point><coordinates>' . "{$pl['lng']},{$pl['lat']},0" . '</coordinates></Point>' . "\n";
+            $kml .= '    </Placemark>' . "\n";
+        }
+        $kml .= '  </Folder>' . "\n";
+
+        // Folder Cables
+        $kml .= '  <Folder><name>Kabel FO</name>' . "\n";
+        foreach ($data['cables'] as $c) {
+            $coordStr = "";
+            foreach ($c['coords'] as $pt) {
+                $coordStr .= "{$pt[1]},{$pt[0]},0 ";
+            }
+            $kml .= '    <Placemark>' . "\n";
+            $kml .= '      <name>' . htmlspecialchars($c['name']) . '</name>' . "\n";
+            $kml .= '      <LineString><coordinates>' . trim($coordStr) . '</coordinates></LineString>' . "\n";
+            $kml .= '    </Placemark>' . "\n";
+        }
+        $kml .= '  </Folder>' . "\n";
+
+        $kml .= '</Document>' . "\n";
+        $kml .= '</kml>' . "\n";
+
+        return response($kml, 200, [
+            'Content-Type' => 'application/vnd.google-earth.kml+xml',
+            'Content-Disposition' => 'attachment; filename="Threefive_Network_' . date('Ymd_His') . '.kml"',
+        ]);
     }
 }

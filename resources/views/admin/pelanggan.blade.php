@@ -530,9 +530,12 @@
                        title="Pilih Semua di Halaman Ini">
               </div>
             </th>
+            <th class="py-3.5 px-3 text-center w-12">No</th>
             <th class="py-3.5 px-4 text-center">Nama Pemohon</th>
+            <th class="py-3.5 px-4 text-center">PPOE</th>
             <th class="py-3.5 px-4 text-center">No KTP</th>
             <th class="py-3.5 px-4 text-center">No Handphone</th>
+            <th class="py-3.5 px-4 text-center">Email</th>
             <th class="py-3.5 px-4 text-center">Jenis Layanan</th>
             <th class="py-3.5 px-4 text-center">Harga</th>
             <th class="py-3.5 px-4 text-center">Alamat</th>
@@ -571,17 +574,27 @@
                 </div>
               </td>
 
-              <!-- Nama Pemohon -->
+              <!-- 1. No -->
+              <td class="py-3.5 px-3 text-center text-slate-400 font-mono text-xs w-12">
+                {{ $customers->firstItem() + $index }}
+              </td>
+
+              <!-- 2. Nama Pemohon -->
               <td class="py-3.5 px-4 text-center">
                 <div class="font-bold text-slate-900 text-xs leading-snug">{{ $customer->customer_name }}</div>
-                <div class="mt-1 flex items-center justify-center gap-1">
-                  <span class="inline-flex items-center gap-1 font-mono text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
-                    <span class="text-[9px] font-extrabold text-brand uppercase tracking-wider">PPOE:</span>
-                    <span>{{ $customer->pppoe }}</span>
-                  </span>
+              </td>
+
+              <!-- 3. PPOE -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                @php
+                  $pppoeVal = $customer->pppoe ?: \App\Models\Order::generatePppoeUsername($customer->customer_name, $customer->order_number);
+                @endphp
+                <div class="inline-flex items-center justify-center gap-1 font-mono text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+                  <span class="text-[9px] font-extrabold text-brand uppercase tracking-wider">PPOE:</span>
+                  <span>{{ $pppoeVal }}</span>
                   <button type="button"
-                          @click="copyToClipboard('{{ $customer->pppoe }}', 'ppoe-{{ $customer->id }}')"
-                          class="text-slate-400 hover:text-brand text-xs p-0.5 transition"
+                          @click="copyToClipboard('{{ $pppoeVal }}', 'ppoe-{{ $customer->id }}')"
+                          class="text-slate-400 hover:text-brand text-xs p-0.5 transition ml-0.5"
                           title="Salin PPOE">
                     <i class="fa-regular fa-copy text-[11px]" x-show="copiedText !== 'ppoe-{{ $customer->id }}'"></i>
                     <i class="fa-solid fa-check text-[11px] text-emerald-600" x-show="copiedText === 'ppoe-{{ $customer->id }}'"></i>
@@ -589,7 +602,7 @@
                 </div>
               </td>
 
-              <!-- 3. No KTP -->
+              <!-- 4. No KTP -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if(!empty($customer->id_card_number) && $customer->id_card_number !== '-')
                   <div class="inline-flex items-center justify-center gap-1">
@@ -609,7 +622,7 @@
                 @endif
               </td>
 
-              <!-- 4. No Handphone -->
+              <!-- 5. No Handphone -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($customer->customer_phone && $customer->customer_phone !== '-')
                   <a href="https://wa.me/{{ $cleanPhone }}?text=Halo%20{{ urlencode($customer->customer_name) }},%20kami%20dari%20Banterpool%20Fiber%20Broadband."
@@ -623,7 +636,16 @@
                 @endif
               </td>
 
-              <!-- 6. Jenis Layanan -->
+              <!-- 6. Email -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                @if($customer->customer_email && $customer->customer_email !== '-')
+                  <span class="text-[11px] text-slate-600 font-mono">{{ $customer->customer_email }}</span>
+                @else
+                  <span class="text-[11px] text-slate-400 italic">-</span>
+                @endif
+              </td>
+
+              <!-- 7. Jenis Layanan -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($customer->package_name && $customer->package_name !== '-')
                   <div class="font-bold text-slate-900 text-xs">
@@ -634,7 +656,7 @@
                 @endif
               </td>
 
-              <!-- 7. Harga -->
+              <!-- 8. Harga -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if((float) ($customer->price ?? 0) > 0)
                   <div class="text-brand font-black text-xs">
@@ -645,7 +667,7 @@
                 @endif
               </td>
 
-              <!-- 8. Alamat -->
+              <!-- 9. Alamat -->
               <td class="py-3.5 px-4 text-center">
                 <p class="text-xs text-slate-700 leading-relaxed max-w-[280px] mx-auto">
                   {{ $customer->address }}
@@ -711,7 +733,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="9" class="text-center py-16 text-slate-400">
+              <td colspan="12" class="text-center py-16 text-slate-400">
                 <i class="fa-solid fa-users-slash text-4xl mb-3 text-slate-300"></i>
                 <p class="font-bold text-sm text-slate-600">Tidak ada data pelanggan yang sesuai</p>
                 <p class="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter wilayah Anda.</p>

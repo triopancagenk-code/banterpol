@@ -431,11 +431,50 @@
         openSettings: false,
         openUserMenu: false,
         openAddMaterialModal: false,
+        openInvoiceModal: false,
         isFullscreen: false,
         activeTab: '{{ $tab === 'cash' ? 'cash' : 'jobs' }}',
         gsWebhook: localStorage.getItem('gs_webhook_url') || '',
         isSyncing: false,
         isSubmitting: false,
+
+        // Modal Invoice State (POV Admin Daily)
+        invoiceReportsList: {{ Js::from($recentReportsForInvoice ?? []) }},
+        invoiceIssuer: 'Three Five',
+        invoiceTarget: 'OBORNET',
+        invoiceTargetCustom: '',
+        invoiceTargetAddress: 'Sudimara',
+        invoiceTargetPhone: '+62 896-3656-8909',
+        invoiceReportId: '{{ $recentReportsForInvoice->first()?->id ?? "" }}',
+        invoiceNumber: 'inv-{{ date("Ymd") }}-{{ rand(100, 999) }}',
+        invoiceDate: '{{ now()->format("Y-m-d") }}',
+        invoiceDueDate: '{{ now()->addDays(5)->format("Y-m-d") }}',
+        invoiceBank: 'BCA',
+        invoiceAccountName: 'Nurokhman',
+        invoiceAccountNumber: '4240442219',
+        invoiceSigner: 'NUROKHMAN',
+
+        onSelectInvoiceReport() {
+          if (!this.invoiceReportId && this.invoiceReportsList && this.invoiceReportsList.length > 0) {
+            this.invoiceReportId = String(this.invoiceReportsList[0].id);
+          }
+          if (!this.invoiceReportId) return;
+          const found = this.invoiceReportsList.find(r => String(r.id) === String(this.invoiceReportId));
+          if (found) {
+            if (found.partner_company) {
+              this.invoiceTarget = found.partner_company;
+            }
+            if (found.customer_address) {
+              this.invoiceTargetAddress = found.customer_address;
+            }
+            if (found.customer_phone) {
+              this.invoiceTargetPhone = found.customer_phone;
+            }
+            if (found.report_date) {
+              this.invoiceDate = found.report_date.split('T')[0];
+            }
+          }
+        },
 
         // Form fields
         reportDate: '{{ now()->format('Y-m-d') }}',
@@ -1671,11 +1710,23 @@
           </div>
         </form>
 
-        <!-- Export CSV Button -->
-        <a href="{{ route('daily-report.export') }}" class="btn-ghost flex items-center justify-center gap-2 text-xs font-bold text-emerald-700 border-emerald-200 hover:bg-emerald-50 shrink-0 shadow-xs py-2.5 sm:py-2">
-          <i class="fa-solid fa-file-csv text-base text-emerald-600"></i>
-          <span>Export Spreadsheet</span>
-        </a>
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+          <!-- Tombol Cetak Invoice (POV Admin Daily) -->
+          @if(auth()->user()->isAdmin() || strtolower(auth()->user()->email) === 'admindaily')
+            <button type="button" @click="openInvoiceModal = true; onSelectInvoiceReport();"
+                    class="btn-primary flex items-center justify-center gap-2 text-xs font-bold py-2.5 sm:py-2 px-3.5 shadow-xs whitespace-nowrap"
+                    title="Cetak Invoice Mengikuti Template Invoice.pdf">
+              <i class="fa-solid fa-file-invoice text-sm"></i>
+              <span>Cetak Invoice</span>
+            </button>
+          @endif
+
+          <!-- Export CSV Button -->
+          <a href="{{ route('daily-report.export') }}" class="btn-ghost flex items-center justify-center gap-2 text-xs font-bold text-emerald-700 border-emerald-200 hover:bg-emerald-50 shrink-0 shadow-xs py-2.5 sm:py-2">
+            <i class="fa-solid fa-file-csv text-base text-emerald-600"></i>
+            <span>Export Spreadsheet</span>
+          </a>
+        </div>
 
       </div>
 
@@ -1799,6 +1850,14 @@
 
               <!-- Action Buttons Row -->
               <div class="flex items-center justify-end gap-2 pt-1.5 border-t border-gray-100">
+                @if(auth()->user()->isAdmin() || strtolower(auth()->user()->email) === 'admindaily')
+                  <a href="{{ route('daily-report.invoice', ['report_id' => $r->id]) }}" target="_blank"
+                     class="icon-btn w-8 h-8 text-blue-600 hover:border-blue-300 hover:bg-blue-50"
+                     title="Cetak Invoice">
+                    <i class="fa-solid fa-file-invoice text-xs"></i>
+                  </a>
+                @endif
+
                 @if($r->cash_amount > 0 && $r->cash_deposit_status !== 'Sudah Disetor')
                   <form action="{{ route('daily-report.setor', $r->id) }}" method="POST" onsubmit="return confirm('Tandai kas sebesar {{ $r->formatted_cash }} sudah disetor?')">
                     @csrf
@@ -1912,6 +1971,14 @@
 
                   <td style="text-align: center;" class="whitespace-nowrap">
                     <div class="flex items-center justify-center gap-1.5">
+                      @if(auth()->user()->isAdmin() || strtolower(auth()->user()->email) === 'admindaily')
+                        <a href="{{ route('daily-report.invoice', ['report_id' => $r->id]) }}" target="_blank"
+                           class="icon-btn w-8 h-8 text-blue-600 hover:border-blue-300 hover:bg-blue-50"
+                           title="Cetak Invoice">
+                          <i class="fa-solid fa-file-invoice text-xs"></i>
+                        </a>
+                      @endif
+
                       @if($r->cash_amount > 0 && $r->cash_deposit_status !== 'Sudah Disetor')
                         <form action="{{ route('daily-report.setor', $r->id) }}" method="POST" onsubmit="return confirm('Tandai kas sebesar {{ $r->formatted_cash }} sudah disetor?')">
                           @csrf
@@ -2286,6 +2353,138 @@
         <button type="button" @click="openSettings = false" class="btn-ghost text-xs">Tutup</button>
         <button type="button" @click="saveSettings()" class="btn-primary text-xs py-2 px-4">Simpan</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: CETAK INVOICE RESMI (POV ADMIN DAILY)   -->
+  <!-- ============================================== -->
+  <div x-show="openInvoiceModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-xs" @click="openInvoiceModal = false"></div>
+    <div class="relative card card-lg w-full max-w-xl p-5 sm:p-6 text-gray-800 z-10 shadow-2xl max-h-[92vh] overflow-y-auto">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3.5 border-b border-gray-200">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-xl bg-red-50 text-brand flex items-center justify-center text-base border border-red-100 shrink-0">
+            <i class="fa-solid fa-file-invoice"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-black text-sm sm:text-base">Cetak Invoice Resmi</h3>
+            <p class="text-[11px] sm:text-xs text-gray-500 font-medium">Template Mengikuti Format Invoice.pdf (Tersedia Pilihan Perusahaan)</p>
+          </div>
+        </div>
+        <button type="button" @click="openInvoiceModal = false" class="icon-btn w-8 h-8 shrink-0">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <!-- Form Cetak Invoice -->
+      <form action="{{ route('daily-report.invoice') }}" method="GET" target="_blank" class="space-y-4 my-4 text-xs">
+        
+        <!-- Pilihan 1: Perusahaan Penerbit (Header Logo) -->
+        <div class="p-3 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+          <label class="lbl flex items-center gap-1.5 text-gray-700">
+            <i class="fa-solid fa-building text-brand"></i>
+            <span>Pilihan Nama Perusahaan Penerbit (Kop / Pengirim)</span>
+          </label>
+          <div class="relative">
+            <select name="issuer_company" x-model="invoiceIssuer" class="inp pr-9 text-xs font-bold text-gray-900">
+              <option value="Three Five">Three Five (The Best you're network solution - Kasegeran Cilongok)</option>
+              <option value="BANTERPOL">WiFi Banterpool (PT Banterpol Network Indonesia - Pernasidi Cilongok)</option>
+            </select>
+            <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+          </div>
+        </div>
+
+        <!-- Pilihan 2: Perusahaan Tujuan (To: ...) -->
+        <div class="p-3 rounded-xl bg-gray-50 border border-gray-200 space-y-2.5">
+          <label class="lbl flex items-center gap-1.5 text-gray-700">
+            <i class="fa-solid fa-handshake text-emerald-600"></i>
+            <span>Pilihan Nama Perusahaan Tujuan (To : Mitra / Klien)</span>
+          </label>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <span class="text-[10px] text-gray-500 font-semibold block mb-1">Pilih dari Daftar Mitra:</span>
+              <div class="relative">
+                <select name="target_company" x-model="invoiceTarget" class="inp pr-9 text-xs font-extrabold text-gray-900">
+                  <option value="OBORNET">OBORNET (Default Template)</option>
+                  @foreach($partners as $p)
+                    <option value="{{ $p }}">{{ $p }}</option>
+                  @endforeach
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+              </div>
+            </div>
+
+            <div>
+              <span class="text-[10px] text-gray-500 font-semibold block mb-1">Alamat Tujuan:</span>
+              <input type="text" name="target_address" x-model="invoiceTargetAddress" placeholder="Sudimara" class="inp text-xs font-medium">
+            </div>
+          </div>
+
+          <div>
+            <span class="text-[10px] text-gray-500 font-semibold block mb-1">Nomor Telepon:</span>
+            <input type="text" name="target_phone" x-model="invoiceTargetPhone" placeholder="+62 896-3656-8909" class="inp text-xs font-mono font-medium">
+          </div>
+        </div>
+
+        <!-- Pilihan 3: Log Pekerjaan Teknis (Sumber Data Invoice) -->
+        <div class="p-3 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+          <label class="lbl flex items-center gap-1.5 text-gray-700 font-bold">
+            <i class="fa-solid fa-clipboard-list text-brand"></i>
+            <span>Pilih Log Pekerjaan Teknis (Sumber Data)</span>
+          </label>
+          <div class="relative">
+            <select name="report_id" x-model="invoiceReportId" @change="onSelectInvoiceReport()" required class="inp pr-9 text-xs font-bold text-gray-900 w-full">
+              <option value="">-- Pilih Log Pekerjaan yang Akan Dibuatkan Invoice --</option>
+              <template x-for="r in invoiceReportsList" :key="r.id">
+                <option :value="r.id" x-text="(r.report_date ? r.report_date.split('T')[0] : '') + ' • ' + r.partner_company + ' • ' + r.customer_name + ' • ' + r.job_type + ' (' + (r.material_total_cost > 0 ? 'Rp ' + Number(r.material_total_cost).toLocaleString('id-ID') : 'Rp 0') + ')'"></option>
+              </template>
+            </select>
+            <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+          </div>
+          <p class="text-[10px] text-gray-500 font-medium">
+            Rincian pemakaian material dan biaya jasa otomatis ditarik langsung dari log pekerjaan yang Anda pilih.
+          </p>
+        </div>
+
+        <!-- Pilihan 4: Detail Faktur & Tanggal -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div>
+            <label class="lbl">Nomer Faktur</label>
+            <input type="text" name="invoice_number" x-model="invoiceNumber" class="inp text-xs font-mono font-bold">
+          </div>
+          <div>
+            <label class="lbl">Tanggal Invoice</label>
+            <input type="date" name="invoice_date" x-model="invoiceDate" class="inp text-xs font-semibold">
+          </div>
+          <div>
+            <label class="lbl">Jatuh Tempo</label>
+            <input type="date" name="due_date" x-model="invoiceDueDate" class="inp text-xs font-semibold">
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-blue-50 border border-blue-200 text-[11px] text-blue-900 leading-relaxed font-medium flex items-start gap-2">
+          <i class="fa-solid fa-circle-info text-blue-600 mt-0.5 shrink-0"></i>
+          <div>
+            Invoice akan terbuka di tab baru dengan layout A4 siap cetak (Ctrl+P / Simpan PDF) persis format template <strong>Invoice.pdf</strong>.
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-200">
+          <button type="button" @click="openInvoiceModal = false" class="btn-ghost text-xs">
+            Batal
+          </button>
+          <button type="submit" @click="openInvoiceModal = false" class="btn-primary text-xs py-2 px-4 flex items-center gap-1.5">
+            <i class="fa-solid fa-print"></i>
+            <span>Buka &amp; Cetak Invoice</span>
+          </button>
+        </div>
+
+      </form>
+
     </div>
   </div>
 
