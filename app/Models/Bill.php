@@ -68,19 +68,18 @@ class Bill extends Model
             return true;
         }
 
-        $st = strtolower(trim((string) $order->status));
-        return in_array($st, ['selesai', 'selesai / aktif', 'selesai/aktif', 'aktif']);
+        return $order->isCompletedCustomer();
     }
 
     /**
-     * Scope query untuk tagihan yang siap tampil di Monitoring Tagihan (status order selesai atau tagihan manual tanpa order)
+     * Scope query untuk tagihan yang siap tampil di Monitoring Tagihan & Rekap Pembayaran (sesuai Data Pelanggan)
      */
     public function scopeActiveForMonitoring($query)
     {
         return $query->where(function ($q) {
             $q->whereNull('order_id')
               ->orWhereHas('order', function ($oq) {
-                  $oq->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Selesai/Aktif', 'selesai', 'aktif', 'Aktif']);
+                  $oq->forCustomerData();
               });
         });
     }

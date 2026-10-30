@@ -1105,9 +1105,16 @@ class AdminController extends Controller
         $pendingOrdersCount = 0;
 
         try {
-            $recentOrders = Order::where('order_number', 'not like', 'PLG-%')->latest()->take(5)->get();
-            $totalOrdersCount = Order::where('order_number', 'not like', 'PLG-%')->count();
-            $pendingOrdersCount = Order::where('order_number', 'not like', 'PLG-%')->where('status', 'Menunggu Konfirmasi')->count();
+            self::normalizeManualCustomersOrderNumber();
+            $recentOrders = Order::where('order_number', 'not like', 'PLG-%')
+                ->where('admin_notes', 'not like', '%input manual Admin%')
+                ->latest()->take(5)->get();
+            $totalOrdersCount = Order::where('order_number', 'not like', 'PLG-%')
+                ->where('admin_notes', 'not like', '%input manual Admin%')
+                ->count();
+            $pendingOrdersCount = Order::where('order_number', 'not like', 'PLG-%')
+                ->where('admin_notes', 'not like', '%input manual Admin%')
+                ->where('status', 'Menunggu Konfirmasi')->count();
         } catch (\Exception $e) {}
 
         $stats = [
@@ -1134,11 +1141,14 @@ class AdminController extends Controller
      */
     public function pesanan(Request $request)
     {
+        self::normalizeManualCustomersOrderNumber();
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('q', '');
 
         try {
-            $query = Order::where('order_number', 'not like', 'PLG-%')->latest();
+            $query = Order::where('order_number', 'not like', 'PLG-%')
+                ->where('admin_notes', 'not like', '%input manual Admin%')
+                ->latest();
 
             if ($statusFilter !== 'all') {
                 $query->where('status', $statusFilter);
@@ -1156,7 +1166,9 @@ class AdminController extends Controller
             }
 
             $orders = $query->get();
-            $allOrders = Order::where('order_number', 'not like', 'PLG-%')->get();
+            $allOrders = Order::where('order_number', 'not like', 'PLG-%')
+                ->where('admin_notes', 'not like', '%input manual Admin%')
+                ->get();
 
             $counts = [
                 'all' => $allOrders->count(),
@@ -1497,6 +1509,8 @@ class AdminController extends Controller
      */
     public function pelanggan(Request $request)
     {
+        self::normalizeManualCustomersOrderNumber();
+
         $search = $request->input('q', '');
         $wilayahFilter = $request->input('wilayah', 'all');
         $layananFilter = $request->input('layanan', 'all');
@@ -1682,6 +1696,33 @@ class AdminController extends Controller
     }
 
     /**
+     * Pastikan semua pelanggan input manual yang terlanjur berkode BTR- dinormalisasi ke format PLG-
+     * sehingga tidak masuk ke Monitoring Pesanan.
+     */
+    public static function normalizeManualCustomersOrderNumber(): void
+    {
+        try {
+            $currentYear = date('Y');
+            $yearPrefix = "PLG-{$currentYear}-";
+
+            $legacyCustomers = Order::where('order_number', 'like', 'BTR-%')
+                ->where('admin_notes', 'like', '%input manual Admin%')
+                ->get();
+
+            foreach ($legacyCustomers as $cust) {
+                $seq = Order::where('order_number', 'like', "{$yearPrefix}%")->count() + 1;
+                $newNumber = $yearPrefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+                while (Order::where('order_number', $newNumber)->exists()) {
+                    $seq++;
+                    $newNumber = $yearPrefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+                }
+                $cust->order_number = $newNumber;
+                $cust->save();
+            }
+        } catch (\Exception $e) {}
+    }
+
+    /**
      * Simpan Pelanggan Baru Secara Manual
      */
     public function storePelanggan(Request $request)
@@ -1701,7 +1742,26 @@ class AdminController extends Controller
             'status' => 'nullable|string',
         ]);
 
-        $orderNumber = 'BTR-' . date('Ym') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
+        // Generate kode pelanggan unik (PLG-YYYY-XXXX) agar tidak pernah tercampur ke Monitoring Pesanan
+        $currentYear = date('Y');
+        $yearPrefix = "PLG-{$currentYear}-";
+
+        $latestPlg = Order::where('order_number', 'like', "{$yearPrefix}%")
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $nextSeq = 1;
+        if ($latestPlg && preg_match('/PLG-\d{4}-(\d+)/', $latestPlg->order_number, $matches)) {
+            $nextSeq = ((int) $matches[1]) + 1;
+        } else {
+            $nextSeq = Order::where('order_number', 'like', "{$yearPrefix}%")->count() + 1;
+        }
+
+        $orderNumber = $yearPrefix . str_pad((string) $nextSeq, 4, '0', STR_PAD_LEFT);
+        while (Order::where('order_number', $orderNumber)->exists()) {
+            $nextSeq++;
+            $orderNumber = $yearPrefix . str_pad((string) $nextSeq, 4, '0', STR_PAD_LEFT);
+        }
 
         $packageName = !empty($validated['package_name']) ? $validated['package_name'] : 'Paket 20 Mbps';
         $speed = '20 Mbps';
@@ -2017,6 +2077,9 @@ class AdminController extends Controller
      */
     public function tagihan(Request $request)
     {
+        // Otomatis sinkronkan tagihan bulanan dari Data Pelanggan (terbit tgl 5, jatuh tempo tgl 20)
+        BillingService::syncMonthlyBillsFromDataPelanggan();
+
         $allBills = $this->getBillsData();
         $statusFilter = $request->input('status', 'all');
         $monthFilter = $request->input('month', 'all');
@@ -2140,8 +2203,8 @@ class AdminController extends Controller
         }
 
         $dueDate = trim($validated['due_date']);
-        if (!preg_match('/^0?5\s+/i', $dueDate)) {
-            $dueDate = preg_replace('/^\d{1,2}\s+/', '05 ', $dueDate);
+        if (!preg_match('/^20\s+/i', $dueDate)) {
+            $dueDate = preg_replace('/^\d{1,2}\s+/', '20 ', $dueDate);
         }
 
         $amount = (float) $validated['amount'];
@@ -2159,7 +2222,7 @@ class AdminController extends Controller
         $bill->speed = $speed;
         $bill->period = $validated['period'];
         $bill->due_date = $dueDate;
-        $bill->bill_date = $validated['bill_date'] ?? $now->translatedFormat('d M Y');
+        $bill->bill_date = $validated['bill_date'] ?? ('05 ' . $now->translatedFormat('M Y'));
         $bill->amount = $amount;
         $bill->tax = $tax;
         $bill->total = $total;
@@ -2252,10 +2315,6 @@ class AdminController extends Controller
                 }
                 $bill->collector_notes = ($bill->collector_notes ? $bill->collector_notes . " | " : "") . $adminNotes;
                 $bill->save();
-
-                if ($newStatus === 'Lunas') {
-                    BillingService::generateNextBillForPaidBill($bill);
-                }
             }
         } catch (\Exception $e) {}
 

@@ -100,7 +100,9 @@
               if (isset($counts['all']) && request()->routeIs('admin.pesanan*')) {
                   $ordersCount = $counts['all'];
               } else {
-                  $ordersCount = \App\Models\Order::where('order_number', 'not like', 'PLG-%')->count();
+                  $ordersCount = \App\Models\Order::where('order_number', 'not like', 'PLG-%')
+                      ->where('admin_notes', 'not like', '%input manual Admin%')
+                      ->count();
               }
           } catch (\Exception $e) {}
         @endphp

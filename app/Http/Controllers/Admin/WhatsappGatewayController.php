@@ -20,202 +20,89 @@ class WhatsappGatewayController extends Controller
     }
 
     /**
-     * Ambil data lengkap seluruh pelanggan dari database dan fallback data master
+     * Ambil data lengkap seluruh pelanggan yang tersinkronisasi murni dengan Master Data Pelanggan
      */
     private function getAllCustomers(): array
     {
         $customersByPhone = [];
 
-        // 1. Ambil dari database Bills (data tagihan)
+        // 1. Ambil dari Master Data Pelanggan (Order dengan status Selesai / Aktif)
+        try {
+            $orders = Order::forCustomerData()->with(['bills' => function ($q) {
+                $q->latest();
+            }])->latest()->get();
+
+            foreach ($orders as $order) {
+                $rawPhone = trim((string) $order->customer_phone);
+                if (empty($rawPhone)) {
+                    continue;
+                }
+
+                $phone = $this->gatewayService->formatPhoneNumber($rawPhone);
+                if (empty($phone)) {
+                    continue;
+                }
+
+                if (!isset($customersByPhone[$phone])) {
+                    $latestBill = $order->bills ? $order->bills->first() : null;
+                    $billStatus = $latestBill ? $latestBill->status : 'Lunas';
+                    $billTotal = $latestBill 
+                        ? 'Rp' . number_format((float) $latestBill->total, 0, ',', '.')
+                        : 'Rp' . number_format((float) ($order->total ?? $order->price ?? 0), 0, ',', '.');
+                    $dueDate = $latestBill && !empty($latestBill->due_date) ? $latestBill->due_date : '20 Tiap Bulan';
+
+                    $customersByPhone[$phone] = [
+                        'id' => $order->order_number ?: ('PLG-' . str_pad($order->id, 5, '0', STR_PAD_LEFT)),
+                        'name' => $order->customer_name ?: 'Pelanggan Banterpool',
+                        'phone' => $rawPhone,
+                        'formatted_phone' => $phone,
+                        'email' => $order->customer_email ?? '-',
+                        'address' => $order->address ?? ($order->village ? 'Desa ' . $order->village . ', Banyumas' : '-'),
+                        'package_name' => $order->package_name ?? 'Paket Internet',
+                        'bill_status' => $billStatus,
+                        'bill_total' => $billTotal,
+                        'due_date' => $dueDate,
+                        'area' => $order->village ?? $order->address ?? '-',
+                        'odc' => $order->assigned_odp ?? 'ODC-CLK-01',
+                    ];
+                }
+            }
+        } catch (\Exception $e) {}
+
+        // 2. Ambil dari Bills aktif (tagihan dengan order selesai atau tagihan mandiri)
         try {
             $bills = Bill::with('order')->latest()->get();
             foreach ($bills as $bill) {
                 if (!$bill->isOrderCompleted()) {
                     continue;
                 }
-                $phone = $this->gatewayService->formatPhoneNumber($bill->customer_phone);
+                $rawPhone = trim((string) $bill->customer_phone);
+                if (empty($rawPhone)) {
+                    continue;
+                }
+                $phone = $this->gatewayService->formatPhoneNumber($rawPhone);
+                if (empty($phone)) {
+                    continue;
+                }
+
                 if (!isset($customersByPhone[$phone])) {
                     $customersByPhone[$phone] = [
-                        'id' => 'CUST-' . $bill->id,
-                        'name' => $bill->customer_name,
-                        'phone' => $bill->customer_phone,
+                        'id' => $bill->bill_number ?: ('BILL-' . $bill->id),
+                        'name' => $bill->customer_name ?: 'Pelanggan Tagihan',
+                        'phone' => $rawPhone,
                         'formatted_phone' => $phone,
                         'email' => $bill->customer_email ?? '-',
                         'address' => $bill->address ?? 'Kecamatan Cilongok, Banyumas',
                         'package_name' => $bill->package_name ?? 'Paket 20 Mbps',
-                        'bill_status' => $bill->status,
+                        'bill_status' => $bill->status ?: 'Belum Bayar',
                         'bill_total' => 'Rp' . number_format((float) $bill->total, 0, ',', '.'),
-                        'due_date' => $bill->due_date ?? '5 Tiap Bulan',
+                        'due_date' => $bill->due_date ?? '20 Tiap Bulan',
                         'area' => 'Pernasidi',
                         'odc' => 'ODC-CLK-01',
                     ];
                 }
             }
         } catch (\Exception $e) {}
-
-        // 2. Ambil dari database Orders (pesanan pelanggan)
-        try {
-            $orders = Order::latest()->get();
-            foreach ($orders as $order) {
-                $phone = $this->gatewayService->formatPhoneNumber($order->customer_phone);
-                if (!isset($customersByPhone[$phone])) {
-                    $customersByPhone[$phone] = [
-                        'id' => 'CUST-' . $order->order_number,
-                        'name' => $order->customer_name,
-                        'phone' => $order->customer_phone,
-                        'formatted_phone' => $phone,
-                        'email' => $order->customer_email ?? '-',
-                        'address' => $order->address ?? 'Kecamatan Cilongok, Banyumas',
-                        'package_name' => $order->package_name ?? 'Paket 20 Mbps',
-                        'bill_status' => 'Lunas',
-                        'bill_total' => 'Rp' . number_format((float) $order->total, 0, ',', '.'),
-                        'due_date' => '5 Tiap Bulan',
-                        'area' => 'Panembangan',
-                        'odc' => $order->assigned_odp ?? 'ODC-CLK-02',
-                    ];
-                }
-            }
-        } catch (\Exception $e) {}
-
-        // 3. Ambil dari Users bertipe customer
-        try {
-            $users = User::where('role', 'customer')->whereNotNull('phone')->get();
-            foreach ($users as $user) {
-                $phone = $this->gatewayService->formatPhoneNumber($user->phone);
-                if (!isset($customersByPhone[$phone])) {
-                    $customersByPhone[$phone] = [
-                        'id' => 'USER-' . $user->id,
-                        'name' => $user->name,
-                        'phone' => $user->phone,
-                        'formatted_phone' => $phone,
-                        'email' => $user->email,
-                        'address' => 'Desa Jatisaba, Cilongok, Banyumas',
-                        'package_name' => 'Paket 50 Mbps',
-                        'bill_status' => 'Lunas',
-                        'bill_total' => 'Rp220.000',
-                        'due_date' => '5 Tiap Bulan',
-                        'area' => 'Jatisaba',
-                        'odc' => 'ODC-CLK-03',
-                    ];
-                }
-            }
-        } catch (\Exception $e) {}
-
-        // 4. Data Master Tambahan Pelanggan Aktif Banterpool untuk demo komprehensif
-        $demoCustomers = [
-            [
-                'id' => 'BTP-CLK-001',
-                'name' => 'Ahmad Fauzi',
-                'phone' => '08818679774',
-                'email' => 'ahmad.fauzi@gmail.com',
-                'address' => 'Jl. Raya Pernasidi No. 45, Kec. Cilongok',
-                'package_name' => 'Paket 20 Mbps',
-                'bill_status' => 'Menunggu Verifikasi',
-                'bill_total' => 'Rp110.000',
-                'due_date' => '5 Juni 2026',
-                'area' => 'Pernasidi',
-                'odc' => 'ODC-CLK-01',
-            ],
-            [
-                'id' => 'BTP-CLK-002',
-                'name' => 'Siti Nurhaliza',
-                'phone' => '085712345678',
-                'email' => 'siti.nur@yahoo.com',
-                'address' => 'Desa Karanglo RT 02/03, Kec. Cilongok',
-                'package_name' => 'Paket 50 Mbps',
-                'bill_status' => 'Belum Bayar',
-                'bill_total' => 'Rp220.000',
-                'due_date' => '5 Juni 2026',
-                'area' => 'Karanglo',
-                'odc' => 'ODC-CLK-02',
-            ],
-            [
-                'id' => 'BTP-CLK-003',
-                'name' => 'Budi Santoso',
-                'phone' => '081398765432',
-                'email' => 'budi.santoso@gmail.com',
-                'address' => 'Perum Jatisaba Indah Blok C-5, Kec. Cilongok',
-                'package_name' => 'Paket 50 Mbps',
-                'bill_status' => 'Lunas',
-                'bill_total' => 'Rp220.000',
-                'due_date' => '5 Juni 2026',
-                'area' => 'Jatisaba',
-                'odc' => 'ODC-CLK-03',
-            ],
-            [
-                'id' => 'BTP-CLK-004',
-                'name' => 'Rina Wijaya',
-                'phone' => '082188776655',
-                'email' => 'rina.w@outlook.com',
-                'address' => 'Jl. Raya Cilongok No. 88 (Dekat Alun-Alun)',
-                'package_name' => 'Paket 30 Mbps',
-                'bill_status' => 'Belum Bayar',
-                'bill_total' => 'Rp165.000',
-                'due_date' => '5 Juni 2026',
-                'area' => 'Pernasidi',
-                'odc' => 'ODC-CLK-01',
-            ],
-            [
-                'id' => 'BTP-CLK-005',
-                'name' => 'Dedi Suryadi',
-                'phone' => '087811223344',
-                'email' => 'dedi.sur@gmail.com',
-                'address' => 'Desa Cikidang Wetan No. 102, Kec. Cilongok',
-                'package_name' => 'Paket 20 Mbps',
-                'bill_status' => 'Jatuh Tempo',
-                'bill_total' => 'Rp110.000',
-                'due_date' => '5 Mei 2026',
-                'area' => 'Cikidang',
-                'odc' => 'ODC-CLK-02',
-            ],
-            [
-                'id' => 'BTP-CLK-006',
-                'name' => 'Maya Anggraeni',
-                'phone' => '089677889900',
-                'email' => 'maya.ang@gmail.com',
-                'address' => 'Desa Pejogol Kidul No. 76, Kec. Cilongok',
-                'package_name' => 'Paket 20 Mbps',
-                'bill_status' => 'Menunggu Verifikasi',
-                'bill_total' => 'Rp110.000',
-                'due_date' => '5 Juni 2026',
-                'area' => 'Pejogol',
-                'odc' => 'ODC-CLK-03',
-            ],
-            [
-                'id' => 'BTP-CLK-007',
-                'name' => 'Pak Lurah Panembangan',
-                'phone' => '081299887766',
-                'email' => 'panembangan.desa@banyumaskab.go.id',
-                'address' => 'Kantor Desa Panembangan, Cilongok',
-                'package_name' => 'Paket 50 Mbps',
-                'bill_status' => 'Lunas',
-                'bill_total' => 'Rp220.000',
-                'due_date' => '5 Tiap Bulan',
-                'area' => 'Panembangan',
-                'odc' => 'ODC-CLK-02',
-            ],
-            [
-                'id' => 'BTP-CLK-008',
-                'name' => 'Warnet & Percetakan Pageraji',
-                'phone' => '085233445566',
-                'email' => 'pageraji.net@gmail.com',
-                'address' => 'Jl. Pageraji Timur No. 12, Cilongok',
-                'package_name' => 'Paket 50 Mbps',
-                'bill_status' => 'Lunas',
-                'bill_total' => 'Rp220.000',
-                'due_date' => '5 Tiap Bulan',
-                'area' => 'Pageraji',
-                'odc' => 'ODC-CLK-04',
-            ],
-        ];
-
-        foreach ($demoCustomers as $demo) {
-            $formattedPhone = $this->gatewayService->formatPhoneNumber($demo['phone']);
-            if (!isset($customersByPhone[$formattedPhone])) {
-                $demo['formatted_phone'] = $formattedPhone;
-                $customersByPhone[$formattedPhone] = $demo;
-            }
-        }
 
         return array_values($customersByPhone);
     }
@@ -368,7 +255,7 @@ class WhatsappGatewayController extends Controller
             $redirect->with('success', "🚀 Berhasil mengirim broadcast WhatsApp via API Gateway ke {$result['total_sent']} pelanggan! (Batch ID: {$result['batch_id']})");
         } else {
             $firstLog = $result['logs'][0] ?? null;
-            $redirect->with('success', "🚀 Antrean pesan broadcast berhasil dibuat untuk {$result['total_sent']} pelanggan! (Batch ID: {$result['batch_id']})")
+            $redirect->with('success', "🚀 Antrean pesan broadcast berhasil disiapkan untuk {$result['total_sent']} pelanggan! (Batch ID: {$result['batch_id']}). Klik tombol hijau 'Kirim ke WA' pada tabel untuk mengirim, atau hubungkan API Token di tab Konfigurasi Engine agar pesan terkirim otomatis di latar belakang.")
                      ->with('needs_wa_web', true);
 
             if (count($result['logs']) === 1 && $firstLog) {
@@ -469,19 +356,43 @@ class WhatsappGatewayController extends Controller
      */
     public function saveSettings(Request $request)
     {
-        if ($request->filled('phone_number')) {
-            cache()->forever('wa_gateway_phone_number', $request->input('phone_number'));
+        $phone = $request->input('phone_number') ?: $request->input('sender_number');
+        if (!empty($phone)) {
+            cache()->forever('wa_gateway_phone_number', trim($phone));
         }
+
         if ($request->filled('device_name')) {
-            cache()->forever('wa_gateway_device_name', $request->input('device_name'));
+            cache()->forever('wa_gateway_device_name', trim($request->input('device_name')));
         }
+
         if ($request->filled('provider')) {
-            cache()->forever('wa_gateway_provider', $request->input('provider'));
+            cache()->forever('wa_gateway_provider', trim($request->input('provider')));
+        }
+
+        // Simpan API Token Fonnte / Gateway
+        if ($request->has('api_token')) {
+            $apiToken = trim((string) $request->input('api_token'));
+            if (!empty($apiToken)) {
+                cache()->forever('wa_gateway_api_token', $apiToken);
+
+                // Jika provider belum Fonnte atau masih direct WA Web, otomatis aktifkan Fonnte
+                $currProvider = cache()->get('wa_gateway_provider', '');
+                if (empty($currProvider) || stripos($currProvider, 'local') !== false) {
+                    cache()->forever('wa_gateway_provider', 'Fonnte Official Gateway (fonnte.com)');
+                }
+            } else {
+                cache()->forget('wa_gateway_api_token');
+            }
         }
 
         $senderPhone = cache()->get('wa_gateway_phone_number', '0881-8679-774');
+        $hasToken = $this->gatewayService->hasValidApiToken();
+
+        $successMsg = $hasToken
+            ? "API Token Fonnte berhasil disimpan! Status Gateway: ONLINE (API CONNECTED). Pesan broadcast kini akan otomatis meluncur ke nomor WhatsApp pelanggan."
+            : "Pengaturan WhatsApp Gateway berhasil diperbarui dan bot tersinkronisasi ke {$senderPhone}!";
 
         return redirect()->route('admin.whatsapp', ['tab' => 'settings'])
-            ->with('success', "Pengaturan WhatsApp Gateway berhasil diperbarui dan bot tersinkronisasi ke {$senderPhone}!");
+            ->with('success', $successMsg);
     }
 }

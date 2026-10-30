@@ -126,7 +126,7 @@ class WhatsappGatewayService
      */
     public function sendApiMessage(string $phone, string $message): array
     {
-        $token = cache()->get('wa_gateway_api_token');
+        $token = trim((string) cache()->get('wa_gateway_api_token'));
         $provider = cache()->get('wa_gateway_provider', 'Fonnte');
         $formattedPhone = $this->formatPhoneNumber($phone);
 
@@ -138,8 +138,8 @@ class WhatsappGatewayService
             ];
         }
 
-        // 1. Fonnte (fonnte.com)
-        if (stripos($provider, 'fonnte') !== false || stripos($provider, 'official') !== false) {
+        // 1. Fonnte (fonnte.com) - Default provider jika API token tersedia
+        if (empty($provider) || stripos($provider, 'fonnte') !== false || stripos($provider, 'official') !== false || stripos($provider, 'local') !== false) {
             try {
                 $response = Http::withHeaders([
                     'Authorization' => $token,
@@ -152,6 +152,11 @@ class WhatsappGatewayService
                 $json = $response->json();
                 $isOk = $response->successful() && ($json['status'] ?? false) !== false;
 
+                \Illuminate\Support\Facades\Log::info("Fonnte send to {$formattedPhone}: " . ($isOk ? 'SUCCESS' : 'FAILED'), [
+                    'status' => $response->status(),
+                    'response' => $json,
+                ]);
+
                 return [
                     'success' => $isOk,
                     'is_gateway' => true,
@@ -159,6 +164,8 @@ class WhatsappGatewayService
                     'response' => $json,
                 ];
             } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Fonnte connection error to {$formattedPhone}: " . $e->getMessage());
+
                 return [
                     'success' => false,
                     'is_gateway' => true,

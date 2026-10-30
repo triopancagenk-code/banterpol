@@ -10,7 +10,7 @@ use Illuminate\Support\Carbon;
 class BillingService
 {
     /**
-     * Parsing string tanggal jatuh tempo ke objek Carbon (selalu dipastikan tanggal 5).
+     * Parsing string tanggal jatuh tempo ke objek Carbon (batas pembayaran maksimal tanggal 20).
      */
     public static function parseDueDate(string $dueDateStr): Carbon
     {
@@ -31,15 +31,15 @@ class BillingService
 
         try {
             $carbon = Carbon::parse($cleaned);
-            return $carbon->day(5);
+            return $carbon->day(20);
         } catch (\Exception $e) {
-            return now('Asia/Jakarta')->day(5)->addMonth();
+            return now('Asia/Jakarta')->day(20);
         }
     }
 
     /**
      * Menerbitkan tagihan pertama untuk pesanan baru / pendaftaran langganan.
-     * Jatuh tempo selalu diatur pada tanggal 5 bulan berikutnya (contoh: 05 Okt 2026).
+     * Terbit tanggal 05, batas pembayaran maksimal selalu tanggal 20.
      */
     public static function generateBillForOrder(Order $order): Bill
     {
@@ -49,24 +49,26 @@ class BillingService
             return $existingBill;
         }
 
-        // Tentukan tanggal acuan pemasangan / pendaftaran
+        $now = now('Asia/Jakarta');
         $baseDate = $order->installed_at 
             ? Carbon::parse($order->installed_at) 
-            : ($order->created_at ? Carbon::parse($order->created_at) : now('Asia/Jakarta'));
+            : ($order->created_at ? Carbon::parse($order->created_at) : $now);
 
-        // Jatuh tempo: selalu tanggal 5 bulan depan
-        $nextMonth = $baseDate->copy()->addMonth();
-        $dueDateStr = '05 ' . $nextMonth->translatedFormat('M Y'); // Contoh: "05 Okt 2026"
+        // Jika hari ini >= 5, gunakan bulan sekarang; jika belum, gunakan bulan pemasangan
+        $billMonth = ($now->day >= 5) ? $now->copy()->startOfMonth() : $baseDate->copy()->startOfMonth();
 
-        // Periode langganan: 1 bulan
-        $periodEnd = $baseDate->copy()->addMonth();
-        $periodStr = $baseDate->translatedFormat('d M Y') . ' – ' . $periodEnd->translatedFormat('d M Y');
+        // Tanggal tagihan terbit: selalu tanggal 05
+        $billDateStr = '05 ' . $billMonth->translatedFormat('M Y');
 
-        // Tanggal tagihan diterbitkan
-        $billDateStr = $baseDate->translatedFormat('d M Y');
+        // Jatuh tempo: selalu tanggal 20 setiap bulannya
+        $dueDateStr = '20 ' . $billMonth->translatedFormat('M Y');
+
+        // Periode langganan: 1 bulan penuh
+        $periodEnd = $billMonth->copy()->endOfMonth();
+        $periodStr = '01 ' . $billMonth->translatedFormat('M Y') . ' – ' . $periodEnd->translatedFormat('d M Y');
 
         // Nomor invoice terformat unik: INV-YYYYMM-XXX
-        $prefix = 'INV-' . $baseDate->format('Ym') . '-';
+        $prefix = 'INV-' . $billMonth->format('Ym') . '-';
         $latestBill = Bill::where('bill_number', 'like', "{$prefix}%")
             ->orderBy('id', 'desc')
             ->first();
@@ -115,6 +117,9 @@ class BillingService
             $userId = User::where('email', $order->customer_email)->value('id');
         }
 
+        // Status: jika hari ini sudah melewati tanggal 20, status Jatuh Tempo, sebaliknya Belum Bayar
+        $status = ($now->day > 20) ? 'Jatuh Tempo' : 'Belum Bayar';
+
         $bill = Bill::create([
             'user_id' => $userId,
             'bill_number' => $billNumber,
@@ -123,7 +128,7 @@ class BillingService
             'customer_phone' => $order->customer_phone,
             'customer_email' => $order->customer_email,
             'address' => $order->address,
-            'package_name' => $order->package_name,
+            'package_name' => $order->package_name ?: 'Paket 20 Mbps',
             'speed' => $speed,
             'period' => $periodStr,
             'due_date' => $dueDateStr,
@@ -131,8 +136,8 @@ class BillingService
             'amount' => $amount,
             'tax' => $tax,
             'total' => $total,
-            'status' => 'Belum Bayar',
-            'collector_notes' => 'Tagihan langganan baru. Batas bayar tanggal 5 bulan depan (' . $dueDateStr . ').',
+            'status' => $status,
+            'collector_notes' => 'Tagihan langganan. Terbit tanggal 05, batas bayar maksimal tanggal 20 (' . $dueDateStr . ').',
         ]);
 
         return $bill;
@@ -140,14 +145,15 @@ class BillingService
 
     /**
      * Menerbitkan tagihan untuk bulan selanjutnya setelah suatu tagihan dinyatakan 'Lunas'.
-     * Jatuh tempo selalu tanggal 5 bulan berikutnya.
+     * Terbit tanggal 05 bulan berikutnya, batas pembayaran tanggal 20 bulan berikutnya.
      */
     public static function generateNextBillForPaidBill(Bill $paidBill): Bill
     {
-        // Hitung tanggal jatuh tempo bulan berikutnya
         $currentDue = self::parseDueDate($paidBill->due_date ?: ($paidBill->paid_at ? $paidBill->paid_at->format('d M Y') : now()->format('d M Y')));
-        $nextDue = $currentDue->copy()->addMonth();
-        $nextDueDateStr = '05 ' . $nextDue->translatedFormat('M Y'); // Contoh: "05 Nov 2026"
+        $nextMonth = $currentDue->copy()->addMonth()->startOfMonth();
+
+        $nextBillDateStr = '05 ' . $nextMonth->translatedFormat('M Y');
+        $nextDueDateStr = '20 ' . $nextMonth->translatedFormat('M Y');
 
         // Cek apakah tagihan dengan due_date tersebut sudah pernah dibuat untuk order / customer ini
         $existingNextBill = Bill::where(function ($q) use ($paidBill) {
@@ -166,7 +172,7 @@ class BillingService
         }
 
         // Nomor invoice terformat unik: INV-YYYYMM-XXX
-        $prefix = 'INV-' . $nextDue->format('Ym') . '-';
+        $prefix = 'INV-' . $nextMonth->format('Ym') . '-';
         $latestBill = Bill::where('bill_number', 'like', "{$prefix}%")
             ->orderBy('id', 'desc')
             ->first();
@@ -186,9 +192,11 @@ class BillingService
             $billNumber = $prefix . str_pad($nextSeq, 3, '0', STR_PAD_LEFT);
         }
 
-        $periodEnd = $nextDue->copy()->addMonth();
-        $periodStr = $nextDue->translatedFormat('d M Y') . ' – ' . $periodEnd->translatedFormat('d M Y');
-        $billDateStr = now('Asia/Jakarta')->translatedFormat('d M Y');
+        $periodEnd = $nextMonth->copy()->endOfMonth();
+        $periodStr = '01 ' . $nextMonth->translatedFormat('M Y') . ' – ' . $periodEnd->translatedFormat('d M Y');
+
+        $now = now('Asia/Jakarta');
+        $status = ($now->greaterThan($nextMonth->copy()->day(20)->endOfDay())) ? 'Jatuh Tempo' : 'Belum Bayar';
 
         $nextBill = Bill::create([
             'user_id' => $paidBill->user_id,
@@ -202,187 +210,190 @@ class BillingService
             'speed' => $paidBill->speed,
             'period' => $periodStr,
             'due_date' => $nextDueDateStr,
-            'bill_date' => $billDateStr,
+            'bill_date' => $nextBillDateStr,
             'amount' => $paidBill->amount,
             'tax' => $paidBill->tax,
             'total' => $paidBill->total,
-            'status' => 'Belum Bayar',
-            'collector_notes' => 'Tagihan bulan selanjutnya setelah pelunasan ' . $paidBill->bill_number . '. Jatuh tempo tanggal ' . $nextDueDateStr . '.',
+            'status' => $status,
+            'collector_notes' => 'Tagihan bulan selanjutnya setelah pelunasan ' . $paidBill->bill_number . '. Terbit tanggal 05, jatuh tempo tanggal 20 (' . $nextDueDateStr . ').',
         ]);
 
         return $nextBill;
     }
 
     /**
-     * Sinkronisasi tagihan pelanggan (POV Pelanggan):
-     * 1. Jika pelanggan mendaftar langganan (punya Order) tapi belum ada tagihan -> langsung terbitkan tagihan bulan depan.
-     * 2. Jika tagihan terakhir sudah 'Lunas' dan belum ada tagihan aktif berikutnya -> otomatis terbitkan tagihan bulan selanjutnya.
+     * Sinkronisasi Tagihan Bulanan Berdasarkan Data Pelanggan (Master Data):
+     * - Setiap tanggal 5 setiap bulannya: tagihan diterbitkan otomatis untuk seluruh pelanggan di Data Pelanggan.
+     * - Tanggal tagihan (bill_date): 05 [Bulan] [Tahun].
+     * - Batas pembayaran maksimal (due_date / jatuh tempo): 20 [Bulan] [Tahun].
+     * - Periode pemakaian (period): 01 [Bulan] [Tahun] – [Akhir Bulan] [Bulan] [Tahun].
+     * - Status otomatis:
+     *   * Jika hari ini <= 20: 'Belum Bayar' (atau 'Menunggu Verifikasi')
+     *   * Jika hari ini > 20: 'Jatuh Tempo'
+     *   * Jika sudah bayar / diverifikasi: 'Lunas' (otomatis masuk ke Rekap Pembayaran)
+     */
+    public static function syncMonthlyBillsFromDataPelanggan(?Carbon $now = null): int
+    {
+        $now = $now ? $now->copy()->setTimezone('Asia/Jakarta') : now('Asia/Jakarta');
+        $createdCount = 0;
+
+        // Tagihan terbit mulai tanggal 5 setiap bulannya
+        if ($now->day >= 5) {
+            $month = $now->copy()->startOfMonth();
+            $billDateStr = '05 ' . $month->translatedFormat('M Y');
+            $dueDateStr = '20 ' . $month->translatedFormat('M Y');
+            $periodEnd = $month->copy()->endOfMonth();
+            $periodStr = '01 ' . $month->translatedFormat('M Y') . ' – ' . $periodEnd->translatedFormat('d M Y');
+
+            $monthPrefix = 'INV-' . $month->format('Ym') . '-';
+            $customers = Order::forCustomerData()->get();
+
+            foreach ($customers as $customer) {
+                // Cari apakah sudah ada tagihan untuk pelanggan ini pada bulan berjalan
+                $existingBill = Bill::where(function ($q) use ($customer) {
+                    $q->where('order_id', $customer->id);
+                    if (!empty($customer->customer_phone) && $customer->customer_phone !== '-') {
+                        $q->orWhere('customer_phone', $customer->customer_phone);
+                    }
+                    if (!empty($customer->customer_name)) {
+                        $q->orWhere('customer_name', $customer->customer_name);
+                    }
+                })->where(function ($q) use ($dueDateStr, $month) {
+                    $q->where('due_date', $dueDateStr)
+                      ->orWhere('period', 'like', '%' . $month->translatedFormat('M Y') . '%');
+                })->first();
+
+                if ($existingBill) {
+                    // Update due_date jika masih format tanggal lama
+                    if (!preg_match('/^20\s+/i', (string) $existingBill->due_date)) {
+                        $existingBill->due_date = $dueDateStr;
+                    }
+                    // Jika belum bayar dan hari ini > 20, update status ke 'Jatuh Tempo'
+                    if ($existingBill->status === 'Belum Bayar' && $now->day > 20) {
+                        $existingBill->status = 'Jatuh Tempo';
+                    }
+                    if (empty($existingBill->bill_date)) {
+                        $existingBill->bill_date = $billDateStr;
+                    }
+                    $existingBill->save();
+                } else {
+                    // Buat tagihan baru bulan berjalan untuk pelanggan ini
+                    $seq = Bill::where('bill_number', 'like', "{$monthPrefix}%")->count() + 1;
+                    $billNumber = $monthPrefix . str_pad($seq, 3, '0', STR_PAD_LEFT);
+                    while (Bill::where('bill_number', $billNumber)->exists()) {
+                        $seq++;
+                        $billNumber = $monthPrefix . str_pad($seq, 3, '0', STR_PAD_LEFT);
+                    }
+
+                    $amount = (float) $customer->price;
+                    if ($amount <= 0) {
+                        if (str_contains($customer->package_name, '50')) {
+                            $amount = 220000;
+                        } elseif (str_contains($customer->package_name, '30')) {
+                            $amount = 165000;
+                        } else {
+                            $amount = 110000;
+                        }
+                    }
+
+                    $speed = $customer->speed;
+                    if (empty($speed)) {
+                        if (str_contains($customer->package_name, '50')) {
+                            $speed = '50 Mbps';
+                        } elseif (str_contains($customer->package_name, '30')) {
+                            $speed = '30 Mbps';
+                        } else {
+                            $speed = '20 Mbps';
+                        }
+                    }
+
+                    $tax = (float) ($customer->tax ?? 0);
+                    $total = $amount + $tax;
+                    $status = ($now->day > 20) ? 'Jatuh Tempo' : 'Belum Bayar';
+
+                    Bill::create([
+                        'user_id' => $customer->user_id,
+                        'bill_number' => $billNumber,
+                        'order_id' => $customer->id,
+                        'customer_name' => $customer->customer_name,
+                        'customer_phone' => $customer->customer_phone,
+                        'customer_email' => $customer->customer_email,
+                        'address' => $customer->address,
+                        'package_name' => $customer->package_name ?: 'Paket 20 Mbps',
+                        'speed' => $speed,
+                        'period' => $periodStr,
+                        'due_date' => $dueDateStr,
+                        'bill_date' => $billDateStr,
+                        'amount' => $amount,
+                        'tax' => $tax,
+                        'total' => $total,
+                        'status' => $status,
+                        'payment_method' => null,
+                        'collector_notes' => 'Tagihan bulanan per tanggal 05. Batas bayar tanggal 20 (' . $dueDateStr . ').',
+                    ]);
+
+                    $createdCount++;
+                }
+            }
+        }
+
+        // Periksa dan perbarui status semua tagihan aktif yang melewati tanggal jatuh tempo
+        self::updateOverdueBills($now);
+
+        // Pastikan semua tagihan jatuh temponya berada pada tanggal 20
+        self::normalizeAllBillDueDates();
+
+        return $createdCount;
+    }
+
+    /**
+     * Update tagihan 'Belum Bayar' menjadi 'Jatuh Tempo' jika hari ini sudah melewati tanggal 20.
+     */
+    public static function updateOverdueBills(?Carbon $now = null): int
+    {
+        $now = $now ? $now->copy()->setTimezone('Asia/Jakarta') : now('Asia/Jakarta');
+        $bills = Bill::where('status', 'Belum Bayar')->get();
+        $updated = 0;
+
+        foreach ($bills as $bill) {
+            $due = self::parseDueDate((string) $bill->due_date);
+            if ($now->greaterThan($due->endOfDay())) {
+                $bill->status = 'Jatuh Tempo';
+                $bill->save();
+                $updated++;
+            }
+        }
+
+        return $updated;
+    }
+
+    /**
+     * Sinkronisasi tagihan pelanggan (POV Pelanggan Web):
+     * Sinkronkan tagihan bulanan dari data pelanggan.
      */
     public static function syncCustomerBills(User $user): void
     {
-        self::syncCustomerBillsForCustomer($user->email, $user->name, $user->phone, null, $user->id);
+        self::syncMonthlyBillsFromDataPelanggan();
     }
 
     /**
      * Sinkronisasi tagihan pelanggan berdasarkan data kontak / order:
-     * 1. Jika pelanggan mendaftar langganan (punya Order) tapi belum ada tagihan -> langsung terbitkan tagihan bulan depan.
-     * 2. Jika tagihan terakhir sudah 'Lunas' dan belum ada tagihan aktif berikutnya -> otomatis terbitkan tagihan bulan selanjutnya.
      */
     public static function syncCustomerBillsForCustomer(?string $customerEmail, ?string $customerName = null, ?string $customerPhone = null, ?int $orderId = null, ?int $userId = null): void
     {
-        if (empty($customerEmail) && empty($customerName) && empty($customerPhone) && empty($orderId) && empty($userId)) {
-            return;
-        }
-
-        // 1. Cek pesanan milik pelanggan
-        $ordersQuery = Order::where('order_number', 'not like', 'PLG-%');
-        $ordersQuery->where(function ($q) use ($customerEmail, $customerName, $customerPhone, $orderId, $userId) {
-            $hasCondition = false;
-            if (!empty($userId)) {
-                $q->where('user_id', $userId);
-                $hasCondition = true;
-            }
-            if (!empty($orderId)) {
-                $hasCondition ? $q->orWhere('id', $orderId) : $q->where('id', $orderId);
-                $hasCondition = true;
-            }
-            if (!empty($customerEmail)) {
-                $hasCondition ? $q->orWhere('customer_email', $customerEmail) : $q->where('customer_email', $customerEmail);
-                $hasCondition = true;
-            }
-            if (!empty($customerName)) {
-                $hasCondition ? $q->orWhere('customer_name', $customerName) : $q->where('customer_name', $customerName);
-                $hasCondition = true;
-            }
-            if (!empty($customerPhone)) {
-                $hasCondition ? $q->orWhere('customer_phone', $customerPhone) : $q->where('customer_phone', $customerPhone);
-                $hasCondition = true;
-            }
-        });
-        $orders = $ordersQuery->get();
-
-        foreach ($orders as $order) {
-            if ($userId && !$order->user_id) {
-                $order->user_id = $userId;
-                $order->save();
-            }
-
-            $isCompleted = in_array(strtolower(trim((string) $order->status)), ['selesai', 'selesai / aktif', 'aktif']);
-            if ($isCompleted) {
-                $hasBill = Bill::where('order_id', $order->id)->exists();
-                if (!$hasBill) {
-                    self::generateBillForOrder($order);
-                }
-            } else {
-                // Sesuai aturan sistem: jika status pesanan belum 'Selesai', tidak boleh muncul tagihan
-                Bill::where('order_id', $order->id)->whereIn('status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])->delete();
-            }
-        }
-
-        // 2. Cek apakah ada tagihan aktif (Belum Bayar / Jatuh Tempo / Menunggu Verifikasi)
-        $completedOrderIds = $orders->filter(function ($o) {
-            return in_array(strtolower(trim((string) $o->status)), ['selesai', 'selesai / aktif', 'aktif']);
-        })->pluck('id');
-
-        $activeBill = Bill::activeForMonitoring()
-            ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])
-            ->where(function ($query) use ($customerEmail, $customerName, $customerPhone, $completedOrderIds, $userId) {
-                $hasCondition = false;
-                if (!empty($userId)) {
-                    $query->where('user_id', $userId);
-                    $hasCondition = true;
-                }
-                if ($completedOrderIds->isNotEmpty()) {
-                    $hasCondition ? $query->orWhereIn('order_id', $completedOrderIds) : $query->whereIn('order_id', $completedOrderIds);
-                    $hasCondition = true;
-                }
-                if (!empty($customerEmail)) {
-                    $hasCondition ? $query->orWhere('customer_email', $customerEmail) : $query->where('customer_email', $customerEmail);
-                    $hasCondition = true;
-                }
-                if (!empty($customerName)) {
-                    $hasCondition ? $query->orWhere('customer_name', $customerName) : $query->where('customer_name', $customerName);
-                    $hasCondition = true;
-                }
-                if (!empty($customerPhone)) {
-                    $hasCondition ? $query->orWhere('customer_phone', $customerPhone) : $query->where('customer_phone', $customerPhone);
-                    $hasCondition = true;
-                }
-            })
-            ->latest('id')
-            ->first();
-
-        // 3. Jika TIDAK ADA tagihan aktif belum bayar, tapi ADA tagihan yang sudah LUNAS:
-        // Otomatis terbitkan tagihan untuk bulan selanjutnya!
-        if (!$activeBill && $completedOrderIds->isNotEmpty()) {
-            $latestPaidBill = Bill::activeForMonitoring()
-                ->where('status', 'Lunas')
-                ->where(function ($query) use ($customerEmail, $customerName, $customerPhone, $completedOrderIds, $userId) {
-                    $hasCondition = false;
-                    if (!empty($userId)) {
-                        $query->where('user_id', $userId);
-                        $hasCondition = true;
-                    }
-                    if ($completedOrderIds->isNotEmpty()) {
-                        $query->whereIn('order_id', $completedOrderIds);
-                        $hasCondition = true;
-                    }
-                    if (!empty($customerEmail)) {
-                        $hasCondition ? $query->orWhere('customer_email', $customerEmail) : $query->where('customer_email', $customerEmail);
-                        $hasCondition = true;
-                    }
-                    if (!empty($customerName)) {
-                        $hasCondition ? $query->orWhere('customer_name', $customerName) : $query->where('customer_name', $customerName);
-                        $hasCondition = true;
-                    }
-                    if (!empty($customerPhone)) {
-                        $hasCondition ? $query->orWhere('customer_phone', $customerPhone) : $query->where('customer_phone', $customerPhone);
-                        $hasCondition = true;
-                    }
-                })
-                ->latest('id')
-                ->first();
-
-            if ($latestPaidBill) {
-                self::generateNextBillForPaidBill($latestPaidBill);
-            }
-        }
-
-        // Pastikan semua tanggal jatuh tempo berformat tanggal 05
-        self::normalizeAllBillDueDates();
+        self::syncMonthlyBillsFromDataPelanggan();
     }
 
     /**
-     * Sinkronisasi otomatis: periksa semua pesanan berstatus 'Selesai' yang belum memiliki tagihan,
-     * lalu otomatis terbitkan tagihannya.
+     * Sinkronisasi otomatis dari order pendaftaran dan master data pelanggan.
      */
     public static function syncCompletedOrdersWithoutBills(): int
     {
-        $existingOrderIds = Bill::whereNotNull('order_id')->pluck('order_id')->toArray();
-
-        $completedOrders = Order::where('status', 'Selesai')
-            ->where('order_number', 'not like', 'PLG-%')
-            ->whereNotIn('id', $existingOrderIds)
-            ->get();
-
-        $count = 0;
-        foreach ($completedOrders as $order) {
-            if (!$order->installed_at) {
-                $order->installed_at = $order->updated_at ?? now('Asia/Jakarta');
-                $order->save();
-            }
-            self::generateBillForOrder($order);
-            $count++;
-        }
-
-        // Pastikan semua tagihan jatuh temponya selalu pada setiap tanggal 5
-        self::normalizeAllBillDueDates();
-
-        return $count;
+        return self::syncMonthlyBillsFromDataPelanggan();
     }
 
     /**
-     * Pastikan semua tagihan jatuh temponya berada pada tanggal 5.
+     * Pastikan semua tagihan jatuh temponya berada pada tanggal 20.
      */
     public static function normalizeAllBillDueDates(): int
     {
@@ -390,8 +401,8 @@ class BillingService
         $updated = 0;
         foreach ($bills as $bill) {
             $oldDue = trim((string) $bill->due_date);
-            if (!empty($oldDue) && !preg_match('/^0?5\s+/i', $oldDue)) {
-                $bill->due_date = preg_replace('/^\d{1,2}\s+/', '05 ', $oldDue);
+            if (!empty($oldDue) && !preg_match('/^20\s+/i', $oldDue)) {
+                $bill->due_date = preg_replace('/^\d{1,2}\s+/', '20 ', $oldDue);
                 $bill->save();
                 $updated++;
             }

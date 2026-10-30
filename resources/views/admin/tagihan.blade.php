@@ -22,9 +22,9 @@
             address: '',
             packageName: 'Paket 20 Mbps',
             speed: '20 Mbps',
-            period: '01 ' + new Date().toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) + ' – 01 ' + new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
-            dueDate: '05 ' + new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
-            billDate: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+            period: '01 ' + new Date().toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) + ' – ' + new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+            dueDate: '20 ' + new Date().toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
+            billDate: '05 ' + new Date().toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
             amount: 110000,
             tax: 0,
             status: 'Belum Bayar',
@@ -742,23 +742,24 @@
                 <!-- Tanggal Terbit Tagihan -->
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Tanggal Terbit</label>
-                  <input type="text" name="bill_date" x-model="billForm.billDate" placeholder="Contoh: 11 Sep 2026"
+                  <input type="text" name="bill_date" x-model="billForm.billDate" placeholder="Contoh: 05 Okt 2026"
                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white">
+                  <span class="text-[10px] text-slate-400">Terbit setiap tanggal 05</span>
                 </div>
 
                 <!-- Periode Tagihan -->
                 <div class="sm:col-span-2">
                   <label class="block font-bold text-slate-700 mb-1">Periode Pemakaian <span class="text-red-500">*</span></label>
-                  <input type="text" name="period" x-model="billForm.period" required placeholder="Contoh: 01 Sep 2026 – 01 Okt 2026"
+                  <input type="text" name="period" x-model="billForm.period" required placeholder="Contoh: 01 Okt 2026 – 31 Okt 2026"
                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-semibold">
                 </div>
 
                 <!-- Batas Jatuh Tempo -->
                 <div>
                   <label class="block font-bold text-slate-700 mb-1">Jatuh Tempo <span class="text-red-500">*</span></label>
-                  <input type="text" name="due_date" x-model="billForm.dueDate" required placeholder="Contoh: 05 Okt 2026"
+                  <input type="text" name="due_date" x-model="billForm.dueDate" required placeholder="Contoh: 20 Okt 2026"
                          class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand bg-white font-bold text-red-600">
-                  <span class="text-[10px] text-slate-400">Standar: Tanggal 05 bulan depan</span>
+                  <span class="text-[10px] text-slate-400">Batas bayar maksimal tanggal 20 setiap bulannya</span>
                 </div>
               </div>
             </div>

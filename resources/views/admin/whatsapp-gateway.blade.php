@@ -664,9 +664,15 @@
               </td>
               <td class="p-3.5 text-center">
                 @if($log->status === 'sent')
-                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                    <i class="fa-solid fa-circle-check text-[10px]"></i> Terkirim / Siap
-                  </span>
+                  @if(!empty($gatewayStatus['is_api_connected']))
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800" title="Pesan terkirim otomatis lewat API Gateway">
+                      <i class="fa-solid fa-circle-check text-[10px]"></i> Terkirim (API)
+                    </span>
+                  @else
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title="Pesan siap. Klik tombol hijau 'Kirim ke WA' untuk mengirim lewat WhatsApp">
+                      <i class="fa-solid fa-clock text-[10px]"></i> Siap Kirim (Klik WA)
+                    </span>
+                  @endif
                 @elseif($log->status === 'failed')
                   <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">
                     <i class="fa-solid fa-circle-xmark text-[10px]"></i> Gagal API
@@ -765,11 +771,22 @@
       </div>
 
       <div>
-        <label class="block text-xs font-bold text-slate-800 mb-1.5">API Token / Secret Key</label>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="block text-xs font-bold text-slate-800">API Token / Secret Key (Fonnte)</label>
+          @if(!empty(cache('wa_gateway_api_token')))
+            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              <i class="fa-solid fa-circle-check"></i> Token Aktif Terpasang
+            </span>
+          @else
+            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+              <i class="fa-solid fa-triangle-exclamation"></i> Token Belum Disimpan
+            </span>
+          @endif
+        </div>
         <input type="text" name="api_token" value="{{ cache('wa_gateway_api_token') }}"
-               placeholder="Contoh: abcd1234efgh5678 (dari dashboard fonnte.com / wablas.com)"
+               placeholder="Tempelkan token dari tombol 'Token' di fonnte.com di sini..."
                class="w-full text-xs font-mono rounded-xl border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 p-3 bg-slate-50">
-        <p class="text-[11px] text-slate-400 mt-1">Kosongkan jika Anda ingin menggunakan pengiriman manual langsung melalui WhatsApp Web.</p>
+        <p class="text-[11px] text-slate-400 mt-1">Klik tombol <b>Token</b> pada perangkat Fonnte Anda, lalu salin dan tempel di sini dan klik <b>Simpan Konfigurasi</b>.</p>
       </div>
 
       <div class="pt-4 border-t border-slate-100 space-y-3">
