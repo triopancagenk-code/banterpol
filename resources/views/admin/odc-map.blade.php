@@ -21,7 +21,7 @@
         background: #0b0e14;
     }
 
-    /* Dark Mode Filter OpenStreetMap Ringan */
+    /* Dark Mode Filter Ringan OSM */
     .map-dark-theme {
         filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
     }
@@ -35,7 +35,7 @@
         animation: cableFlow 1.5s linear infinite !important;
     }
 
-    /* Pewarnaan Solid Jalur Kabel (Bersih Tanpa Drop-Shadow) */
+    /* Pewarnaan Solid Jalur Kabel */
     .cable-kasegeran { stroke: #d946ef !important; }
     .cable-jatisaba  { stroke: #a3e635 !important; }
     .cable-pageraji  { stroke: #00f3ff !important; }
@@ -45,7 +45,7 @@
     .cable-cikidang  { stroke: #facc15 !important; }
     .cable-default   { stroke: #ffffff !important; }
 
-    /* Ikon Tiang Bendera Solid Biasa (Bebas Drop-Shadow & Bebas Efek Silau) */
+    /* Ikon Tiang Bendera Solid Tanpa Glow */
     .flag-pole-icon {
         width: 16px;
         height: 16px;
@@ -59,18 +59,25 @@
         fill: #facc15;
     }
 
-    /* Label Nama Klien & ODP */
+    /* Style Dasar Label Nama */
     .client-label {
-        background: rgba(10, 15, 24, 0.9) !important;
-        border: 1px solid rgba(0, 243, 255, 0.4) !important;
+        background: rgba(10, 15, 24, 0.92) !important;
+        border: 1px solid rgba(0, 243, 255, 0.5) !important;
         color: #e0f2fe !important;
-        font-size: 10px !important;
-        font-weight: 500 !important;
-        padding: 1px 5px !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        padding: 2px 6px !important;
         border-radius: 4px !important;
         white-space: nowrap;
+        pointer-events: none;
+        transition: opacity 0.2s ease-in-out;
     }
     .client-label::before {
+        display: none !important;
+    }
+
+    /* KONTROL ZOOM LEVEL: Sembunyikan label saat zoom jauh agar bebas lag */
+    .hide-map-labels .client-label {
         display: none !important;
     }
 
@@ -364,6 +371,17 @@
         map.closePopup();
     }
 
+    // Fungsi otomatis sembunyikan/tampilkan label teks berdasarkan level zoom
+    function updateLabelVisibility() {
+        var mapEl = document.getElementById('odcGisMap');
+        // Label hanya aktif jika zoom >= 16 (saat diperbesar dekat)
+        if (map.getZoom() < 16) {
+            mapEl.classList.add('hide-map-labels');
+        } else {
+            mapEl.classList.remove('hide-map-labels');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         map = L.map('odcGisMap', {
             preferCanvas: false,
@@ -506,8 +524,12 @@
         var kmlLayer = omnivore.kml('/peta_jaringan/doc.kml', null, customLayer)
             .on('ready', function() {
                 map.fitBounds(kmlLayer.getBounds());
+                updateLabelVisibility();
             })
             .addTo(map);
+
+        // Pantau zoom peta: otomatis sembunyikan/munculkan label saat di-zoom in/out
+        map.on('zoomend', updateLabelVisibility);
 
         map.on('click', function(e) {
             if (isDrawingCable) {
@@ -580,6 +602,7 @@
 
         setTimeout(function() {
             map.invalidateSize();
+            updateLabelVisibility();
         }, 300);
     });
 </script>
