@@ -37,6 +37,7 @@
 
     /* Pewarnaan Solid Jalur Kabel */
     .cable-main-server { stroke: #ef4444 !important; stroke-width: 3.5px !important; }
+    .cable-dropcore    { stroke: #38bdf8 !important; stroke-width: 2.5px !important; }
     .cable-kasegeran   { stroke: #d946ef !important; }
     .cable-jatisaba    { stroke: #a3e635 !important; }
     .cable-pageraji    { stroke: #00f3ff !important; }
@@ -60,7 +61,7 @@
         fill: #facc15;
     }
 
-    /* Ikon Server Utama / Node Server Baru */
+    /* Ikon Server Utama / Node Server */
     .server-tower-icon {
         width: 26px;
         height: 26px;
@@ -112,22 +113,15 @@
         display: block !important;
     }
 
-    /* ============================================================== */
-    /* LOCK TOTAL: MATIKAN SELURUH KLIK PADA ELEMEN PETA SAAT DRAWING */
-    /* ============================================================== */
-    .drawing-mode-active .leaflet-marker-pane,
-    .drawing-mode-active .leaflet-marker-icon,
-    .drawing-mode-active .leaflet-popup-pane,
-    .drawing-mode-active .leaflet-tooltip-pane,
-    .drawing-mode-active .leaflet-overlay-pane svg path:not(.cable-current-drawing),
-    .drawing-mode-active .leaflet-interactive:not(.cable-current-drawing) {
-        pointer-events: none !important;
-        cursor: crosshair !important;
-    }
+    /* Indikator Mode Tarik Kabel & Interaksi Snapping */
     .drawing-mode-active #odcGisMap {
         cursor: crosshair !important;
     }
+    .drawing-mode-active .snappable-node {
+        cursor: cell !important;
+    }
 
+    /* Banner Penarikan Kabel Interaktif */
     #cableDrawingBanner {
         display: none;
         position: absolute;
@@ -135,15 +129,34 @@
         left: 50%;
         transform: translateX(-50%);
         z-index: 1000;
-        background: rgba(124, 58, 237, 0.95);
+        background: rgba(15, 23, 42, 0.95);
         color: #fff;
         padding: 8px 18px;
-        border-radius: 20px;
+        border-radius: 30px;
         font-size: 12px;
-        font-weight: bold;
-        border: 1px solid #c4b5fd;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        font-weight: 600;
+        border: 1px solid #7c3aed;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        align-items: center;
+        gap: 12px;
     }
+
+    .banner-btn {
+        border: none;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: 0.2s;
+    }
+    .banner-btn-finish { background: #059669; color: #fff; }
+    .banner-btn-finish:hover { background: #10b981; }
+    .banner-btn-cancel { background: #dc2626; color: #fff; }
+    .banner-btn-cancel:hover { background: #ef4444; }
 
     .custom-overlay-btn {
         position: absolute;
@@ -179,11 +192,13 @@
     .legend-sym img { max-width: 16px; max-height: 16px; }
     .line-badge { width: 16px; height: 3px; border-radius: 2px; }
 
+    /* Popup Leaflet Style */
     .leaflet-popup-content-wrapper {
         background: #101726;
         color: #f3f4f6;
         border: 1px solid #1e293b;
         border-radius: 10px;
+        padding: 6px;
     }
     .leaflet-popup-tip { background: #101726; }
     
@@ -218,6 +233,7 @@
         color: #38bdf8 !important;
         border: 1px solid #374151;
     }
+
     .btn-delete-marker {
         width: 100%;
         background: #dc2626;
@@ -232,7 +248,74 @@
     }
     .btn-delete-marker:hover { background: #b91c1c; }
 
-    #cableColorModal {
+    .btn-edit-cable {
+        width: 100%;
+        background: #2563eb;
+        color: #ffffff !important;
+        margin-top: 6px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        border: none;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+    .btn-edit-cable:hover { background: #1d4ed8; }
+
+    /* Tombol Sambung Cepat Dropcore & Tiang */
+    .btn-connect-client {
+        width: 100%;
+        background: #059669;
+        color: #ffffff !important;
+        border: 1px solid #34d399;
+        margin-top: 6px;
+        padding: 7px 10px;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        box-shadow: 0 0 10px rgba(5, 150, 105, 0.4);
+    }
+    .btn-connect-client:hover { background: #10b981; }
+
+    .btn-connect-pole-step {
+        width: 100%;
+        background: #d97706;
+        color: #ffffff !important;
+        border: 1px solid #f59e0b;
+        margin-top: 6px;
+        padding: 6px 10px;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .btn-connect-pole-step:hover { background: #b45309; }
+
+    .btn-connect-pole-finish {
+        width: 100%;
+        background: #059669;
+        color: #ffffff !important;
+        border: 1px solid #34d399;
+        margin-top: 5px;
+        padding: 6px 10px;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .btn-connect-pole-finish:hover { background: #10b981; }
+
+    /* Modal Dialog Ubah / Tambah Kabel FO */
+    .cable-modal-backdrop {
         display: none;
         position: fixed;
         z-index: 9999;
@@ -240,7 +323,7 @@
         top: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0,0,0,0.6);
+        background: rgba(0,0,0,0.65);
         justify-content: center;
         align-items: center;
     }
@@ -249,7 +332,7 @@
         border: 1px solid #374151;
         padding: 16px 20px;
         border-radius: 8px;
-        width: 320px;
+        width: 330px;
         color: #fff;
         box-shadow: 0 10px 25px rgba(0,0,0,0.8);
     }
@@ -271,8 +354,11 @@
 <div class="card bg-dark border-0">
     <div class="card-body p-0">
         <div class="map-container">
+            <!-- Banner Mode Penarikan Kabel Interaktif -->
             <div id="cableDrawingBanner">
-                ⚡ Mode Tarik Kabel: Klik titik-titik rute, Klik 2x untuk Selesai
+                <span id="bannerCableStatus">⚡ Tarik Kabel Aktif: Arahkan kursor ke Pelanggan atau Tiang</span>
+                <button type="button" onclick="finishCableDrawing()" class="banner-btn banner-btn-finish">✓ Selesai</button>
+                <button type="button" onclick="cancelCableDrawing()" class="banner-btn banner-btn-cancel">✖ Batal</button>
             </div>
 
             <button class="custom-overlay-btn">Mode Malam: AKTIF</button>
@@ -308,6 +394,7 @@
 
                 <div style="font-weight: bold; margin: 8px 0 5px 0; color: #00ffff; font-size: 11px;">RUTE KABEL FO (DESA)</div>
                 <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #ef4444;"></div></div><span style="color: #fca5a5; font-weight: bold;">Main Feeder Sulis Tower</span></div>
+                <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #38bdf8;"></div></div><span style="color: #7dd3fc; font-weight: bold;">Dropcore Pelanggan</span></div>
                 <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #d946ef;"></div></div><span>Kasegeran (Ungu)</span></div>
                 <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #a3e635;"></div></div><span>Jatisaba (Lime)</span></div>
                 <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #00f3ff;"></div></div><span>Pageraji (Cyan)</span></div>
@@ -321,8 +408,8 @@
     </div>
 </div>
 
-<!-- Modal Pilihan Rute & Warna Kabel FO -->
-<div id="cableColorModal">
+<!-- Modal Tambah Kabel FO Baru -->
+<div id="cableColorModal" class="cable-modal-backdrop">
     <div class="cable-modal-content">
         <h6 style="color: #00ffff; font-size: 13px; font-weight: bold; margin-bottom: 10px;">Tambah Jalur Kabel FO</h6>
         <label style="font-size: 11px; color: #9ca3af;">Nama Jalur Kabel:</label>
@@ -331,6 +418,7 @@
         <label style="font-size: 11px; color: #9ca3af;">Warna / Wilayah Desa:</label>
         <select id="cableClassSelect" class="cable-select-input">
             <option value="cable-default">Putih (Backbone Umum)</option>
+            <option value="cable-dropcore">Cyan Biru (Dropcore Pelanggan)</option>
             <option value="cable-main-server">Merah (Feeder Server Utama)</option>
             <option value="cable-kasegeran">Ungu (Kasegeran)</option>
             <option value="cable-jatisaba">Lime (Jatisaba)</option>
@@ -344,6 +432,36 @@
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
             <button type="button" onclick="cancelCableModal()" style="background: #374151; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Batal</button>
             <button type="button" onclick="confirmCableModal()" style="background: #7c3aed; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">Mulai Tarik</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Edit Warna & Nama Kabel FO Eksisting -->
+<div id="editCableModal" class="cable-modal-backdrop">
+    <div class="cable-modal-content">
+        <h6 style="color: #38bdf8; font-size: 13px; font-weight: bold; margin-bottom: 10px;">🎨 Edit Warna & Nama Kabel FO</h6>
+        <input type="hidden" id="editCableLayerId">
+        
+        <label style="font-size: 11px; color: #9ca3af;">Nama Jalur Kabel:</label>
+        <input type="text" id="editCableNameInput" class="cable-select-input">
+
+        <label style="font-size: 11px; color: #9ca3af;">Pilih Warna / Rute Desa:</label>
+        <select id="editCableClassSelect" class="cable-select-input">
+            <option value="cable-default">Putih (Backbone Umum)</option>
+            <option value="cable-dropcore">Cyan Biru (Dropcore Pelanggan)</option>
+            <option value="cable-main-server">Merah (Feeder Server Utama)</option>
+            <option value="cable-kasegeran">Ungu (Kasegeran)</option>
+            <option value="cable-jatisaba">Lime (Jatisaba)</option>
+            <option value="cable-pageraji">Cyan (Pageraji)</option>
+            <option value="cable-karangendep">Oranye (Karangendep)</option>
+            <option value="cable-panusupan">Hijau (Panusupan)</option>
+            <option value="cable-cipete">Pink (Cipete)</option>
+            <option value="cable-cikidang">Kuning (Cikidang / Batuanten)</option>
+        </select>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" onclick="closeEditCableModal()" style="background: #374151; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Batal</button>
+            <button type="button" onclick="saveEditedCable()" style="background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">Simpan Perubahan</button>
         </div>
     </div>
 </div>
@@ -366,6 +484,9 @@
     var pendingCableLat = null;
     var pendingCableLng = null;
 
+    var cableOriginType = null;
+    var cableOriginName = '';
+
     function copyCoordinate(lat, lng) {
         var text = lat + ', ' + lng;
         navigator.clipboard.writeText(text).then(function() {
@@ -384,51 +505,259 @@
         }
     }
 
-    function startCableFromMarker(lat, lng, defaultPrefix) {
+    // Modal Edit Warna Kabel
+    function openEditCableModal(lineId, currentName) {
         map.closePopup();
-        pendingCableLat = lat;
-        pendingCableLng = lng;
-        document.getElementById('cableNameInput').value = defaultPrefix ? (defaultPrefix + ' - ') : '';
-        document.getElementById('cableColorModal').style.display = 'flex';
+        document.getElementById('editCableLayerId').value = lineId;
+        document.getElementById('editCableNameInput').value = currentName;
+        document.getElementById('editCableModal').style.display = 'flex';
     }
 
-    // Interceptor klik layer: Jika sedang mode tarik kabel, abaikan popup dan teruskan sebagai titik jalur kabel
-    function attachDeletablePopup(layer, title, subtitle, canDrawCable, lat, lng) {
-        var layerId = L.stamp(layer);
-        markersList[layerId] = layer;
+    function closeEditCableModal() {
+        document.getElementById('editCableModal').style.display = 'none';
+    }
 
-        var drawCableBtnHtml = '';
-        if (canDrawCable && lat && lng) {
-            drawCableBtnHtml = `
-                <button type="button" onclick="startCableFromMarker(${lat}, ${lng}, '${title}')" style="width: 100%; background: #7c3aed; color: #ffffff !important; margin-top: 6px; padding: 6px 8px; border-radius: 4px; border: none; font-size: 11px; font-weight: 600; cursor: pointer;">
-                    ⚡ Tarik Kabel FO Dari Sini
-                </button>
-            `;
+    function saveEditedCable() {
+        var lineId = document.getElementById('editCableLayerId').value;
+        var newName = document.getElementById('editCableNameInput').value.trim() || 'Jalur Kabel FO';
+        var newClass = document.getElementById('editCableClassSelect').value;
+
+        var layer = markersList[lineId];
+        if (layer && layer instanceof L.Polyline) {
+            // Hapus semua class warna lama lalu terapkan class warna baru
+            var el = layer.getElement ? layer.getElement() : null;
+            if (el) {
+                el.setAttribute('class', 'leaflet-interactive cable-flow ' + newClass);
+            }
+            layer.options.className = 'cable-flow ' + newClass;
+
+            // Update konten popup kabel
+            layer.bindPopup(buildCablePopupContent(lineId, newName));
         }
 
-        var content = `
-            <div style="font-size: 12px; min-width: 175px;">
-                <div style="font-weight: bold; color: #00ffff; font-size: 13px;">${title}</div>
-                <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">${subtitle}</div>
-                ${drawCableBtnHtml}
-                <button type="button" onclick="removeMarker(${layerId})" class="btn-delete-marker">
-                    🗑️ Hapus Titik Ini
+        closeEditCableModal();
+    }
+
+    function buildCablePopupContent(lineId, name) {
+        return `
+            <div style="font-size: 12px; min-width: 160px;">
+                <b style="color: #38bdf8;">${name}</b><br>
+                <button type="button" onclick="openEditCableModal(${lineId}, '${name.replace(/'/g, "\\'")}')" class="btn-edit-cable">
+                    🎨 Ubah Warna / Desa
+                </button>
+                <button type="button" onclick="removeMarker(${lineId})" class="btn-delete-marker">
+                    🗑️ Putus / Hapus Kabel Ini
                 </button>
             </div>
         `;
-        layer.bindPopup(content);
+    }
 
-        // Handler klik tingkat elemen untuk memblokir pembukaan popup jika sedang menggambar
+    function startCableFromMarker(lat, lng, defaultPrefix, nodeType) {
+        map.closePopup();
+        pendingCableLat = lat;
+        pendingCableLng = lng;
+        cableOriginType = nodeType || 'node';
+        cableOriginName = defaultPrefix || '';
+
+        var nameInput = document.getElementById('cableNameInput');
+        var selectClass = document.getElementById('cableClassSelect');
+
+        if (nodeType === 'odp') {
+            nameInput.value = 'Dropcore: ' + defaultPrefix + ' ke ';
+            selectClass.value = 'cable-dropcore';
+        } else {
+            nameInput.value = defaultPrefix ? (defaultPrefix + ' ke ') : '';
+        }
+
+        document.getElementById('cableColorModal').style.display = 'flex';
+    }
+
+    function connectOdpToClient(clientLat, clientLng, clientName) {
+        if (!isDrawingCable || !tempCablePolyline) return;
+
+        cablePoints.push([clientLat, clientLng]);
+        tempCablePolyline.setLatLngs(cablePoints);
+
+        // Pencegahan nama berulang (misal: "Dropcore: ODP ke Yuli ke Yuli")
+        if (!currentCableName.includes(clientName)) {
+            if (currentCableName.endsWith(' ke ')) {
+                currentCableName += clientName;
+            } else {
+                currentCableName += ' ke ' + clientName;
+            }
+        }
+
+        map.closePopup();
+        finishCableDrawing();
+    }
+
+    function passThroughPole(poleLat, poleLng, poleName) {
+        if (!isDrawingCable || !tempCablePolyline) return;
+
+        cablePoints.push([poleLat, poleLng]);
+        tempCablePolyline.setLatLngs(cablePoints);
+        map.closePopup();
+
+        document.getElementById('bannerCableStatus').innerHTML = `⚡ Tersambung ke <b>${poleName}</b>: Lanjutkan ke titik/tiang/pelanggan berikutnya`;
+    }
+
+    function finishAtPole(poleLat, poleLng, poleName) {
+        if (!isDrawingCable || !tempCablePolyline) return;
+
+        cablePoints.push([poleLat, poleLng]);
+        tempCablePolyline.setLatLngs(cablePoints);
+
+        if (!currentCableName.includes(poleName)) {
+            if (currentCableName.endsWith(' ke ')) {
+                currentCableName += poleName;
+            } else {
+                currentCableName += ' ke ' + poleName;
+            }
+        }
+
+        map.closePopup();
+        finishCableDrawing();
+    }
+
+    function finishCableDrawing() {
+        if (!isDrawingCable || !tempCablePolyline) return;
+
+        if (cablePoints.length < 2) {
+            alert('Titik kabel minimal harus ada 2 titik!');
+            return;
+        }
+
+        var lineId = L.stamp(tempCablePolyline);
+        markersList[lineId] = tempCablePolyline;
+
+        tempCablePolyline.bindPopup(buildCablePopupContent(lineId, currentCableName));
+
+        tempCablePolyline.on('mouseover', function() { if (!isDrawingCable) this.setStyle({ weight: 6 }); });
+        tempCablePolyline.on('mouseout', function() { if (!isDrawingCable) this.setStyle({ weight: 3 }); });
+
+        isDrawingCable = false;
+        cableOriginType = null;
+        cableOriginName = '';
+        document.getElementById('odcGisMap').classList.remove('drawing-mode-active');
+        cablePoints = [];
+        tempCablePolyline = null;
+        document.getElementById('cableDrawingBanner').style.display = 'none';
+    }
+
+    function cancelCableDrawing() {
+        if (isDrawingCable && tempCablePolyline) {
+            map.removeLayer(tempCablePolyline);
+        }
+        isDrawingCable = false;
+        cableOriginType = null;
+        cableOriginName = '';
+        document.getElementById('odcGisMap').classList.remove('drawing-mode-active');
+        cablePoints = [];
+        tempCablePolyline = null;
+        document.getElementById('cableDrawingBanner').style.display = 'none';
+    }
+
+    function attachDeletablePopup(layer, title, subtitle, canDrawCable, lat, lng, nodeType) {
+        var layerId = L.stamp(layer);
+        markersList[layerId] = layer;
+
+        var hoverTimeout = null;
+
+        function renderPopupContent() {
+            if (isDrawingCable && nodeType === 'client') {
+                return `
+                    <div class="hover-action-card" style="font-size: 12px; min-width: 185px;">
+                        <div style="font-weight: bold; color: #38bdf8; font-size: 13px;">Pelanggan: ${title}</div>
+                        <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">
+                            ${cableOriginType === 'odp' ? 'Sumber: <b>' + cableOriginName + '</b>' : 'Sambungkan jalur'}
+                        </div>
+                        <button type="button" onclick="connectOdpToClient(${lat}, ${lng}, '${title}')" class="btn-connect-client">
+                            🔌 Sambungkan ke ${title}
+                        </button>
+                    </div>
+                `;
+            }
+
+            if (isDrawingCable && nodeType === 'pole') {
+                return `
+                    <div class="hover-action-card" style="font-size: 12px; min-width: 190px;">
+                        <div style="font-weight: bold; color: #facc15; font-size: 13px;">Tiang: ${title}</div>
+                        <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Pilihan Sambungan Tiang:</div>
+                        <button type="button" onclick="passThroughPole(${lat}, ${lng}, '${title}')" class="btn-connect-pole-step">
+                            🚩 Sambungkan & Lewati Tiang
+                        </button>
+                        <button type="button" onclick="finishAtPole(${lat}, ${lng}, '${title}')" class="btn-connect-pole-finish">
+                            🏁 Sambungkan & Selesai di Tiang
+                        </button>
+                    </div>
+                `;
+            }
+
+            var drawCableBtnHtml = '';
+            if (canDrawCable && lat && lng) {
+                drawCableBtnHtml = `
+                    <button type="button" onclick="startCableFromMarker(${lat}, ${lng}, '${title}', '${nodeType}')" style="width: 100%; background: #7c3aed; color: #ffffff !important; margin-top: 6px; padding: 6px 8px; border-radius: 4px; border: none; font-size: 11px; font-weight: 600; cursor: pointer;">
+                        ⚡ Tarik Kabel FO Dari Sini
+                    </button>
+                `;
+            }
+
+            return `
+                <div class="hover-action-card" style="font-size: 12px; min-width: 175px;">
+                    <div style="font-weight: bold; color: #00ffff; font-size: 13px;">${title}</div>
+                    <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">${subtitle}</div>
+                    ${drawCableBtnHtml}
+                    <button type="button" onclick="removeMarker(${layerId})" class="btn-delete-marker">
+                        🗑️ Hapus Titik Ini
+                    </button>
+                </div>
+            `;
+        }
+
+        layer.bindPopup(renderPopupContent, {
+            autoPan: false,
+            closeButton: false,
+            className: 'interactive-hover-popup'
+        });
+
+        layer.on('mouseover', function(e) {
+            if (isDrawingCable && (nodeType !== 'client' && nodeType !== 'pole')) return;
+
+            clearTimeout(hoverTimeout);
+            layer.setPopupContent(renderPopupContent());
+            layer.openPopup();
+
+            var popupEl = layer.getPopup() ? layer.getPopup().getElement() : null;
+            if (popupEl) {
+                popupEl.addEventListener('mouseenter', function() {
+                    clearTimeout(hoverTimeout);
+                });
+                popupEl.addEventListener('mouseleave', function() {
+                    hoverTimeout = setTimeout(function() {
+                        layer.closePopup();
+                    }, 250);
+                });
+            }
+        });
+
+        layer.on('mouseout', function(e) {
+            hoverTimeout = setTimeout(function() {
+                layer.closePopup();
+            }, 300);
+        });
+
         layer.on('click', function(e) {
             if (isDrawingCable) {
                 if (e.originalEvent) {
                     e.originalEvent.stopPropagation();
                     e.originalEvent.preventDefault();
                 }
-                layer.closePopup();
-                // Tambahkan titik koordinat marker ini ke jalur kabel yang sedang ditarik
-                cablePoints.push([e.latlng.lat, e.latlng.lng]);
-                tempCablePolyline.setLatLngs(cablePoints);
+                
+                if (nodeType === 'client') {
+                    connectOdpToClient(lat, lng, title);
+                } else if (nodeType === 'pole') {
+                    passThroughPole(lat, lng, title);
+                }
                 return false;
             }
         });
@@ -445,16 +774,20 @@
 
         document.getElementById('cableColorModal').style.display = 'none';
 
-        // 1. Set status penarikan kabel
         isDrawingCable = true;
-
-        // 2. Kunci seluruh pointer event di layer peta & tutup popup yang mungkin terbuka
         document.getElementById('odcGisMap').classList.add('drawing-mode-active');
         map.closePopup();
 
-        // 3. Titik awal kabel
         cablePoints = [[pendingCableLat, pendingCableLng]];
-        document.getElementById('cableDrawingBanner').style.display = 'block';
+        
+        var bannerStatus = document.getElementById('bannerCableStatus');
+        if (cableOriginType === 'odp') {
+            bannerStatus.innerHTML = `⚡ Tarik Dropcore dari <b>${cableOriginName}</b>: Arahkan ke Pelanggan atau Tiang`;
+        } else {
+            bannerStatus.innerHTML = `⚡ Mode Tarik Kabel: Klik rute atau arahkan ke Tiang / Pelanggan`;
+        }
+
+        document.getElementById('cableDrawingBanner').style.display = 'flex';
 
         tempCablePolyline = L.polyline(cablePoints, {
             weight: 3,
@@ -469,31 +802,31 @@
             if (name === null) return;
             marker = L.marker([lat, lng], { icon: clientIcon }).addTo(map);
             marker.bindTooltip(name, { permanent: true, direction: 'bottom', offset: [0, 10], className: 'client-label' });
-            attachDeletablePopup(marker, name, 'Klien Baru (' + lat + ', ' + lng + ')', false);
+            attachDeletablePopup(marker, name, 'Klien Baru (' + lat + ', ' + lng + ')', false, lat, lng, 'client');
             marker.openPopup();
         } else if (type === 'odp') {
             var odpName = prompt('Masukkan Kode/Nama ODP:', 'ODP-NEW-01');
             if (odpName === null) return;
             marker = L.marker([lat, lng], { icon: odpIcon }).addTo(map);
             marker.bindTooltip(odpName, { permanent: true, direction: 'bottom', offset: [0, 12], className: 'client-label' });
-            attachDeletablePopup(marker, odpName, 'ODP Baru (' + lat + ', ' + lng + ')', true, lat, lng);
+            attachDeletablePopup(marker, odpName, 'ODP Baru (' + lat + ', ' + lng + ')', true, lat, lng, 'odp');
             marker.openPopup();
         } else if (type === 'pole') {
             var poleName = prompt('Masukkan Kode Tiang (contoh: T-TF 15):', 'T-TF New');
             if (poleName === null) return;
             marker = L.marker([lat, lng], { icon: flagPoleIcon }).addTo(map);
             marker.bindTooltip(poleName, { permanent: true, direction: 'bottom', offset: [0, 8], className: 'client-label' });
-            attachDeletablePopup(marker, poleName, 'Tiang Baru (' + lat + ', ' + lng + ')', true, lat, lng);
+            attachDeletablePopup(marker, poleName, 'Tiang Baru (' + lat + ', ' + lng + ')', true, lat, lng, 'pole');
             marker.openPopup();
         } else if (type === 'server') {
             var serverName = prompt('Masukkan Nama Server/POP:', 'SERVER UTAMA / POP');
             if (serverName === null) return;
             marker = L.marker([lat, lng], { icon: serverTowerIcon }).addTo(map);
             marker.bindTooltip(serverName, { permanent: true, direction: 'top', offset: [0, -14], className: 'client-label server-label' });
-            attachDeletablePopup(marker, serverName, 'Server Node (' + lat + ', ' + lng + ')', true, lat, lng);
+            attachDeletablePopup(marker, serverName, 'Server Node (' + lat + ', ' + lng + ')', true, lat, lng, 'server');
             marker.openPopup();
         } else if (type === 'cable') {
-            startCableFromMarker(lat, lng, '');
+            startCableFromMarker(lat, lng, '', 'free');
         }
 
         map.closePopup();
@@ -511,12 +844,14 @@
     document.addEventListener('DOMContentLoaded', function() {
         map = L.map('odcGisMap', {
             preferCanvas: false,
-            doubleClickZoom: false
+            doubleClickZoom: false,
+            maxZoom: 22
         }).setView([-7.435926, 109.153747], 17);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19,
+            maxNativeZoom: 19,
+            maxZoom: 22,
             className: 'map-dark-theme'
         }).addTo(map);
 
@@ -524,25 +859,27 @@
             iconUrl: '/peta_jaringan/files/odp.png',
             iconSize: [22, 22],
             iconAnchor: [11, 11],
-            popupAnchor: [0, -11]
+            popupAnchor: [0, -11],
+            className: 'snappable-node'
         });
 
         clientIcon = L.icon({
             iconUrl: '/peta_jaringan/files/location_4985966.png',
             iconSize: [20, 20],
             iconAnchor: [10, 10],
-            popupAnchor: [0, -10]
+            popupAnchor: [0, -10],
+            className: 'snappable-node'
         });
 
         flagPoleIcon = L.divIcon({
-            className: '',
+            className: 'snappable-node',
             html: '<div class="flag-pole-icon"><svg viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></div>',
             iconSize: [16, 16],
             iconAnchor: [4, 16]
         });
 
         serverTowerIcon = L.divIcon({
-            className: '',
+            className: 'snappable-node',
             html: '<div class="server-tower-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14h2v2h-2v-2zm0-10h2v8h-2V6z"/></svg></div>',
             iconSize: [26, 26],
             iconAnchor: [13, 13]
@@ -559,7 +896,7 @@
             offset: [0, -14],
             className: 'client-label server-label'
         });
-        attachDeletablePopup(serverMarker, 'SERVER UTAMA NOC', 'Lokasi: Sulis Tower (-7.435926, 109.153747)', true, sulisTowerCoords[0], sulisTowerCoords[1]);
+        attachDeletablePopup(serverMarker, 'SERVER UTAMA NOC', 'Lokasi: Sulis Tower (-7.435926, 109.153747)', true, sulisTowerCoords[0], sulisTowerCoords[1], 'server');
 
         var serverCablePolyline = L.polyline([sulisTowerCoords, nearestPoleCoords], {
             weight: 3.5,
@@ -568,26 +905,9 @@
         
         var serverCableId = L.stamp(serverCablePolyline);
         markersList[serverCableId] = serverCablePolyline;
-        serverCablePolyline.bindPopup(`
-            <div style="font-size: 12px; min-width: 150px;">
-                <b style="color: #ef4444;">Kabel Feeder Server Utama</b><br>
-                <span>Rute: Sulis Tower ke Tiang Terdekat</span><br>
-                <button type="button" onclick="removeMarker(${serverCableId})" class="btn-delete-marker">
-                    🗑️ Hapus Kabel Ini
-                </button>
-            </div>
-        `);
+        serverCablePolyline.bindPopup(buildCablePopupContent(serverCableId, 'Kabel Feeder Server Utama (Sulis Tower)'));
         serverCablePolyline.on('mouseover', function() { if (!isDrawingCable) this.setStyle({ weight: 7 }); });
         serverCablePolyline.on('mouseout', function() { if (!isDrawingCable) this.setStyle({ weight: 3.5 }); });
-        serverCablePolyline.on('click', function(e) {
-            if (isDrawingCable) {
-                if (e.originalEvent) { e.originalEvent.stopPropagation(); e.originalEvent.preventDefault(); }
-                serverCablePolyline.closePopup();
-                cablePoints.push([e.latlng.lat, e.latlng.lng]);
-                tempCablePolyline.setLatLngs(cablePoints);
-                return false;
-            }
-        });
 
         // Layer KML Infrastruktur
         var customLayer = L.geoJson(null, {
@@ -598,7 +918,6 @@
                 var desc = (props.description || '').toLowerCase();
                 var styleUrl = (props.styleUrl || '').toLowerCase();
 
-                // Deteksi ODP
                 if (nameLower.includes('odp') || desc.includes('odp') || styleUrl.includes('odp')) {
                     var marker = L.marker(latlng, { icon: odpIcon });
                     if (name) {
@@ -609,11 +928,10 @@
                             className: 'client-label'
                         });
                     }
-                    attachDeletablePopup(marker, name || 'ODP', 'Lat: ' + latlng.lat.toFixed(6) + ', Lng: ' + latlng.lng.toFixed(6), true, latlng.lat, latlng.lng);
+                    attachDeletablePopup(marker, name || 'ODP', 'Lat: ' + latlng.lat.toFixed(6) + ', Lng: ' + latlng.lng.toFixed(6), true, latlng.lat, latlng.lng, 'odp');
                     return marker;
                 }
                 
-                // Deteksi Tiang
                 if (
                     nameLower.includes('untitled placemark') ||
                     nameLower.includes('t-tf') ||
@@ -635,11 +953,10 @@
                             className: 'client-label'
                         });
                     }
-                    attachDeletablePopup(marker, name || 'Tiang', 'Lat: ' + latlng.lat.toFixed(6) + ', Lng: ' + latlng.lng.toFixed(6), true, latlng.lat, latlng.lng);
+                    attachDeletablePopup(marker, name || 'Tiang', 'Lat: ' + latlng.lat.toFixed(6) + ', Lng: ' + latlng.lng.toFixed(6), true, latlng.lat, latlng.lng, 'pole');
                     return marker;
                 }
 
-                // Default: Klien
                 var marker = L.marker(latlng, { icon: clientIcon });
                 if (name) {
                     marker.bindTooltip(name, {
@@ -649,7 +966,7 @@
                         className: 'client-label'
                     });
                 }
-                attachDeletablePopup(marker, name || 'Klien', 'Lat: ' + latlng.lat.toFixed(6) + ', Lng: ' + latlng.lng.toFixed(6), false);
+                attachDeletablePopup(marker, name || 'Klien', 'Lat: ' + latlng.lat.toFixed(6) + ', Lng: ' + latlng.lng.toFixed(6), false, latlng.lat, latlng.lng, 'client');
                 return marker;
             },
             style: function (feature) {
@@ -659,7 +976,8 @@
 
                 var colorClass = 'cable-default';
 
-                if (name.includes('kasegeran') || desc.includes('kasegeran')) colorClass = 'cable-kasegeran';
+                if (name.includes('dropcore') || desc.includes('dropcore')) colorClass = 'cable-dropcore';
+                else if (name.includes('kasegeran') || desc.includes('kasegeran')) colorClass = 'cable-kasegeran';
                 else if (name.includes('jatisaba') || desc.includes('jatisaba')) colorClass = 'cable-jatisaba';
                 else if (name.includes('pageraji') || desc.includes('pageraji')) colorClass = 'cable-pageraji';
                 else if (name.includes('karangendep') || desc.includes('karangendep')) colorClass = 'cable-karangendep';
@@ -677,26 +995,10 @@
                     var lineId = L.stamp(layer);
                     markersList[lineId] = layer;
 
-                    layer.bindPopup(`
-                        <div style="font-size: 12px; min-width: 140px;">
-                            <b>${feature.properties.name || 'Jalur Kabel FO'}</b><br>
-                            <button type="button" onclick="removeMarker(${lineId})" class="btn-delete-marker">
-                                🗑️ Hapus Kabel Ini
-                            </button>
-                        </div>
-                    `);
+                    layer.bindPopup(buildCablePopupContent(lineId, feature.properties.name || 'Jalur Kabel FO'));
 
                     layer.on('mouseover', function() { if (!isDrawingCable) this.setStyle({ weight: 6 }); });
                     layer.on('mouseout', function() { if (!isDrawingCable) this.setStyle({ weight: 3 }); });
-                    layer.on('click', function(e) {
-                        if (isDrawingCable) {
-                            if (e.originalEvent) { e.originalEvent.stopPropagation(); e.originalEvent.preventDefault(); }
-                            layer.closePopup();
-                            cablePoints.push([e.latlng.lat, e.latlng.lng]);
-                            tempCablePolyline.setLatLngs(cablePoints);
-                            return false;
-                        }
-                    });
                 }
             }
         });
@@ -709,9 +1011,7 @@
 
         map.on('zoomend', updateLabelVisibility);
 
-        // KLIK PADA PETA
         map.on('click', function(e) {
-            // Jika sedang menggambar kabel, langsung catat titik koordinat tanpa memunculkan popup apapun
             if (isDrawingCable) {
                 cablePoints.push([e.latlng.lat, e.latlng.lng]);
                 tempCablePolyline.setLatLngs(cablePoints);
@@ -759,42 +1059,11 @@
                 .openOn(map);
         });
 
-        // KLIK DUA KALI: SELESAI TARIK KABEL
         map.on('dblclick', function(e) {
             if (isDrawingCable && tempCablePolyline) {
                 cablePoints.push([e.latlng.lat, e.latlng.lng]);
                 tempCablePolyline.setLatLngs(cablePoints);
-
-                var lineId = L.stamp(tempCablePolyline);
-                markersList[lineId] = tempCablePolyline;
-
-                tempCablePolyline.bindPopup(`
-                    <div style="font-size: 12px; min-width: 140px;">
-                        <b>${currentCableName}</b><br>
-                        <button type="button" onclick="removeMarker(${lineId})" class="btn-delete-marker">
-                            🗑️ Hapus Kabel Ini
-                        </button>
-                    </div>
-                `);
-
-                tempCablePolyline.on('mouseover', function() { if (!isDrawingCable) this.setStyle({ weight: 6 }); });
-                tempCablePolyline.on('mouseout', function() { if (!isDrawingCable) this.setStyle({ weight: 3 }); });
-                tempCablePolyline.on('click', function(ev) {
-                    if (isDrawingCable) {
-                        if (ev.originalEvent) { ev.originalEvent.stopPropagation(); ev.originalEvent.preventDefault(); }
-                        tempCablePolyline.closePopup();
-                        cablePoints.push([ev.latlng.lat, ev.latlng.lng]);
-                        tempCablePolyline.setLatLngs(cablePoints);
-                        return false;
-                    }
-                });
-
-                // Cabut status penarikan kabel & kembalikan klik marker seperti semula
-                isDrawingCable = false;
-                document.getElementById('odcGisMap').classList.remove('drawing-mode-active');
-                cablePoints = [];
-                tempCablePolyline = null;
-                document.getElementById('cableDrawingBanner').style.display = 'none';
+                finishCableDrawing();
             }
         });
 
