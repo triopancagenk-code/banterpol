@@ -12,7 +12,6 @@
         min-height: 650px;
         border-radius: 1rem;
         overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         position: relative;
         background: #0b0e14;
     }
@@ -22,12 +21,12 @@
         background: #0b0e14;
     }
 
-    /* Dark Mode Filter OpenStreetMap */
+    /* Dark Mode Filter OpenStreetMap Ringan */
     .map-dark-theme {
         filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
     }
 
-    /* Animasi Kabel Fiber Optik */
+    /* Animasi Aliran Kabel FO (Tanpa Glow / Drop-shadow) */
     @keyframes cableFlow {
         to { stroke-dashoffset: -28; }
     }
@@ -36,48 +35,46 @@
         animation: cableFlow 1.5s linear infinite !important;
     }
 
-    /* Pewarnaan Jalur Kabel Sesuai Desa */
-    .cable-kasegeran { stroke: #d946ef !important; filter: drop-shadow(0 0 5px #d946ef) drop-shadow(0 0 8px #a855f7); }
-    .cable-jatisaba  { stroke: #a3e635 !important; filter: drop-shadow(0 0 5px #a3e635) drop-shadow(0 0 8px #84cc16); }
-    .cable-pageraji  { stroke: #00f3ff !important; filter: drop-shadow(0 0 5px #00f3ff) drop-shadow(0 0 8px #0284c7); }
-    .cable-karangendep { stroke: #fb923c !important; filter: drop-shadow(0 0 5px #fb923c) drop-shadow(0 0 8px #ea580c); }
-    .cable-panusupan { stroke: #22c55e !important; filter: drop-shadow(0 0 5px #22c55e) drop-shadow(0 0 8px #16a34a); }
-    .cable-cipete    { stroke: #f43f5e !important; filter: drop-shadow(0 0 5px #f43f5e); }
-    .cable-cikidang  { stroke: #facc15 !important; filter: drop-shadow(0 0 5px #facc15); }
-    .cable-default   { stroke: #ffffff !important; filter: drop-shadow(0 0 4px #ffffff); }
+    /* Pewarnaan Solid Jalur Kabel (Bersih Tanpa Drop-Shadow) */
+    .cable-kasegeran { stroke: #d946ef !important; }
+    .cable-jatisaba  { stroke: #a3e635 !important; }
+    .cable-pageraji  { stroke: #00f3ff !important; }
+    .cable-karangendep { stroke: #fb923c !important; }
+    .cable-panusupan { stroke: #22c55e !important; }
+    .cable-cipete    { stroke: #f43f5e !important; }
+    .cable-cikidang  { stroke: #facc15 !important; }
+    .cable-default   { stroke: #ffffff !important; }
 
-    /* Ikon Bendera Tiang */
+    /* Ikon Tiang Bendera Solid Biasa (Bebas Drop-Shadow & Bebas Efek Silau) */
     .flag-pole-icon {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        filter: drop-shadow(0 0 4px #ffeb3b) drop-shadow(0 0 8px #f57f17);
     }
     .flag-pole-icon svg {
         width: 100%;
         height: 100%;
-        fill: #ffeb3b;
+        fill: #facc15;
     }
 
-    /* Tooltip / Label Nama Klien */
+    /* Label Nama Klien & ODP */
     .client-label {
-        background: rgba(10, 15, 24, 0.85) !important;
+        background: rgba(10, 15, 24, 0.9) !important;
         border: 1px solid rgba(0, 243, 255, 0.4) !important;
         color: #e0f2fe !important;
         font-size: 10px !important;
         font-weight: 500 !important;
         padding: 1px 5px !important;
         border-radius: 4px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important;
         white-space: nowrap;
     }
     .client-label::before {
         display: none !important;
     }
 
-    /* Banner Status Menggambar Kabel */
+    /* Banner Penarikan Kabel Interaktif */
     #cableDrawingBanner {
         display: none;
         position: absolute;
@@ -91,7 +88,6 @@
         border-radius: 20px;
         font-size: 12px;
         font-weight: bold;
-        box-shadow: 0 4px 15px rgba(124, 58, 237, 0.5);
         border: 1px solid #c4b5fd;
     }
 
@@ -108,7 +104,6 @@
         border-radius: 6px;
         font-weight: bold;
         font-size: 12px;
-        box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
     }
 
     /* Legenda Topologi */
@@ -121,12 +116,10 @@
         border-radius: 8px;
         padding: 10px 14px;
         color: #ffffff;
-        font-family: inherit;
         font-size: 11px;
         max-height: 55vh;
         overflow-y: auto;
         z-index: 1000;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.6);
     }
     .legend-row {
         display: flex;
@@ -157,7 +150,6 @@
         color: #f3f4f6;
         border: 1px solid #1e293b;
         border-radius: 10px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7);
     }
     .leaflet-popup-tip {
         background: #101726;
@@ -181,9 +173,7 @@
         cursor: pointer;
         transition: opacity 0.2s;
     }
-    .btn-act-popup:hover {
-        opacity: 0.85;
-    }
+    .btn-act-popup:hover { opacity: 0.85; }
     .btn-add-client { background: #2563eb; color: #ffffff !important; }
     .btn-add-odp { background: #059669; color: #ffffff !important; }
     .btn-add-pole { background: #d97706; color: #ffffff !important; }
@@ -205,11 +195,8 @@
         font-size: 11px;
         font-weight: 600;
         cursor: pointer;
-        transition: background 0.2s;
     }
-    .btn-delete-marker:hover {
-        background: #b91c1c;
-    }
+    .btn-delete-marker:hover { background: #b91c1c; }
 </style>
 @endpush
 
@@ -217,7 +204,6 @@
 <div class="card bg-dark border-0">
     <div class="card-body p-0">
         <div class="map-container">
-            <!-- Indikator mode gambar kabel -->
             <div id="cableDrawingBanner">
                 ⚡ Mode Tarik Kabel: Klik titik-titik rute, Klik 2x untuk Selesai
             </div>
@@ -226,7 +212,6 @@
             
             <div id="odcGisMap"></div>
 
-            <!-- UI Legenda -->
             <div class="legend-box">
                 <div style="font-weight: bold; margin-bottom: 6px; color: #00ffff; font-size: 11px;">PERANGKAT</div>
                 <div class="legend-row">
@@ -247,38 +232,14 @@
                 </div>
 
                 <div style="font-weight: bold; margin: 8px 0 5px 0; color: #00ffff; font-size: 11px;">RUTE KABEL FO (DESA)</div>
-                <div class="legend-row">
-                    <div class="legend-sym"><div class="line-badge" style="background: #d946ef; box-shadow: 0 0 4px #d946ef;"></div></div>
-                    <span>Kasegeran (Ungu)</span>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-sym"><div class="line-badge" style="background: #a3e635; box-shadow: 0 0 4px #a3e635;"></div></div>
-                    <span>Jatisaba (Lime)</span>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-sym"><div class="line-badge" style="background: #00f3ff; box-shadow: 0 0 4px #00f3ff;"></div></div>
-                    <span>Pageraji (Cyan)</span>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-sym"><div class="line-badge" style="background: #fb923c; box-shadow: 0 0 4px #fb923c;"></div></div>
-                    <span>Karangendep (Oranye)</span>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-sym"><div class="line-badge" style="background: #22c55e; box-shadow: 0 0 4px #22c55e;"></div></div>
-                    <span>Panusupan (Hijau)</span>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-sym"><div class="line-badge" style="background: #f43f5e; box-shadow: 0 0 4px #f43f5e;"></div></div>
-                    <span>Cipete (Pink)</span>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-sym"><div class="line-badge" style="background: #facc15; box-shadow: 0 0 4px #facc15;"></div></div>
-                    <span>Cikidang / Batuanten</span>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-sym"><div class="line-badge" style="background: #ffffff; box-shadow: 0 0 4px #ffffff;"></div></div>
-                    <span>Backbone Lainnya</span>
-                </div>
+                <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #d946ef;"></div></div><span>Kasegeran (Ungu)</span></div>
+                <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #a3e635;"></div></div><span>Jatisaba (Lime)</span></div>
+                <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #00f3ff;"></div></div><span>Pageraji (Cyan)</span></div>
+                <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #fb923c;"></div></div><span>Karangendep (Oranye)</span></div>
+                <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #22c55e;"></div></div><span>Panusupan (Hijau)</span></div>
+                <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #f43f5e;"></div></div><span>Cipete (Pink)</span></div>
+                <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #facc15;"></div></div><span>Cikidang / Batuanten</span></div>
+                <div class="legend-row"><div class="legend-sym"><div class="line-badge" style="background: #ffffff;"></div></div><span>Backbone Lainnya</span></div>
             </div>
         </div>
     </div>
@@ -286,7 +247,6 @@
 @endsection
 
 @push('scripts')
-<!-- JS Leaflet & Omnivore -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
 
@@ -405,20 +365,17 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // 1. Inisialisasi Peta
         map = L.map('odcGisMap', {
             preferCanvas: false,
             doubleClickZoom: false
         }).setView([-7.43261, 109.14656], 14);
 
-        // 2. Basemap Dark Mode
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19,
             className: 'map-dark-theme'
         }).addTo(map);
 
-        // 3. Ikon Menggunakan Path Relatif (Aman HTTPS & Bebas Mixed Content)
         odpIcon = L.icon({
             iconUrl: '/peta_jaringan/files/odp.png',
             iconSize: [22, 22],
@@ -436,11 +393,10 @@
         flagPoleIcon = L.divIcon({
             className: '',
             html: '<div class="flag-pole-icon"><svg viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg></div>',
-            iconSize: [18, 18],
-            iconAnchor: [4, 18]
+            iconSize: [16, 16],
+            iconAnchor: [4, 16]
         });
 
-        // 4. Custom Layer Pembaca Data KML
         var customLayer = L.geoJson(null, {
             pointToLayer: function (feature, latlng) {
                 var props = feature.properties || {};
@@ -547,14 +503,12 @@
             }
         });
 
-        // 5. Muat KML Menggunakan Path Relatif (Aman HTTPS & Bebas Mixed Content)
         var kmlLayer = omnivore.kml('/peta_jaringan/doc.kml', null, customLayer)
             .on('ready', function() {
                 map.fitBounds(kmlLayer.getBounds());
             })
             .addTo(map);
 
-        // 6. Klik Peta
         map.on('click', function(e) {
             if (isDrawingCable) {
                 cablePoints.push([e.latlng.lat, e.latlng.lng]);
@@ -600,7 +554,6 @@
                 .openOn(map);
         });
 
-        // 7. Selesaikan Penarikan Kabel saat Double-Click (Klik 2x)
         map.on('dblclick', function(e) {
             if (isDrawingCable && tempCablePolyline) {
                 cablePoints.push([e.latlng.lat, e.latlng.lng]);
@@ -630,4 +583,4 @@
         }, 300);
     });
 </script>
-@endpush  
+@endpush
