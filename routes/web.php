@@ -9,6 +9,12 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Technician\TechnicianController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MikrotikController;
+
+// Rute API Peta Live MikroTik Winbox
+Route::get('/api/mikrotik/pure-map-data', [MikrotikController::class, 'getPureMikrotikMap'])->name('api.mikrotik.pure-map');
+Route::post('/api/mikrotik/toggle-isolir', [MikrotikController::class, 'toggleIsolir'])->name('mikrotik.toggle-isolir');
+Route::post('/api/mikrotik/kick-session', [MikrotikController::class, 'kickSession'])->name('mikrotik.kick-session');
 
 // Halaman Utama (Publik)
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -103,6 +109,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/stok-material/export-csv', [MaterialController::class, 'exportCsv'])->name('material.export-csv');
     Route::get('/stok-material/template', [MaterialController::class, 'downloadTemplate'])->name('material.template');
     Route::get('/stok-material/mutasi', [MaterialController::class, 'mutations'])->name('material.mutations');
+
+    // Shortcut Daily Report POV Admin
+    Route::get('/daily-report', [\App\Http\Controllers\Technician\DailyReportController::class, 'index'])->name('daily-report');
 });
 
 // ==========================================

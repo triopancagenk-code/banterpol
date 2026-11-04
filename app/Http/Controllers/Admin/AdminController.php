@@ -1785,6 +1785,13 @@ class AdminController extends Controller
         $price = isset($validated['price']) && is_numeric($validated['price']) ? (float) $validated['price'] : 110000;
 
         $pppoe = !empty($validated['pppoe']) ? trim($validated['pppoe']) : Order::generatePppoeUsername($validated['customer_name']);
+        if (auth()->check() && auth()->user()->isBanterpoolAdmin()) {
+            if (!str_contains($pppoe, '@')) {
+                $pppoe .= '@banterpool.net';
+            }
+        }
+
+        $adminNotePrefix = (auth()->check() && auth()->user()->isBanterpoolAdmin()) ? 'Pelanggan Banterpool dari input manual Admin Banterpool' : 'Pelanggan terdaftar dari input manual Admin';
 
         $order = Order::create([
             'order_number' => $orderNumber,
@@ -1808,7 +1815,7 @@ class AdminController extends Controller
             'installation_time' => 'pagi',
             'installed_at' => now(),
             'assigned_odp' => $assignedOdp,
-            'admin_notes' => 'Pelanggan terdaftar dari input manual Admin' . ($wilayah ? " ({$wilayah})" : '') . '.',
+            'admin_notes' => $adminNotePrefix . ($wilayah ? " ({$wilayah})" : '') . '.',
         ]);
 
         return redirect()->back()->with('success', "Pelanggan baru {$order->customer_name} berhasil ditambahkan dengan NIK: {$order->id_card_number}.");

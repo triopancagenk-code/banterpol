@@ -432,11 +432,70 @@
         openUserMenu: false,
         openAddMaterialModal: false,
         openInvoiceModal: false,
+        openPriceListModal: false,
         isFullscreen: false,
         activeTab: '{{ $tab === 'cash' ? 'cash' : 'jobs' }}',
         gsWebhook: localStorage.getItem('gs_webhook_url') || '',
         isSyncing: false,
         isSubmitting: false,
+
+        // Price List Jasa 2026 (73 Item Resmi dari Price List Jasa 2026.xlsx)
+        priceList: {{ Js::from($priceList ?? []) }},
+        priceListSearch: '',
+        priceListCategoryFilter: 'all',
+        selectedServiceCode: 'NPSB',
+        serviceUnit: 'Client',
+        serviceBasePrice: 150000,
+        serviceQty: 1,
+
+        get filteredPriceList() {
+          let list = this.priceList || [];
+          if (this.priceListCategoryFilter !== 'all') {
+            list = list.filter(item => item.type === this.priceListCategoryFilter);
+          }
+          if (this.priceListSearch && this.priceListSearch.trim() !== '') {
+            const q = this.priceListSearch.toLowerCase().trim();
+            list = list.filter(item =>
+              (item.code && item.code.toLowerCase().includes(q)) ||
+              (item.description && item.description.toLowerCase().includes(q)) ||
+              (item.type && item.type.toLowerCase().includes(q)) ||
+              (item.unit && item.unit.toLowerCase().includes(q))
+            );
+          }
+          return list;
+        },
+
+        onServiceCodeChange() {
+          if (!this.selectedServiceCode || this.selectedServiceCode === 'CUSTOM') {
+            return;
+          }
+          const item = this.priceList.find(i => i.code === this.selectedServiceCode);
+          if (item) {
+            this.jobType = item.description;
+            this.serviceUnit = item.unit;
+            this.serviceBasePrice = Number(item.price);
+            this.servicePrice = this.serviceBasePrice * Math.max(1, Number(this.serviceQty || 1));
+            this.cashAmount = this.servicePrice;
+          }
+        },
+
+        selectPriceListItem(item) {
+          if (!item) return;
+          this.selectedServiceCode = item.code;
+          this.jobType = item.description;
+          this.serviceUnit = item.unit;
+          this.serviceBasePrice = Number(item.price);
+          this.serviceQty = 1;
+          this.servicePrice = this.serviceBasePrice;
+          this.cashAmount = this.serviceBasePrice;
+          this.openPriceListModal = false;
+        },
+
+        updateServicePriceFromQty() {
+          const qty = Math.max(1, Number(this.serviceQty || 1));
+          this.servicePrice = Number(this.serviceBasePrice || 0) * qty;
+          this.cashAmount = this.servicePrice;
+        },
 
         // Modal Invoice State (POV Admin Daily)
         invoiceReportsList: {{ Js::from($recentReportsForInvoice ?? []) }},
@@ -480,20 +539,20 @@
         reportDate: '{{ now()->format('Y-m-d') }}',
         technicianName: '{{ addslashes(auth()->user()->name ?? 'Budi Setiawan') }}',
         partnerCompany: 'BANTERPOL',
-        jobType: 'Pasang Baru (PSB / Installation)',
+        jobType: 'Jasa Pasang Baru Pelanggan',
         customerName: 'Bpk Herman / CST-109',
         customerNik: '3302123456780001',
         customerPhone: '081234567890',
         customerAddress: 'Jl. Merdeka No. 45, Purwokerto',
         pppoeUsername: 'herman_net',
         servicePlan: 'Paket 20 Mbps',
-        servicePrice: 110000,
+        servicePrice: 150000,
         odpPort: 'ODP-TMB-04 / Port 2',
         rxPower: '-19.5',
         ontSn: 'ZTEGC819A2B',
         additionalMaterials: '',
         transactionType: 'Biaya Pasang Baru (PSB)',
-        cashAmount: 250000,
+        cashAmount: 150000,
         paymentMethod: 'Tunai (Cash)',
         cashDepositStatus: 'Belum Disetor',
         selectedOrderId: '',
@@ -818,8 +877,14 @@
           this.customerPhone = order.customer_phone || '';
           this.customerAddress = order.address || '';
           this.pppoeUsername = order.pppoe || '';
+          this.selectedServiceCode = 'NPSB';
+          this.jobType = 'Jasa Pasang Baru Pelanggan';
+          this.serviceUnit = 'Client';
+          this.serviceBasePrice = 150000;
+          this.serviceQty = 1;
           this.servicePlan = order.package_name || 'Paket 20 Mbps';
-          this.servicePrice = order.price ? Number(order.price) : 110000;
+          this.servicePrice = 150000;
+          this.cashAmount = 150000;
           this.odpPort = order.assigned_odp || '';
           this.rxPower = order.opm_dbm ? order.opm_dbm.replace(/[^0-9.\-]/g, '') : '-19.5';
           this.ontSn = order.ont_sn || 'ZTEGC' + Math.floor(100000 + Math.random() * 900000);
@@ -838,11 +903,13 @@
                   tanggal: this.reportDate,
                   teknisi: this.technicianName,
                   mitra: this.partnerCompany,
+                  kode_jasa: this.selectedServiceCode || '',
                   tipe_pekerjaan: this.jobType,
                   nama_pelanggan: this.customerName,
                   nik: this.customerNik || '',
                   jenis_layanan: this.servicePlan || '',
                   harga_layanan: this.servicePrice || 0,
+                  satuan_jasa: this.serviceUnit || '',
                   telepon: this.customerPhone || '',
                   alamat: this.customerAddress || '',
                   pppoe: this.pppoeUsername || '',
@@ -1177,6 +1244,13 @@
         </div>
 
         <div class="flex items-center gap-2 w-full sm:w-auto">
+          <!-- Button Buka Price List Jasa 2026 -->
+          <button type="button" @click="openPriceListModal = true"
+                  class="btn-ghost w-full sm:w-auto justify-center flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 shadow-xs">
+            <i class="fa-solid fa-file-invoice-dollar text-emerald-600"></i>
+            <span>Price List Jasa 2026 (73 Jasa)</span>
+          </button>
+
           <!-- Quick Autofill from Recent Tickets -->
           @if($recentOrders->isNotEmpty())
             <div class="relative w-full sm:w-auto" x-data="{ openPick: false }">
@@ -1207,6 +1281,8 @@
         <input type="hidden" name="order_id" :value="selectedOrderId">
         <input type="hidden" name="materials_json" :value="materialsJsonPayload">
         <input type="hidden" name="material_total_cost" :value="totalMaterialCost">
+        <input type="hidden" name="service_code" :value="selectedServiceCode">
+        <input type="hidden" name="service_unit" :value="serviceUnit">
 
         <!-- Baris 1: Tanggal & Nama Teknisi -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
@@ -1225,7 +1301,7 @@
           </div>
         </div>
 
-        <!-- Baris 2: Mitra Perusahaan & Tipe Pekerjaan -->
+        <!-- Baris 2: Mitra Perusahaan & Jasa Pekerjaan (Price List 2026) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
           <div>
             <label class="lbl">
@@ -1245,19 +1321,52 @@
           </div>
 
           <div>
-            <label class="lbl">
-              <i class="fa-solid fa-wrench text-brand"></i> Tipe Pekerjaan
-            </label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="lbl mb-0">
+                <i class="fa-solid fa-screwdriver-wrench text-brand"></i> Jasa &amp; Pekerjaan (Price List 2026)
+              </label>
+              <button type="button" @click="openPriceListModal = true"
+                      class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1">
+                <i class="fa-solid fa-table-list"></i>
+                <span>Lihat 73 Tarif Jasa</span>
+              </button>
+            </div>
             <div class="relative">
-              <select name="job_type" x-model="jobType" required
-                      class="inp pr-9 font-semibold text-gray-800">
-                @foreach($jobTypes as $jt)
-                  <option value="{{ $jt }}">
-                    {{ $jt }}
-                  </option>
+              <select x-model="selectedServiceCode" @change="onServiceCodeChange()"
+                      class="inp pr-9 font-semibold text-gray-800 text-xs sm:text-sm">
+                <option value="">-- Pilih Jasa Resmi (Price List 2026) --</option>
+                @foreach($priceListGrouped as $category => $items)
+                  <optgroup label="── {{ strtoupper($category) }} ({{ count($items) }} Jasa) ──">
+                    @foreach($items as $item)
+                      <option value="{{ $item['code'] }}">
+                        [{{ $item['code'] }}] {{ $item['description'] }} • Rp {{ number_format($item['price'], 0, ',', '.') }} / {{ $item['unit'] }}
+                      </option>
+                    @endforeach
+                  </optgroup>
                 @endforeach
+                <optgroup label="── LAINNYA ──">
+                  <option value="CUSTOM">Input / Kustom Jasa Lainnya...</option>
+                </optgroup>
               </select>
               <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
+
+            <!-- Input Deskripsi Pekerjaan (Otomatis terisi dari Price List & bisa disesuaikan) -->
+            <div class="mt-2">
+              <input type="text" name="job_type" x-model="jobType" required placeholder="Deskripsi pekerjaan / jasa..."
+                     class="inp text-xs font-semibold text-gray-800">
+            </div>
+
+            <!-- Pill Info Jasa Terpilih -->
+            <div class="mt-1.5 flex items-center gap-2 flex-wrap" x-show="selectedServiceCode && selectedServiceCode !== 'CUSTOM'">
+              <span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md">
+                <i class="fa-solid fa-tag text-[9px] text-sky-600"></i>
+                Kode: <strong x-text="selectedServiceCode"></strong>
+              </span>
+              <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                <i class="fa-solid fa-check text-[9px] text-emerald-600"></i>
+                Tarif Resmi: <span x-text="rp(serviceBasePrice)"></span> / <span x-text="serviceUnit"></span>
+              </span>
             </div>
           </div>
         </div>
@@ -1313,10 +1422,18 @@
             </div>
 
             <div>
-              <label class="lbl">Harga Layanan / Biaya (Rp)</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="lbl mb-0">Harga Jasa / Biaya (Rp)</label>
+                <div class="flex items-center gap-1.5" x-show="selectedServiceCode && selectedServiceCode !== 'CUSTOM'">
+                  <span class="text-[10px] font-semibold text-gray-500">Vol:</span>
+                  <input type="number" min="1" step="any" x-model="serviceQty" @input="updateServicePriceFromQty()"
+                         class="w-14 h-6 text-center text-xs font-bold border border-gray-300 rounded px-1 text-gray-800 focus:border-brand focus:ring-0">
+                  <span class="text-[10px] font-bold text-gray-500" x-text="serviceUnit || 'Unit'"></span>
+                </div>
+              </div>
               <div class="relative flex items-center">
                 <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none select-none z-10">Rp</span>
-                <input type="number" name="service_price" x-model="servicePrice" min="0" step="any" placeholder="110000"
+                <input type="number" name="service_price" x-model="servicePrice" min="0" step="any" placeholder="150000"
                        class="inp inp-prefix font-mono font-bold text-emerald-700 w-full">
               </div>
             </div>
@@ -1816,7 +1933,12 @@
               <div class="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-gray-50/80 text-xs">
                 <div class="min-w-0">
                   <span class="text-[9px] text-gray-400 font-bold uppercase block">Pekerjaan</span>
-                  <span class="font-bold text-gray-800 text-[11px] block truncate mt-0.5">{{ $r->job_type }}</span>
+                  <div class="flex items-center gap-1 flex-wrap mt-0.5">
+                    @if($r->service_code)
+                      <span class="text-[9px] font-bold font-mono text-sky-700 bg-sky-50 border border-sky-200 px-1 rounded">{{ $r->service_code }}</span>
+                    @endif
+                    <span class="font-bold text-gray-800 text-[11px] truncate">{{ $r->job_type }}</span>
+                  </div>
                   <span class="text-[10px] text-gray-500 font-mono block mt-0.5 truncate">{{ $r->odp_port ?: '-' }}</span>
                 </div>
                 <div class="min-w-0">
@@ -1931,6 +2053,11 @@
 
                   <td class="whitespace-nowrap">
                     <span class="badge badge-slate font-semibold">{{ $r->job_type }}</span>
+                    @if($r->service_code)
+                      <span class="inline-flex items-center gap-1 text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded mt-0.5 font-mono">
+                        <i class="fa-solid fa-tag text-[8px]"></i> {{ $r->service_code }}
+                      </span>
+                    @endif
                     <span class="text-[10px] text-gray-500 block mt-1 font-mono font-medium">{{ $r->odp_port ?: '-' }}</span>
                   </td>
 
@@ -2440,7 +2567,7 @@
             <select name="report_id" x-model="invoiceReportId" @change="onSelectInvoiceReport()" required class="inp pr-9 text-xs font-bold text-gray-900 w-full">
               <option value="">-- Pilih Log Pekerjaan yang Akan Dibuatkan Invoice --</option>
               <template x-for="r in invoiceReportsList" :key="r.id">
-                <option :value="r.id" x-text="(r.report_date ? r.report_date.split('T')[0] : '') + ' • ' + r.partner_company + ' • ' + r.customer_name + ' • ' + r.job_type + ' (' + (r.material_total_cost > 0 ? 'Rp ' + Number(r.material_total_cost).toLocaleString('id-ID') : 'Rp 0') + ')'"></option>
+                <option :value="r.id" x-text="(r.report_date ? r.report_date.split('T')[0] : '') + ' • ' + r.partner_company + ' • ' + r.customer_name + ' • ' + (r.service_code ? '[' + r.service_code + '] ' : '') + r.job_type + (r.service_price > 0 ? ' (Rp ' + Number(r.service_price).toLocaleString('id-ID') + ')' : '')"></option>
               </template>
             </select>
             <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
@@ -2484,6 +2611,141 @@
         </div>
 
       </form>
+
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: KATALOG PRICE LIST JASA 2026 (73 JASA)   -->
+  <!-- ============================================== -->
+  <div x-show="openPriceListModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-xs" @click="openPriceListModal = false"></div>
+    <div class="relative card card-lg w-full max-w-4xl p-4 sm:p-6 text-gray-800 z-10 shadow-2xl max-h-[92vh] flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between pb-3.5 border-b border-gray-200 shrink-0 gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-lg border border-emerald-200 shrink-0">
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-black text-black text-sm sm:text-base md:text-lg">Price List Jasa 2026 (Tarif Resmi)</h3>
+              <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                73 Item Jasa
+              </span>
+            </div>
+            <p class="text-[11px] sm:text-xs text-gray-500 font-medium mt-0.5">
+              Daftar tarif resmi dari <strong>Price List Jasa 2026.xlsx</strong> untuk Daily Report semua admin &amp; teknisi.
+            </p>
+          </div>
+        </div>
+        <button type="button" @click="openPriceListModal = false" class="icon-btn w-8 h-8 shrink-0">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <!-- Search & Category Filters -->
+      <div class="py-3 border-b border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
+        
+        <!-- Search Input -->
+        <div class="relative flex-1">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+          <input type="text" x-model="priceListSearch" placeholder="Cari kode (misal NPSB), nama jasa, satuan..."
+                 class="inp pl-8 py-2 text-xs font-medium w-full">
+          <button type="button" x-show="priceListSearch" @click="priceListSearch = ''"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Filter Category Tabs -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 shrink-0">
+          <button type="button" @click="priceListCategoryFilter = 'all'"
+                  :class="priceListCategoryFilter === 'all' ? 'bg-emerald-600 text-white font-bold' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                  class="text-[11px] px-2.5 py-1.5 rounded-lg transition whitespace-nowrap">
+            Semua (73)
+          </button>
+          <button type="button" @click="priceListCategoryFilter = 'Pemasangan Baru'"
+                  :class="priceListCategoryFilter === 'Pemasangan Baru' ? 'bg-emerald-600 text-white font-bold' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                  class="text-[11px] px-2.5 py-1.5 rounded-lg transition whitespace-nowrap">
+            Pasang Baru (1)
+          </button>
+          <button type="button" @click="priceListCategoryFilter = 'Pengembangan'"
+                  :class="priceListCategoryFilter === 'Pengembangan' ? 'bg-emerald-600 text-white font-bold' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                  class="text-[11px] px-2.5 py-1.5 rounded-lg transition whitespace-nowrap">
+            Pengembangan (57)
+          </button>
+          <button type="button" @click="priceListCategoryFilter = 'Maintenance'"
+                  :class="priceListCategoryFilter === 'Maintenance' ? 'bg-emerald-600 text-white font-bold' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                  class="text-[11px] px-2.5 py-1.5 rounded-lg transition whitespace-nowrap">
+            Maintenance (15)
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Body (Scrollable) -->
+      <div class="flex-1 overflow-y-auto divide-y divide-gray-100 my-2 pr-1 text-xs">
+        <table class="w-full text-left border-collapse">
+          <thead class="sticky top-0 bg-gray-50 border-b border-gray-200 text-[10px] font-black text-gray-500 uppercase tracking-wider z-10">
+            <tr>
+              <th class="py-2 px-2.5 w-12 text-center">No</th>
+              <th class="py-2 px-2.5 w-24">Kode</th>
+              <th class="py-2 px-3">Deskripsi Jasa / Pekerjaan</th>
+              <th class="py-2 px-2.5 w-28 hidden md:table-cell">Kategori</th>
+              <th class="py-2 px-3 text-right">Tarif Resmi</th>
+              <th class="py-2 px-2.5 w-20 text-center">Satuan</th>
+              <th class="py-2 px-3 w-28 text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <template x-for="item in filteredPriceList" :key="item.no">
+              <tr class="hover:bg-emerald-50/50 transition group">
+                <td class="py-2.5 px-2.5 text-center text-gray-400 font-mono text-[11px]" x-text="item.no"></td>
+                <td class="py-2.5 px-2.5">
+                  <span class="inline-block font-mono font-black text-[11px] text-sky-800 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded"
+                        x-text="item.code"></span>
+                </td>
+                <td class="py-2.5 px-3">
+                  <span class="font-bold text-gray-900 group-hover:text-emerald-900 block" x-text="item.description"></span>
+                  <span class="text-[10px] text-gray-400 md:hidden block mt-0.5" x-text="item.type"></span>
+                </td>
+                <td class="py-2.5 px-2.5 hidden md:table-cell">
+                  <span class="badge text-[10px] font-semibold"
+                        :class="item.type === 'Pemasangan Baru' ? 'badge-blue' : (item.type === 'Maintenance' ? 'badge-amber' : 'badge-slate')"
+                        x-text="item.type"></span>
+                </td>
+                <td class="py-2.5 px-3 text-right font-mono font-extrabold text-emerald-700 whitespace-nowrap text-xs"
+                    x-text="rp(item.price)"></td>
+                <td class="py-2.5 px-2.5 text-center font-semibold text-gray-600 text-[11px]" x-text="item.unit"></td>
+                <td class="py-2.5 px-3 text-center">
+                  <button type="button" @click="selectPriceListItem(item)"
+                          class="btn-primary py-1 px-2.5 text-[11px] font-bold shadow-2xs whitespace-nowrap flex items-center gap-1 mx-auto bg-emerald-600 hover:bg-emerald-700 text-white">
+                    <i class="fa-solid fa-check text-[9px]"></i>
+                    <span>Pilih</span>
+                  </button>
+                </td>
+              </tr>
+            </template>
+            <tr x-show="filteredPriceList.length === 0">
+              <td colspan="7" class="py-8 text-center text-gray-400">
+                <i class="fa-solid fa-search text-2xl mb-1 text-gray-300 block"></i>
+                Tidak ada tarif jasa yang sesuai dengan pencarian "<span x-text="priceListSearch"></span>".
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between pt-3 border-t border-gray-200 shrink-0 text-xs">
+        <span class="text-[11px] text-gray-500 font-medium">
+          Menampilkan <strong class="text-gray-800" x-text="filteredPriceList.length"></strong> dari 73 tarif resmi.
+        </span>
+        <button type="button" @click="openPriceListModal = false" class="btn-ghost text-xs py-1.5 px-4 font-bold">
+          Tutup
+        </button>
+      </div>
 
     </div>
   </div>

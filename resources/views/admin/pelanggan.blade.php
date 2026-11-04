@@ -172,8 +172,19 @@
   <!-- ============================================== -->
   <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
     <div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2.5">
         <h2 class="text-xl font-black text-slate-900 tracking-tight">Master Data Pelanggan</h2>
+        @if(auth()->check() && auth()->user()->isBanterpoolAdmin())
+          <span class="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider inline-flex items-center gap-1 shadow-xs" title="POV Akun Banterpool: Menampilkan data pelanggan khusus Banterpool">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+            <span>Khusus Banterpool</span>
+          </span>
+        @else
+          <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider inline-flex items-center gap-1 shadow-xs" title="POV Akun ThreeFive: Menampilkan semua data pelanggan ThreeFive & Banterpool">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>Semua Pelanggan</span>
+          </span>
+        @endif
       </div>
       <p class="text-xs text-slate-500 mt-1">
         Data pendaftaran pelanggan terintegrasi (No, Nama Pemohon, No KTP, No Handphone, Jenis Layanan, Harga, dan Alamat).
@@ -302,7 +313,7 @@
   <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
     <form method="GET" action="{{ route('admin.pelanggan') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
       
-      <!-- Search Input with Live Autocomplete Suggestions (Sesuai Contoh Pencarian Awalan Abjad) -->
+      <!-- Search Input with Live Autocomplete Suggestions -->
       <div class="sm:col-span-2 lg:col-span-4"
            x-data="{
              searchVal: '{{ addslashes($search) }}',
@@ -390,7 +401,7 @@
             <i class="fa-solid fa-spinner fa-spin"></i>
           </div>
 
-          <!-- Dropdown Autocomplete Awalan (Seperti Omnibox Google) -->
+          <!-- Dropdown Autocomplete Awalan -->
           <div x-show="showDropdown && suggestions.length > 0"
                style="display: none;"
                x-transition:enter="transition ease-out duration-100"
@@ -476,7 +487,7 @@
     </form>
   </div>
 
-  <!-- Selection Status Bar (Aktif ketika ada data yang dipilih) -->
+  <!-- Selection Status Bar -->
   <div x-show="selectedIds.length > 0"
        style="display: none;"
        class="bg-slate-900 text-white p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg border border-slate-700">
@@ -520,7 +531,6 @@
       <table class="w-full text-center text-xs">
         <thead class="bg-slate-50 text-slate-500 font-extrabold uppercase text-[10px] border-b border-slate-200 tracking-wider">
           <tr>
-            <!-- Checkbox Select All Column -->
             <th class="py-3.5 px-3 text-center w-12">
               <div class="flex items-center justify-center">
                 <input type="checkbox"
@@ -546,7 +556,6 @@
         <tbody class="divide-y divide-slate-100 font-medium">
           @forelse($customers as $index => $customer)
             @php
-              // Hitung usia
               $age = null;
               if ($customer->birth_date) {
                   try {
@@ -554,7 +563,6 @@
                   } catch (\Exception $e) {}
               }
 
-              // Bersihkan no hp untuk link WhatsApp
               $cleanPhone = preg_replace('/\D/', '', $customer->customer_phone);
               if (str_starts_with($cleanPhone, '0')) {
                   $cleanPhone = '62' . substr($cleanPhone, 1);
@@ -674,7 +682,7 @@
                 </p>
               </td>
 
-              <!-- 8. Status -->
+              <!-- 10. Status -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($customer->status === 'Selesai' || strtolower($customer->status) === 'aktif')
                   <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-300 inline-flex items-center gap-1">
@@ -695,7 +703,7 @@
                 @endif
               </td>
 
-              <!-- 9. Aksi -->
+              <!-- 11. Aksi -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 <div class="flex items-center justify-center gap-1.5">
                   
@@ -1347,7 +1355,6 @@
   <!-- 10. MODAL IMPORT EXCEL PELANGGAN               -->
   <!-- ============================================== -->
   <div x-show="openImportModal" style="display: none;" class="relative z-50" role="dialog" aria-modal="true">
-    <!-- Backdrop -->
     <div x-show="openImportModal"
          x-transition:enter="ease-out duration-200"
          x-transition:enter-start="opacity-0"
@@ -1478,7 +1485,7 @@
             </label>
           </div>
 
-          <!-- Petunjuk Kolom Header (Collapsible) -->
+          <!-- Petunjuk Kolom Header -->
           <div x-data="{ openGuide: false }" class="border border-slate-200 rounded-2xl overflow-hidden">
             <button type="button" @click="openGuide = !openGuide"
                     class="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-700 transition">
@@ -1556,7 +1563,7 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- 10. MODAL HAPUS MASSAL PELANGGAN               -->
+  <!-- 11. MODAL HAPUS MASSAL PELANGGAN               -->
   <!-- ============================================== -->
   <div x-show="openBulkDeleteModal" style="display: none;" class="relative z-50" role="dialog" aria-modal="true">
     <div x-show="openBulkDeleteModal"

@@ -148,20 +148,49 @@ class Order extends Model
 
     /**
      * Scope query untuk Data Pelanggan.
-     * Alur bisnis:
-     * - Pesanan baru masuk ke Monitoring Pesanan.
-     * - Ketika status pesanan belum 'Selesai', pesanan BELUM masuk ke Data Pelanggan.
-     * - Ketika status pesanan sudah 'Selesai', pesanan MASUK ke Data Pelanggan.
+     * - Akun ThreeFive: Menampilkan SEMUA data pelanggan.
+     * - Akun Banterpool: Khusus hanya data pelanggan Banterpool.
      */
     public function scopeForCustomerData($query)
     {
-        return $query->where(function ($q) {
-            $q->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif'])
+        $query->where(function ($q) {
+            $q->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif', 'Non-Aktif', 'non-aktif', 'Isolir', 'isolir'])
               ->orWhere(function ($sub) {
                   $sub->where('order_number', 'like', 'PLG-%')
                       ->whereNotIn('status', ['Menunggu Konfirmasi', 'Jadwal Teknisi', 'Sedang Dipasang', 'Kendala Lapangan', 'Dibatalkan']);
               });
         });
+
+        // Filter khusus: jika admin yang sedang login adalah akun Banterpool, batasi hanya pelanggan Banterpool
+        if (auth()->check() && auth()->user()->isBanterpoolAdmin()) {
+            $query->where(function ($b) {
+                $b->where('pppoe', 'like', '%banterpool%')
+                  ->orWhere('order_number', 'like', 'PLG-%')
+                  ->orWhere('package_name', 'like', '%banterpool%')
+                  ->orWhere('admin_notes', 'like', '%banterpool%')
+                  ->orWhere('customer_email', 'like', '%banterpool%');
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * Memeriksa apakah order ini merupakan pelanggan Banterpool
+     */
+    public function isBanterpoolCustomer(): bool
+    {
+        $pppoe = strtolower((string) $this->pppoe);
+        $orderNumber = strtoupper((string) $this->order_number);
+        $packageName = strtolower((string) $this->package_name);
+        $notes = strtolower((string) $this->admin_notes);
+        $email = strtolower((string) $this->customer_email);
+
+        return str_contains($pppoe, 'banterpool')
+            || str_starts_with($orderNumber, 'PLG-')
+            || str_contains($packageName, 'banterpool')
+            || str_contains($notes, 'banterpool')
+            || str_contains($email, 'banterpool');
     }
 
     /**
@@ -170,7 +199,7 @@ class Order extends Model
     public function isCompletedCustomer(): bool
     {
         $st = strtolower(trim((string) $this->status));
-        if (in_array($st, ['selesai', 'selesai / aktif', 'aktif'])) {
+        if (in_array($st, ['selesai', 'selesai / aktif', 'aktif', 'non-aktif', 'isolir'])) {
             return true;
         }
 

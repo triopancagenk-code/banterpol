@@ -44,17 +44,26 @@ class LoginRequest extends FormRequest
 
         $loginInput = $this->input('email');
         $password = $this->input('password');
+        $lowerLogin = strtolower(trim((string)$loginInput));
 
-        // Check credentials with input directly (supports email: 'admin' or 'admin@banterpool.net' or normal email)
+        // Check credentials with input directly (supports email: 'admin' or 'threefive@banterpool.net' or normal email)
         $authenticated = Auth::attempt(['email' => $loginInput, 'password' => $password], $this->boolean('remember'));
 
-        if (!$authenticated && (strtolower($loginInput) === 'admindaily' || strtolower($loginInput) === 'admindaily@banterpool.net')) {
-            $authenticated = Auth::attempt(['email' => 'admindaily', 'password' => $password], $this->boolean('remember'))
-                || Auth::attempt(['email' => 'admindaily@banterpool.net', 'password' => $password], $this->boolean('remember'));
+        // 1. Akun ThreeFive (Admin Semua Data Pelanggan)
+        if (!$authenticated && in_array($lowerLogin, ['threefive', 'three_five', 'three-five', 'threefive@banterpool.net', 'threefive@35.net', 'admin', 'admin@banterpol.net', 'admin@banterpool.net'])) {
+            $authenticated = Auth::attempt(['email' => 'threefive@banterpool.net', 'password' => $password], $this->boolean('remember'))
+                || Auth::attempt(['email' => 'admin@banterpool.net', 'password' => $password], $this->boolean('remember'));
         }
 
-        if (!$authenticated && ($loginInput === 'admin' || $loginInput === 'admin@banterpol.net')) {
-            $authenticated = Auth::attempt(['email' => 'admin@banterpool.net', 'password' => $password], $this->boolean('remember'));
+        // 2. Akun Banterpool (Admin Khusus Data Pelanggan Banterpool)
+        if (!$authenticated && in_array($lowerLogin, ['banterpol', 'banterpool', 'banterpol@banterpool.net', 'banterpool@banterpool.net', 'banterpol@banterpol.net'])) {
+            $authenticated = Auth::attempt(['email' => 'banterpol@banterpool.net', 'password' => $password], $this->boolean('remember'))
+                || Auth::attempt(['email' => 'banterpool@banterpool.net', 'password' => $password], $this->boolean('remember'));
+        }
+
+        if (!$authenticated && ($lowerLogin === 'admindaily' || $lowerLogin === 'admindaily@banterpool.net')) {
+            $authenticated = Auth::attempt(['email' => 'admindaily', 'password' => $password], $this->boolean('remember'))
+                || Auth::attempt(['email' => 'admindaily@banterpool.net', 'password' => $password], $this->boolean('remember'));
         }
 
         if (!$authenticated && ($loginInput === 'direktur' || $loginInput === 'direktur@banterpol.net' || $loginInput === 'direktur@banterpool.net')) {

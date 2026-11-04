@@ -10,6 +10,7 @@ use App\Models\MaterialMutation;
 use App\Models\MaterialMonthlyStock;
 use App\Models\User;
 use App\Models\Bill;
+use App\Services\PriceListService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -73,7 +74,10 @@ class DailyReportController extends Controller
         }
 
         if ($jobTypeFilter !== 'all') {
-            $query->where('job_type', $jobTypeFilter);
+            $query->where(function ($q) use ($jobTypeFilter) {
+                $q->where('job_type', 'like', "%{$jobTypeFilter}%")
+                  ->orWhere('service_code', 'like', "%{$jobTypeFilter}%");
+            });
         }
 
         $reports = (clone $query)->orderBy('report_date', 'desc')->latest('id')->paginate(15, ['*'], 'page_jobs')->withQueryString();
@@ -250,11 +254,15 @@ class DailyReportController extends Controller
             'Relokasi Titik Pasang',
         ];
 
+        // 4b. Price List Jasa 2026 (73 Items Resmi dari Price List Jasa 2026.xlsx)
+        $priceList = PriceListService::all();
+        $priceListGrouped = PriceListService::groupedByType();
+
         // 5. Active orders for quick autofill
         $recentOrders = Order::latest('id')->take(20)->get(['id', 'order_number', 'customer_name', 'customer_phone', 'address', 'pppoe', 'assigned_odp', 'ont_sn', 'opm_dbm', 'id_card_number', 'package_name', 'price']);
 
         // 6. Recent daily reports for invoice selection (POV Admin Daily)
-        $recentReportsForInvoice = DailyReport::latest('id')->take(30)->get(['id', 'report_date', 'partner_company', 'customer_name', 'customer_phone', 'customer_address', 'job_type', 'material_total_cost', 'cash_amount']);
+        $recentReportsForInvoice = DailyReport::latest('id')->take(30)->get(['id', 'report_date', 'partner_company', 'customer_name', 'customer_phone', 'customer_address', 'job_type', 'service_code', 'service_price', 'material_total_cost', 'cash_amount']);
 
         return view('technician.daily-report', compact(
             'reports',
@@ -272,6 +280,8 @@ class DailyReportController extends Controller
             'stockMaterials',
             'partners',
             'jobTypes',
+            'priceList',
+            'priceListGrouped',
             'recentOrders',
             'recentReportsForInvoice',
             'currentMonthName'
@@ -290,7 +300,9 @@ class DailyReportController extends Controller
             'report_date' => 'required|date',
             'technician_name' => 'required|string|max:100',
             'partner_company' => 'required|string|max:150',
-            'job_type' => 'required|string|max:100',
+            'job_type' => 'required|string|max:150',
+            'service_code' => 'nullable|string|max:50',
+            'service_unit' => 'nullable|string|max:50',
             'customer_name' => 'required|string|max:150',
             'customer_nik' => 'nullable|string|max:30',
             'customer_phone' => 'nullable|string|max:30',
@@ -503,6 +515,36 @@ class DailyReportController extends Controller
             'notes' => $validated['notes'] ?? null,
         ];
 
+        $servicePrice = (float)($validated['service_price'] ?? 0);
+        $serviceCode = $validated['service_code'] ?? null;
+        $serviceUnit = $validated['service_unit'] ?? null;
+
+        // Auto-fill dari Price List Jasa 2026 jika kode diisi tapi harga kosong
+        if (!empty($serviceCode)) {
+            $itemFromPriceList = PriceListService::findByCode($serviceCode);
+            if ($itemFromPriceList) {
+                if ($servicePrice <= 0) {
+                    $servicePrice = (float)$itemFromPriceList['price'];
+                }
+                if (empty($serviceUnit)) {
+                    $serviceUnit = $itemFromPriceList['unit'];
+                }
+            }
+        } elseif (!empty($validated['job_type'])) {
+            $itemFromPriceList = PriceListService::findByDescription($validated['job_type']);
+            if ($itemFromPriceList) {
+                if ($servicePrice <= 0) {
+                    $servicePrice = (float)$itemFromPriceList['price'];
+                }
+                if (empty($serviceCode)) {
+                    $serviceCode = $itemFromPriceList['code'];
+                }
+                if (empty($serviceUnit)) {
+                    $serviceUnit = $itemFromPriceList['unit'];
+                }
+            }
+        }
+
         // Hanya sertakan kolom jika memang ada di database tabel saat ini (anti-crash di hosting)
         if (Schema::hasColumn('daily_reports', 'customer_nik')) {
             $reportData['customer_nik'] = $validated['customer_nik'] ?? null;
@@ -511,7 +553,13 @@ class DailyReportController extends Controller
             $reportData['service_plan'] = $validated['service_plan'] ?? null;
         }
         if (Schema::hasColumn('daily_reports', 'service_price')) {
-            $reportData['service_price'] = (float)($validated['service_price'] ?? 0);
+            $reportData['service_price'] = $servicePrice;
+        }
+        if (Schema::hasColumn('daily_reports', 'service_code')) {
+            $reportData['service_code'] = $serviceCode;
+        }
+        if (Schema::hasColumn('daily_reports', 'service_unit')) {
+            $reportData['service_unit'] = $serviceUnit;
         }
 
         $report = DailyReport::create($reportData);
@@ -857,6 +905,7 @@ class DailyReportController extends Controller
                 'Nama Teknisi',
                 'Perusahaan Mitra',
                 'Tipe Pekerjaan',
+                'Kode Jasa (Price List 2026)',
                 'Nama Pelanggan',
                 'NIK Pelanggan',
                 'No WhatsApp',
@@ -864,6 +913,7 @@ class DailyReportController extends Controller
                 'PPPoE',
                 'Jenis Layanan',
                 'Harga Layanan (Rp)',
+                'Satuan Jasa',
                 'ODP & Port',
                 'Rx Power (dBm)',
                 'SN ONT',
@@ -881,6 +931,7 @@ class DailyReportController extends Controller
                     $r->technician_name,
                     $r->partner_company,
                     $r->job_type,
+                    $r->service_code ?: '-',
                     $r->customer_name,
                     $r->customer_nik,
                     $r->customer_phone,
@@ -888,6 +939,7 @@ class DailyReportController extends Controller
                     $r->pppoe_username,
                     $r->service_plan,
                     $r->service_price,
+                    $r->service_unit ?: '-',
                     $r->odp_port,
                     $r->rx_power,
                     $r->ont_sn,
@@ -1069,13 +1121,36 @@ class DailyReportController extends Controller
                 }
             }
 
-            // Jasa dari report
+            // Jasa dari report (Menggunakan tarif & deskripsi resmi Price List Jasa 2026)
             $jobPrice = (float)($report->service_price > 0 ? $report->service_price : ($report->cash_amount > 0 ? $report->cash_amount : 150000));
+            $serviceName = $report->job_type ?: 'Jasa Pasang Baru Pelanggan';
+            $serviceSat = $report->service_unit ?: 'Client';
+
+            if (!empty($report->service_code)) {
+                $itemInfo = PriceListService::findByCode($report->service_code);
+                if ($itemInfo) {
+                    $serviceName = "[{$itemInfo['code']}] " . $itemInfo['description'];
+                    $serviceSat = $itemInfo['unit'];
+                    if ($jobPrice <= 0) {
+                        $jobPrice = (float)$itemInfo['price'];
+                    }
+                }
+            } else {
+                $itemInfo = PriceListService::findByDescription($report->job_type);
+                if ($itemInfo) {
+                    $serviceName = "[{$itemInfo['code']}] " . $itemInfo['description'];
+                    $serviceSat = $itemInfo['unit'];
+                    if ($jobPrice <= 0) {
+                        $jobPrice = (float)$itemInfo['price'];
+                    }
+                }
+            }
+
             $services[] = [
                 'no' => 1,
-                'name' => $report->job_type ?: 'Jasa Pemasangan Baru',
+                'name' => $serviceName,
                 'vol' => 1,
-                'sat' => 'User',
+                'sat' => $serviceSat,
                 'price' => $jobPrice,
                 'total' => $jobPrice,
             ];
@@ -1168,6 +1243,8 @@ class DailyReportController extends Controller
             'BERKAH JAYA',
         ];
 
+        $priceList = PriceListService::all();
+
         return view('technician.invoice', compact(
             'issuer',
             'issuers',
@@ -1190,7 +1267,8 @@ class DailyReportController extends Controller
             'grandTotal',
             'allPartners',
             'report',
-            'recentReports'
+            'recentReports',
+            'priceList'
         ));
     }
 
@@ -1351,7 +1429,9 @@ class DailyReportController extends Controller
             // Jika tabel sudah ada tapi kolom baru belum ada (setelah git pull ke server hosting)
             if (!Schema::hasColumn('daily_reports', 'customer_nik') || 
                 !Schema::hasColumn('daily_reports', 'service_plan') || 
-                !Schema::hasColumn('daily_reports', 'service_price')) {
+                !Schema::hasColumn('daily_reports', 'service_price') ||
+                !Schema::hasColumn('daily_reports', 'service_code') ||
+                !Schema::hasColumn('daily_reports', 'service_unit')) {
 
                 try {
                     Artisan::call('migrate', ['--force' => true]);
@@ -1369,6 +1449,12 @@ class DailyReportController extends Controller
                     }
                     if (!Schema::hasColumn('daily_reports', 'service_price')) {
                         $table->decimal('service_price', 15, 2)->default(0)->after('service_plan');
+                    }
+                    if (!Schema::hasColumn('daily_reports', 'service_code')) {
+                        $table->string('service_code', 50)->nullable()->after('job_type');
+                    }
+                    if (!Schema::hasColumn('daily_reports', 'service_unit')) {
+                        $table->string('service_unit', 50)->nullable()->after('service_price');
                     }
                 });
             }

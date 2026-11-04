@@ -16,6 +16,7 @@ class DailyReport extends Model
         'technician_id',
         'partner_company',
         'job_type',
+        'service_code',
         'customer_name',
         'customer_nik',
         'customer_phone',
@@ -23,6 +24,7 @@ class DailyReport extends Model
         'pppoe_username',
         'service_plan',
         'service_price',
+        'service_unit',
         'odp_port',
         'rx_power',
         'ont_sn',
@@ -67,6 +69,12 @@ class DailyReport extends Model
     public function getFormattedServicePriceAttribute(): string
     {
         return 'Rp ' . number_format((float)($this->service_price ?? 0), 0, ',', '.');
+    }
+
+    public function getServiceDisplayAttribute(): string
+    {
+        $code = $this->service_code ? "[{$this->service_code}] " : '';
+        return $code . ($this->job_type ?: 'Jasa Layanan');
     }
 
     public function getFormattedCashAttribute(): string

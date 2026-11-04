@@ -51,7 +51,7 @@
 
       <div class="relative flex items-center">
         <i class="fa-regular fa-user absolute left-4 text-gray-500 text-lg"></i>
-        <input type="text" name="email" value="{{ old('email') }}" placeholder="Email atau Nomer HP" required autofocus
+        <input type="text" name="email" value="{{ old('email') }}" placeholder="Username, Email, atau No. HP" required autofocus
                class="w-full pl-12 pr-4 py-3 border border-gray-400 rounded-xl text-sm focus:ring-[#d31818] focus:border-[#d31818] placeholder-gray-400">
       </div>
 

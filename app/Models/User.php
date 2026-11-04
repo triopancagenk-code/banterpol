@@ -70,7 +70,25 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin' || $this->role === 'direktur' || $this->email === 'admin' || $this->email === 'direktur' || $this->email === 'direktur@banterpool.net';
+        return $this->role === 'admin' || $this->role === 'direktur' || $this->email === 'admin' || $this->email === 'direktur' || $this->email === 'direktur@banterpool.net' || $this->isThreeFive() || $this->isBanterpoolAdmin();
+    }
+
+    public function isThreeFive(): bool
+    {
+        $email = strtolower($this->email ?? '');
+        $username = strtolower(explode('@', $email)[0]);
+        return str_contains($username, 'threefive') || $username === 'admin' || $email === 'threefive@banterpool.net' || $email === 'threefive@35.net';
+    }
+
+    public function isBanterpoolAdmin(): bool
+    {
+        if ($this->isThreeFive()) {
+            return false;
+        }
+
+        $email = strtolower($this->email ?? '');
+        $username = strtolower(explode('@', $email)[0]);
+        return str_contains($username, 'banterpol') || str_contains($username, 'banterpool');
     }
 
     public function isDirektur(): bool
