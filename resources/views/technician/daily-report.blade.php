@@ -447,6 +447,75 @@
         serviceUnit: 'Client',
         serviceBasePrice: 150000,
         serviceQty: 1,
+        coordinates: '',
+        isLocating: false,
+
+        // Deteksi apakah jenis pekerjaan adalah Pemasangan Baru (PSB) atau Pengembangan
+        get isPsb() {
+          if (this.selectedServiceCode === 'NPSB') return true;
+          if (this.selectedServiceCode && this.selectedServiceCode !== 'CUSTOM') {
+            const item = this.priceList.find(i => i.code === this.selectedServiceCode);
+            if (item && item.type === 'Pemasangan Baru') return true;
+            if (item && (item.type === 'Pengembangan' || item.type === 'Maintenance')) return false;
+          }
+          const lower = (this.jobType || '').toLowerCase();
+          return lower.includes('pasang baru') || lower.includes('psb');
+        },
+
+        // Sinkronisasi otomatis checklist material & tipe transaksi saat memilih jenis jasa
+        applyServiceCategory(itemType) {
+          if (itemType === 'Pemasangan Baru' || this.selectedServiceCode === 'NPSB') {
+            // Pemasangan Baru / PSB: otomatis centang material standar instalasi
+            this.transactionType = 'Biaya Pasang Baru (PSB)';
+            this.catalog.forEach(mat => {
+              const n = mat.name.toLowerCase();
+              if (n.includes('drop') || n.includes('dc 1c') || n.includes('fast') || n.includes('roset') || n.includes('modem') || n.includes('ont')) {
+                mat.checked = true;
+              } else {
+                mat.checked = false;
+              }
+            });
+            if (!this.customerName || this.customerName.startsWith('Titik Proyek') || this.customerName === 'Titik Pengembangan Jaringan') {
+              this.customerName = 'Bpk Herman / CST-109';
+            }
+          } else {
+            // Pengembangan / Maintenance: otomatis TIDAK tercentang (checked: false)
+            this.transactionType = itemType === 'Maintenance' ? 'Biaya Perbaikan / Visit' : 'Penjualan Kabel FO Tambahan';
+            this.catalog.forEach(mat => {
+              mat.checked = false;
+            });
+            if (!this.customerName || this.customerName === 'Bpk Herman / CST-109') {
+              this.customerName = this.jobType ? ('Titik Proyek: ' + this.jobType) : 'Titik Pengembangan Jaringan';
+            }
+          }
+        },
+
+        getCurrentLocation() {
+          if (!navigator.geolocation) {
+            alert('Fitur GPS Geolocation tidak didukung di peramban ini.');
+            return;
+          }
+          this.isLocating = true;
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              this.isLocating = false;
+              const lat = pos.coords.latitude.toFixed(6);
+              const lng = pos.coords.longitude.toFixed(6);
+              this.coordinates = lat + ', ' + lng;
+            },
+            (err) => {
+              this.isLocating = false;
+              alert('Gagal mengambil titik koordinat GPS: ' + err.message);
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        },
+
+        toggleAllMaterials(checkState) {
+          this.catalog.forEach(item => {
+            item.checked = !!checkState;
+          });
+        },
 
         get filteredPriceList() {
           let list = this.priceList || [];
@@ -476,6 +545,7 @@
             this.serviceBasePrice = Number(item.price);
             this.servicePrice = this.serviceBasePrice * Math.max(1, Number(this.serviceQty || 1));
             this.cashAmount = this.servicePrice;
+            this.applyServiceCategory(item.type);
           }
         },
 
@@ -488,6 +558,7 @@
           this.serviceQty = 1;
           this.servicePrice = this.serviceBasePrice;
           this.cashAmount = this.serviceBasePrice;
+          this.applyServiceCategory(item.type);
           this.openPriceListModal = false;
         },
 
@@ -912,6 +983,7 @@
                   satuan_jasa: this.serviceUnit || '',
                   telepon: this.customerPhone || '',
                   alamat: this.customerAddress || '',
+                  koordinat: this.coordinates || '',
                   pppoe: this.pppoeUsername || '',
                   odp: this.odpPort || '',
                   rx_power: this.rxPower || '',
@@ -1283,6 +1355,7 @@
         <input type="hidden" name="material_total_cost" :value="totalMaterialCost">
         <input type="hidden" name="service_code" :value="selectedServiceCode">
         <input type="hidden" name="service_unit" :value="serviceUnit">
+        <input type="hidden" name="coordinates" :value="coordinates">
 
         <!-- Baris 1: Tanggal & Nama Teknisi -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
@@ -1371,46 +1444,51 @@
           </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- SECTION: INFORMASI PELANGGAN & KREDENSIAL  -->
-        <!-- ========================================== -->
-        <div class="pt-2">
-          <p class="section-title">
-            <i class="fa-regular fa-id-card text-brand"></i>
-            <span>Informasi Pelanggan & Kredensial</span>
-          </p>
+        <!-- ======================================================== -->
+        <!-- SECTION A (PSB): INFORMASI PELANGGAN & KREDENSIAL       -->
+        <!-- ======================================================== -->
+        <div class="pt-2" x-show="isPsb" x-cloak>
+          <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <p class="section-title mb-0">
+              <i class="fa-regular fa-id-card text-brand"></i>
+              <span>Informasi Pelanggan &amp; Kredensial (Pemasangan Baru / PSB)</span>
+            </p>
+            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-full">
+              <i class="fa-solid fa-user-plus text-sky-600"></i> Masuk Data Pelanggan &amp; Stok Keluar
+            </span>
+          </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div>
               <label class="lbl">Nama Pelanggan / ID</label>
-              <input type="text" name="customer_name" x-model="customerName" required placeholder="Bpk Herman / CST-109" class="inp font-semibold">
+              <input type="text" name="customer_name" x-model="customerName" :disabled="!isPsb" required placeholder="Bpk Herman / CST-109" class="inp font-semibold">
             </div>
 
             <div>
               <label class="lbl">NIK Pelanggan (KTP)</label>
-              <input type="text" name="customer_nik" x-model="customerNik" placeholder="3302xxxxxxxxxxxx" maxlength="20" class="inp font-mono font-medium">
+              <input type="text" name="customer_nik" x-model="customerNik" :disabled="!isPsb" placeholder="3302xxxxxxxxxxxx" maxlength="20" class="inp font-mono font-medium">
             </div>
 
             <div>
               <label class="lbl">Nomor HP / WhatsApp</label>
-              <input type="text" name="customer_phone" x-model="customerPhone" placeholder="08xxxxxxxxxx" class="inp font-medium">
+              <input type="text" name="customer_phone" x-model="customerPhone" :disabled="!isPsb" placeholder="08xxxxxxxxxx" class="inp font-medium">
             </div>
 
             <div>
               <label class="lbl">Secret PPPoE (Username)</label>
-              <input type="text" name="pppoe_username" x-model="pppoeUsername" placeholder="herman_net"
+              <input type="text" name="pppoe_username" x-model="pppoeUsername" :disabled="!isPsb" placeholder="herman_net"
                      class="inp font-mono font-semibold text-brand">
             </div>
 
             <div class="sm:col-span-2">
               <label class="lbl">Alamat Lengkap</label>
-              <input type="text" name="customer_address" x-model="customerAddress" placeholder="Jl. Merdeka No. 45, Purwokerto" class="inp font-medium">
+              <input type="text" name="customer_address" x-model="customerAddress" :disabled="!isPsb" placeholder="Jl. Merdeka No. 45, Purwokerto" class="inp font-medium">
             </div>
 
             <div>
               <label class="lbl">Jenis Layanan / Paket</label>
               <div class="relative">
-                <input type="text" name="service_plan" x-model="servicePlan" list="servicePlanOptions" placeholder="Contoh: Paket 20 Mbps" class="inp font-semibold text-gray-800">
+                <input type="text" name="service_plan" x-model="servicePlan" :disabled="!isPsb" list="servicePlanOptions" placeholder="Contoh: Paket 20 Mbps" class="inp font-semibold text-gray-800">
                 <datalist id="servicePlanOptions">
                   <option value="Paket 20 Mbps">
                   <option value="Paket 30 Mbps">
@@ -1428,20 +1506,110 @@
                   <span class="text-[10px] font-semibold text-gray-500">Vol:</span>
                   <input type="number" min="1" step="any" x-model="serviceQty" @input="updateServicePriceFromQty()"
                          class="w-14 h-6 text-center text-xs font-bold border border-gray-300 rounded px-1 text-gray-800 focus:border-brand focus:ring-0">
-                  <span class="text-[10px] font-bold text-gray-500" x-text="serviceUnit || 'Unit'"></span>
+                  <span class="text-[10px] font-bold text-gray-500" x-text="serviceUnit || 'Client'"></span>
                 </div>
               </div>
               <div class="relative flex items-center">
                 <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none select-none z-10">Rp</span>
-                <input type="number" name="service_price" x-model="servicePrice" min="0" step="any" placeholder="150000"
+                <input type="number" name="service_price" x-model="servicePrice" :disabled="!isPsb" min="0" step="any" placeholder="150000"
                        class="inp inp-prefix font-mono font-bold text-emerald-700 w-full">
               </div>
             </div>
 
             <div class="sm:col-span-2">
               <label class="lbl">ID ODP & Port</label>
-              <input type="text" name="odp_port" x-model="odpPort" placeholder="ODP-TMB-04 / Port 2"
+              <input type="text" name="odp_port" x-model="odpPort" :disabled="!isPsb" placeholder="ODP-TMB-04 / Port 2"
                      class="inp font-mono font-semibold text-gray-900">
+            </div>
+          </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- SECTION B (NON-PSB): TITIK KOORDINASI & PENGEMBANGAN     -->
+        <!-- ======================================================== -->
+        <div class="pt-2" x-show="!isPsb" x-cloak>
+          <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <p class="section-title mb-0">
+              <i class="fa-solid fa-location-crosshairs text-brand"></i>
+              <span>Titik Koordinasi &amp; Lokasi Pengembangan / Infrastruktur</span>
+            </p>
+            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+              <i class="fa-solid fa-boxes-packing text-amber-600"></i> Hanya Catat Stok Keluar (Bukan Pelanggan)
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div>
+              <label class="lbl">
+                <i class="fa-solid fa-map-pin text-brand"></i> Nama Titik / Lokasi Proyek / ODC / ODP
+              </label>
+              <input type="text" name="customer_name" x-model="customerName" :disabled="isPsb" required placeholder="Contoh: ODC-01 Kasegeran / Sambung Closure ODP-P165" class="inp font-semibold">
+              <span class="text-[10px] text-gray-400 mt-1 block">Nama titik acuan pekerjaan pengembangan jaringan.</span>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="lbl mb-0">
+                  <i class="fa-solid fa-location-dot text-brand"></i> Titik Koordinasi (GPS)
+                </label>
+                <button type="button" @click="getCurrentLocation()" :disabled="isLocating"
+                        class="text-[11px] font-bold text-brand hover:underline flex items-center gap-1">
+                  <i class="fa-solid fa-crosshairs" :class="isLocating ? 'fa-spin' : ''"></i>
+                  <span x-text="isLocating ? 'Mendeteksi...' : 'Ambil Titik GPS Saya'"></span>
+                </button>
+              </div>
+              <div class="relative">
+                <input type="text" x-model="coordinates" placeholder="-7.412345, 109.123456" class="inp font-mono font-semibold text-gray-900 pr-8">
+                <a x-show="coordinates" :href="'https://www.google.com/maps?q=' + encodeURIComponent(coordinates)" target="_blank"
+                   class="absolute right-2.5 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 text-xs" title="Buka di Google Maps">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+              </div>
+              <span class="text-[10px] text-gray-400 mt-1 block">Format: latitude, longitude (klik 'Ambil Titik GPS Saya' atau isi manual).</span>
+            </div>
+
+            <div>
+              <label class="lbl">
+                <i class="fa-solid fa-network-wired text-brand"></i> ODC / ODP / Jalur Core / Port
+              </label>
+              <input type="text" name="odp_port" x-model="odpPort" :disabled="isPsb" placeholder="Contoh: ODC-KAS-01 / Core 12-24 / Port 8"
+                     class="inp font-mono font-semibold text-gray-900">
+            </div>
+
+            <div>
+              <label class="lbl">
+                <i class="fa-solid fa-user-tie text-brand"></i> PIC Lapangan / Kontak Pengawas
+              </label>
+              <input type="text" name="customer_phone" x-model="customerPhone" :disabled="isPsb" placeholder="08xxxxxxxxxx (Bpk Joko)" class="inp font-medium">
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="lbl">
+                <i class="fa-solid fa-road text-brand"></i> Wilayah / Lokasi Lapangan Lengkap
+              </label>
+              <input type="text" name="customer_address" x-model="customerAddress" :disabled="isPsb" placeholder="Contoh: Kasegeran RW 02, Cilongok (Depan Balai Desa)" class="inp font-medium">
+            </div>
+
+            <div>
+              <label class="lbl">Jenis Pekerjaan Pengembangan</label>
+              <input type="text" name="service_plan" x-model="jobType" :disabled="isPsb" readonly class="inp font-semibold text-gray-700 bg-gray-50 cursor-not-allowed">
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="lbl mb-0">Biaya Jasa / Borongan (Rp)</label>
+                <div class="flex items-center gap-1.5" x-show="selectedServiceCode && selectedServiceCode !== 'CUSTOM'">
+                  <span class="text-[10px] font-semibold text-gray-500">Vol:</span>
+                  <input type="number" min="1" step="any" x-model="serviceQty" @input="updateServicePriceFromQty()"
+                         class="w-14 h-6 text-center text-xs font-bold border border-gray-300 rounded px-1 text-gray-800 focus:border-brand focus:ring-0">
+                  <span class="text-[10px] font-bold text-gray-500" x-text="serviceUnit || 'Unit'"></span>
+                </div>
+              </div>
+              <div class="relative flex items-center">
+                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none select-none z-10">Rp</span>
+                <input type="number" name="service_price" x-model="servicePrice" :disabled="isPsb" min="0" step="any" placeholder="0"
+                       class="inp inp-prefix font-mono font-bold text-emerald-700 w-full">
+              </div>
             </div>
           </div>
         </div>
@@ -1490,6 +1658,28 @@
               </div>
 
               <div class="flex items-center justify-between sm:justify-end gap-2 flex-wrap">
+                <!-- Status Checklist Otomatis -->
+                <span x-show="isPsb" class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-xl shadow-2xs">
+                  <i class="fa-solid fa-wand-magic-sparkles text-sky-600"></i> PSB: Material Standar Tercentang
+                </span>
+                <span x-show="!isPsb" class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl shadow-2xs">
+                  <i class="fa-solid fa-square-check text-amber-600"></i> Pengembangan: Tidak Tercentang
+                </span>
+
+                <!-- Quick Action Checklist -->
+                <div class="flex items-center gap-1">
+                  <button type="button" @click="toggleAllMaterials(true)"
+                          class="btn-ghost text-[10px] py-1 px-2 font-bold text-gray-700 hover:text-emerald-700 hover:border-emerald-300"
+                          title="Centang semua item material di katalog">
+                    <i class="fa-solid fa-check-double text-emerald-600 mr-0.5"></i> Centang Semua
+                  </button>
+                  <button type="button" @click="toggleAllMaterials(false)"
+                          class="btn-ghost text-[10px] py-1 px-2 font-bold text-gray-700 hover:text-rose-700 hover:border-rose-300"
+                          title="Hapus semua centang material">
+                    <i class="fa-solid fa-xmark text-rose-600 mr-0.5"></i> Batal Centang
+                  </button>
+                </div>
+
                 <!-- Total Biaya Badge -->
                 <span class="text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl shadow-xs whitespace-nowrap">
                   Total: <span x-text="rp(totalMaterialCost)"></span>
@@ -1927,6 +2117,12 @@
                 @if($r->customer_address)
                   <p class="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-snug">{{ $r->customer_address }}</p>
                 @endif
+                @if($r->coordinates)
+                  <a href="https://www.google.com/maps?q={{ urlencode($r->coordinates) }}" target="_blank"
+                     class="inline-flex items-center gap-1 text-[10px] font-mono text-blue-600 hover:underline mt-1 font-semibold">
+                    <i class="fa-solid fa-location-dot text-[9px] text-brand"></i> {{ $r->coordinates }}
+                  </a>
+                @endif
               </div>
 
               <!-- Detail Grid: Tipe Pekerjaan & Rx Power -->
@@ -2048,7 +2244,16 @@
                         @endif
                       </div>
                     @endif
-                    <span class="text-[10px] text-gray-400 block truncate max-w-[200px] mt-0.5">{{ $r->customer_address }}</span>
+                    @if($r->customer_address)
+                      <span class="text-[10px] text-gray-400 block truncate max-w-[200px] mt-0.5">{{ $r->customer_address }}</span>
+                    @endif
+                    @if($r->coordinates)
+                      <a href="https://www.google.com/maps?q={{ urlencode($r->coordinates) }}" target="_blank"
+                         class="inline-flex items-center gap-1 text-[10px] font-mono text-blue-600 hover:underline mt-0.5 font-semibold"
+                         title="Buka Titik Koordinasi di Google Maps">
+                        <i class="fa-solid fa-location-dot text-[9px] text-brand"></i> {{ $r->coordinates }}
+                      </a>
+                    @endif
                   </td>
 
                   <td class="whitespace-nowrap">

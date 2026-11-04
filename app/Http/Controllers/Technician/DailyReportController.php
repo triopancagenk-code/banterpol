@@ -142,30 +142,6 @@ class DailyReportController extends Controller
             }
 
             $seenMaterials = [];
-            $priceEstimates = [
-                'dc 1c' => 2500,
-                'drop core' => 2500,
-                'dropcore' => 2500,
-                'kabel drop' => 2500,
-                'fast connector' => 7500,
-                'roset' => 12000,
-                'modem' => 350000,
-                'zte f672y' => 350000,
-                'zte f670l' => 350000,
-                'f672' => 350000,
-                'f670' => 350000,
-                'router' => 250000,
-                'zte f609' => 250000,
-                'f609' => 250000,
-                'adaptor' => 25000,
-                'adapter' => 25000,
-                'patchcord' => 15000,
-                'sleeve' => 500,
-                'splitter 1:2' => 35000,
-                'splitter 1:4' => 45000,
-                'splitter 1:8' => 55000,
-            ];
-
             foreach ($incomingMutations as $mut) {
                 $mat = $mut->material;
                 if (!$mat) {
@@ -183,13 +159,9 @@ class DailyReportController extends Controller
                 $lowerName = strtolower($name);
 
                 $price = (float) $mat->unit_price;
-                if ($price <= 0) {
-                    foreach ($priceEstimates as $pattern => $estPrice) {
-                        if (str_contains($lowerName, $pattern)) {
-                            $price = $estPrice;
-                            break;
-                        }
-                    }
+                $officialPrice = PriceListService::findMaterialPrice($name);
+                if ($officialPrice > 0) {
+                    $price = $officialPrice;
                 }
 
                 $maxQty = isset($incomingStockTotals[$matId]) ? (float)$incomingStockTotals[$matId] : null;
@@ -211,17 +183,18 @@ class DailyReportController extends Controller
             }
         }
 
-        // Fallback jika belum ada mutasi barang masuk pada bulan ini
+        // Fallback jika belum ada mutasi barang masuk pada bulan ini (Menggunakan Tarif Resmi Price List Material 2026)
         if (empty($defaultCatalog)) {
             $defaultCatalog = [
-                ['key' => 'dropcore', 'name' => 'Kabel Dropcore (DC 1C)', 'category' => 'Kabel Drop & Fiber Optik', 'price' => 2500, 'unit' => 'm', 'default_qty' => 85, 'max_qty' => null, 'checked' => true],
-                ['key' => 'fast_connector', 'name' => 'Fast Connector', 'category' => 'Adapter & Konektor Optik', 'price' => 7500, 'unit' => 'pcs', 'default_qty' => 2, 'max_qty' => null, 'checked' => true],
-                ['key' => 'ont_modem', 'name' => 'ONT / Modem', 'category' => 'Modem & ONT GPON', 'price' => 350000, 'unit' => 'unit', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
-                ['key' => 'patchcord', 'name' => 'Patchcord FO', 'category' => 'Patchcord & Pigtail', 'price' => 15000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
+                ['key' => 'dropcore', 'name' => 'Kabel Dropcore (DC 1C)', 'category' => 'Kabel Drop & Fiber Optik', 'price' => 750, 'unit' => 'm', 'default_qty' => 85, 'max_qty' => null, 'checked' => true],
+                ['key' => 'fast_connector', 'name' => 'Fast Connector', 'category' => 'Adapter & Konektor Optik', 'price' => 5000, 'unit' => 'pcs', 'default_qty' => 2, 'max_qty' => null, 'checked' => true],
+                ['key' => 'ont_modem', 'name' => 'ONT / Modem Router ZTE', 'category' => 'Modem & ONT GPON', 'price' => 160000, 'unit' => 'unit', 'default_qty' => 1, 'max_qty' => null, 'checked' => true],
+                ['key' => 'patchcord', 'name' => 'Patchcord FO SC/UPC', 'category' => 'Patchcord & Pigtail', 'price' => 7000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
                 ['key' => 'sleeve', 'name' => 'Sleeve Splicing (Smuft)', 'category' => 'Protection Sleeve (Smuft)', 'price' => 500, 'unit' => 'pcs', 'default_qty' => 2, 'max_qty' => null, 'checked' => false],
-                ['key' => 'roset', 'name' => 'Roset FO', 'category' => 'Material Pembantu & Instalasi', 'price' => 12000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => true],
-                ['key' => 'splitter_1_2', 'name' => 'PLC Splitter 1:2', 'category' => 'Splitter Optik', 'price' => 35000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
-                ['key' => 'splitter_1_4', 'name' => 'PLC Splitter 1:4', 'category' => 'Splitter Optik', 'price' => 45000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
+                ['key' => 'roset', 'name' => 'Roset FO', 'category' => 'Material Pembantu & Instalasi', 'price' => 6000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => true],
+                ['key' => 'splitter_1_2', 'name' => 'PLC Splitter 1:2', 'category' => 'Splitter Optik', 'price' => 55000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
+                ['key' => 'splitter_1_4', 'name' => 'PLC Splitter 1:4', 'category' => 'Splitter Optik', 'price' => 60000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
+                ['key' => 'splitter_1_8', 'name' => 'PLC Splitter 1:8', 'category' => 'Splitter Optik', 'price' => 75000, 'unit' => 'pcs', 'default_qty' => 1, 'max_qty' => null, 'checked' => false],
             ];
         }
 
@@ -307,6 +280,7 @@ class DailyReportController extends Controller
             'customer_nik' => 'nullable|string|max:30',
             'customer_phone' => 'nullable|string|max:30',
             'customer_address' => 'nullable|string|max:500',
+            'coordinates' => 'nullable|string|max:100',
             'pppoe_username' => 'nullable|string|max:100',
             'service_plan' => 'nullable|string|max:100',
             'service_price' => 'nullable|numeric|min:0',
@@ -363,12 +337,17 @@ class DailyReportController extends Controller
         }
 
         // =========================================================================
-        // KHUSUS MITRA BANTERPOL: Otomatis masuk ke Data Pelanggan pada POV Admin
+        // KHUSUS MITRA BANTERPOL & HANYA UNTUK PEMASANGAN BARU (PSB): Otomatis masuk ke Data Pelanggan pada POV Admin
         // =========================================================================
         $orderId = !empty($validated['order_id']) && is_numeric($validated['order_id']) ? (int)$validated['order_id'] : null;
         $isBanterpol = strtoupper(trim($validated['partner_company'])) === 'BANTERPOL';
+        $serviceCode = $validated['service_code'] ?? null;
+        $jobType = $validated['job_type'] ?? '';
+        $isPsb = ($serviceCode === 'NPSB')
+            || str_contains(strtolower($jobType), 'pasang baru pelanggan')
+            || str_contains(strtolower($jobType), 'psb');
 
-        if ($isBanterpol) {
+        if ($isBanterpol && $isPsb) {
             try {
                 $linkedOrder = null;
 
@@ -560,6 +539,9 @@ class DailyReportController extends Controller
         }
         if (Schema::hasColumn('daily_reports', 'service_unit')) {
             $reportData['service_unit'] = $serviceUnit;
+        }
+        if (Schema::hasColumn('daily_reports', 'coordinates')) {
+            $reportData['coordinates'] = $validated['coordinates'] ?? null;
         }
 
         $report = DailyReport::create($reportData);
@@ -1431,7 +1413,8 @@ class DailyReportController extends Controller
                 !Schema::hasColumn('daily_reports', 'service_plan') || 
                 !Schema::hasColumn('daily_reports', 'service_price') ||
                 !Schema::hasColumn('daily_reports', 'service_code') ||
-                !Schema::hasColumn('daily_reports', 'service_unit')) {
+                !Schema::hasColumn('daily_reports', 'service_unit') ||
+                !Schema::hasColumn('daily_reports', 'coordinates')) {
 
                 try {
                     Artisan::call('migrate', ['--force' => true]);
@@ -1455,6 +1438,9 @@ class DailyReportController extends Controller
                     }
                     if (!Schema::hasColumn('daily_reports', 'service_unit')) {
                         $table->string('service_unit', 50)->nullable()->after('service_price');
+                    }
+                    if (!Schema::hasColumn('daily_reports', 'coordinates')) {
+                        $table->string('coordinates', 100)->nullable()->after('customer_address');
                     }
                 });
             }

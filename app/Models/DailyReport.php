@@ -21,6 +21,7 @@ class DailyReport extends Model
         'customer_nik',
         'customer_phone',
         'customer_address',
+        'coordinates',
         'pppoe_username',
         'service_plan',
         'service_price',
