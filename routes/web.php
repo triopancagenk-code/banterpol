@@ -23,6 +23,9 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/auth-google-redirect', [AuthController::class, 'google_redirect'])->name('auth.google-redirect');
 Route::get('/auth-google-callback', [AuthController::class, 'google_callback'])->name('auth.google-callback');
 
+// Struk / Nota Elektronik Pembayaran Digital (Akses Publik / WhatsApp Pelanggan)
+Route::get('/struk/{id}', [AdminController::class, 'strukTagihan'])->name('tagihan.struk');
+
 // Fitur Layanan & Pelanggan Banterpool (Wajib Login)
 Route::middleware('auth')->group(function () {
 
@@ -69,6 +72,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('/pelanggan/{id}', [AdminController::class, 'deletePelanggan'])->name('pelanggan.delete');
 
     Route::get('/tagihan', [AdminController::class, 'tagihan'])->name('tagihan');
+    Route::get('/tagihan/{id}/struk', [AdminController::class, 'strukTagihan'])->name('tagihan.admin-struk');
     Route::post('/tagihan', [AdminController::class, 'storeTagihan'])->name('tagihan.store');
     Route::get('/tagihan/export', [AdminController::class, 'exportTagihan'])->name('tagihan.export');
     Route::post('/tagihan/{id}/status', [AdminController::class, 'updateTagihanStatus'])->name('tagihan.status');

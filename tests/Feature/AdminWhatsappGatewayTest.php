@@ -172,6 +172,41 @@ class AdminWhatsappGatewayTest extends TestCase
         $this->assertNotEquals($logAlpha->message, $logBeta->message);
     }
 
+    public function test_broadcast_parses_new_billing_template_and_dynamic_variables_properly(): void
+    {
+        $admin = $this->createAdminUser();
+
+        Order::create([
+            'order_number' => 'ORD-TEST-003',
+            'customer_name' => 'Ahmad Fauzi',
+            'customer_phone' => '087722114769',
+            'customer_email' => 'ahmad@example.com',
+            'package_name' => 'Paket 20 Mbps',
+            'address' => 'Wangon RT 05/01',
+            'status' => 'Selesai',
+        ]);
+
+        $service = new \App\Services\WhatsappGatewayService();
+        $billingTemplate = $service->getTemplates()['billing']['message'];
+
+        $response = $this->actingAs($admin)->post('/admin/whatsapp-gateway/broadcast', [
+            'target_filter' => 'all',
+            'message_type' => 'billing',
+            'message' => $billingTemplate,
+        ]);
+
+        $response->assertRedirect(route('admin.whatsapp', ['tab' => 'logs']));
+
+        $log = WhatsappLog::where('recipient_phone', '6287722114769')->first();
+        $this->assertNotNull($log);
+        $this->assertStringContainsString('Yth. Bpk/Ibu Ahmad Fauzi', $log->message);
+        $this->assertStringContainsString('087722114769', $log->message);
+        $this->assertStringContainsString('Tagihan Bulan :', $log->message);
+        $this->assertStringContainsString('Jenis Paket : Paket 20 Mbps', $log->message);
+        $this->assertStringContainsString('Nomor Virtual Acount : 169110122114769', $log->message);
+        $this->assertStringContainsString('Ket : BELUM TERBAYAR', $log->message);
+    }
+
     public function test_admin_can_send_single_whatsapp_message(): void
     {
         $admin = $this->createAdminUser();

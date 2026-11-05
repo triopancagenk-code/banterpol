@@ -43,7 +43,7 @@ class WhatsappGatewayService
                 'icon' => 'fa-file-invoice-dollar',
                 'color' => 'blue',
                 'badge' => 'Tagihan',
-                'message' => "Halo Kak {nama},\n\nTerima kasih telah setia berlangganan WiFi Banterpool ({paket}).\n\nKami ingin menginformasikan tagihan internet periode berjalan Anda:\n💰 Total Tagihan: {tagihan}\n📅 Batas Jatuh Tempo: {jatuh_tempo}\n\nUntuk menghindari isolir koneksi otomatis, silakan lakukan pembayaran melalui transfer bank, e-wallet, atau melalui kolektor resmi kami.\n💳 BRIVA : {briva}\n\nTerima kasih,\nBilling Support Banterpool",
+                'message' => "Yth. Bpk/Ibu {nama}\n{telepon}\n\nPEMBERITAHUAN\nTagihan Bulan : {bulan}\nJenis Paket : {paket}\nBiaya Paket : {biaya_paket}\nBesar Tagihan : {tagihan}\n\nMasa aktif s/d 20 {bulan} 2026\n\nNomor Virtual Acount : {briva}\n\nPastikan untuk membayar menggunakan Virtual Acount seperti BRIVA, DANA dll\n\nKet : BELUM TERBAYAR\n\nINFO TAMBAHAN\nUntuk menghindari isolir otomatis, silakan lakukan pembayaran sebelum tanggal jatuh tempo, dan pastikan mengirim bukti transaksi melalui nomor ini.\n\nTerimakasih",
             ],
             'outage' => [
                 'title' => 'Pemberitahuan Insiden Jaringan (Emergency Outage)',
@@ -146,34 +146,105 @@ class WhatsappGatewayService
     public function parseTemplateVariables(string $template, array $data): string
     {
         $phone = $data['phone'] ?? $data['formatted_phone'] ?? '';
+        $rawPhone = !empty($phone) ? $phone : '08818679774';
         $briva = $this->generateBrivaNumber($phone);
         $last8 = substr($briva, 7);
+
+        $indonesianMonths = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+        $currentMonth = $indonesianMonths[(int) date('n')];
+        $currentYear = date('Y');
+
+        $name = $data['name'] ?? 'Pelanggan';
+        $packageName = $data['package_name'] ?? 'Paket 20 Mbps';
+        $billTotal = $data['bill_total'] ?? 'Rp110.000';
+        $packagePrice = $data['package_price'] ?? $data['bill_total'] ?? 'Rp110.000';
+        $dueDate = $data['due_date'] ?? ('20 ' . $currentMonth . ' ' . $currentYear);
+        $address = $data['address'] ?? 'Cilongok, Banyumas';
+        $customerId = $data['customer_id'] ?? $data['id'] ?? ('BTP-' . rand(1000, 9999));
 
         // 1. Tangani jika ada yang menulis prefix 1691101 diikuti tag variabel atau format teks literal
         $template = str_replace([
             '1691101{briva}',
             '1691101{link_bayar}',
             '1691101{nomor_pelanggan}',
+            '1691101{no hp pelanggan}',
+            '1691101{no_hp_pelanggan}',
+            '1691101{no_hp}',
+            '1691101{telepon}',
+            '1691101{phone}',
             '1691101(8 digit terakhir nomor pelanggan)',
             '1691101(8 digit terakhir nomor telepon)',
             '1691101 (8 digit terakhir nomor pelanggan)',
             '1691101 (8 digit terakhir nomor telepon)',
         ], $briva, $template);
 
+        // Regex fallback untuk variasi 1691101{...}
+        $template = preg_replace('/1691101\s*\{(?:no[\s_]*hp[\s_]*pelanggan|telepon|phone|no_hp|briva|link_bayar)\}/i', $briva, $template);
+
         // 2. Tangani jika ada kalimat "Link Pembayaran: {link_bayar}" atau sejenisnya
         $template = preg_replace('/(🔗\s*)?Link Pembayaran\s*:\s*\{link_bayar\}/i', '💳 BRIVA : ' . $briva, $template);
 
-        // 3. Replacements standar
+        // Beri spasi jika ada penulisan rapat antara tag bulan dan tahun (misal {bulan real time}2026)
+        $template = preg_replace('/(\{bulan[^}]*\})([0-9]{4})/i', '$1 $2', $template);
+
+        // 3. Replacements standar & seluruh alias variabel dinamis
         $replacements = [
-            '{nama}' => $data['name'] ?? 'Pelanggan',
-            '{tagihan}' => $data['bill_total'] ?? 'Rp110.000',
-            '{paket}' => $data['package_name'] ?? 'Paket Internet',
-            '{jatuh_tempo}' => $data['due_date'] ?? date('d M Y', strtotime('+7 days')),
-            '{alamat}' => $data['address'] ?? 'Cilongok, Banyumas',
-            '{nomor_layanan}' => $data['customer_id'] ?? 'BTP-' . rand(1000, 9999),
+            '{nama}' => $name,
+
+            // Nomor HP / Telepon (sendiri tanpa prefix 1691101)
+            '{no hp pelanggan}' => $rawPhone,
+            '{no_hp_pelanggan}' => $rawPhone,
+            '{nomor_hp}' => $rawPhone,
+            '{no_hp}' => $rawPhone,
+            '{telepon}' => $rawPhone,
+            '{phone}' => $rawPhone,
+
+            // Bulan & Tahun Real-time
+            '{bulan sesuai real time}' => $currentMonth,
+            '{bulan real time}' => $currentMonth,
+            '{bulan}' => $currentMonth,
+            '{periode_bulan}' => $currentMonth,
+            '{tahun}' => $currentYear,
+
+            // Paket & Biaya
+            '{nejis paket pelanggan}' => $packageName,
+            '{jenis paket pelanggan}' => $packageName,
+            '{jenis_paket}' => $packageName,
+            '{paket}' => $packageName,
+            '{biaya [aket pelanggan}' => $packagePrice,
+            '{biaya [aket pelanggan' => $packagePrice,
+            '{biaya paket pelanggan}' => $packagePrice,
+            '{biaya_paket}' => $packagePrice,
+            '{harga_paket}' => $packagePrice,
+
+            // Tagihan
+            '{tagihan pelanggan}' => $billTotal,
+            '{tagihan}' => $billTotal,
+            '{besar_tagihan}' => $billTotal,
+            '{total_tagihan}' => $billTotal,
+
+            // Virtual Account / BRIVA
             '{briva}' => $briva,
             '{link_bayar}' => $briva,
             '{8_digit_hp}' => $last8,
+
+            // Jatuh Tempo & Alamat
+            '{jatuh_tempo}' => $dueDate,
+            '{alamat}' => $address,
+            '{nomor_layanan}' => $customerId,
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $template);

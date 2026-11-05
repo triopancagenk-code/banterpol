@@ -2333,6 +2333,58 @@ class AdminController extends Controller
     }
 
     /**
+     * Cetak Struk / Nota Elektronik Pembayaran Digital (Sesuai Desain Foto 2)
+     */
+    public function strukTagihan($id)
+    {
+        $bill = Bill::where('bill_number', $id)
+            ->orWhere('id', $id)
+            ->first();
+
+        if (!$bill) {
+            $order = Order::where('order_number', $id)->orWhere('id', $id)->first();
+            if ($order && $order->bills()->exists()) {
+                $bill = $order->bills()->latest()->first();
+            }
+        }
+
+        if (!$bill) {
+            abort(404, 'Struk / Nota Elektronik Pembayaran tidak ditemukan.');
+        }
+
+        // Tentukan kode pelanggan (Badge OB159 / CST-xxx / BTP-xxx)
+        $customerCode = 'BTP-' . str_pad($bill->id, 3, '0', STR_PAD_LEFT);
+        if ($bill->order && !empty($bill->order->order_number)) {
+            $customerCode = $bill->order->order_number;
+        } elseif (!empty($bill->order_id)) {
+            $customerCode = 'CST-' . str_pad($bill->order_id, 3, '0', STR_PAD_LEFT);
+        }
+
+        // Tanggal bayar
+        $paidDate = $bill->paid_at 
+            ? \Carbon\Carbon::parse($bill->paid_at)->translatedFormat('d M Y')
+            : ($bill->updated_at ? $bill->updated_at->translatedFormat('d M Y') : date('d M Y'));
+
+        $paidTime = $bill->paid_at 
+            ? \Carbon\Carbon::parse($bill->paid_at)->format('H:i') . ' WIB'
+            : ($bill->updated_at ? $bill->updated_at->format('H:i') . ' WIB' : date('H:i') . ' WIB');
+
+        // Bulan periode tagihan: misal "Nov 2026"
+        $monthLabel = 'Nov 2026';
+        if ($bill->paid_at) {
+            $monthLabel = \Carbon\Carbon::parse($bill->paid_at)->translatedFormat('M Y');
+        } elseif ($bill->period) {
+            $monthLabel = $bill->period;
+        } else {
+            $monthLabel = date('M Y');
+        }
+
+        $adminBy = $bill->collected_by ?: 'Atun';
+
+        return view('admin.tagihan-struk', compact('bill', 'customerCode', 'paidDate', 'paidTime', 'monthLabel', 'adminBy'));
+    }
+
+    /**
      * Halaman Pengintaian & Penanganan Laporan Masalah / Trouble Tickets
      */
     public function laporanMasalah(Request $request)

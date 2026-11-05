@@ -74,6 +74,89 @@
         viewProof(url) {
             this.proofUrl = url;
             this.openProofLightbox = true;
+        },
+
+        getWaBuktiLunasUrl(bill) {
+            if (!bill) return '#';
+            const phone = bill.customer_phone ? String(bill.customer_phone).replace(/[^0-9]/g, '').replace(/^0/, '62') : '';
+            const customerName = bill.customer_name || 'Pelanggan';
+            const rawPrice = bill.total ? (String(bill.total).includes('Rp') ? bill.total : 'Rp. ' + bill.total) : 'Rp. 110.000';
+
+            // Jika belum lunas, kirim pengingat tagihan
+            if (bill.status !== 'Lunas') {
+                const reminderText = 'Halo Bapak/Ibu ' + customerName + ', kami dari Banterpool mengingatkan tagihan internet ' + bill.id + ' sebesar ' + rawPrice + ' jatuh tempo pada ' + (bill.due_date || '-') + '. Terima kasih.';
+                return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(reminderText);
+            }
+
+            // Link cetak struk elektronik publik
+            const origin = window.location.origin;
+            const strukLink = origin + '/struk/' + encodeURIComponent(bill.id);
+
+            // Waktu & Tanggal
+            let dateStr = '05 Nov 2026';
+            let timeStr = '17:10 WIB';
+            if (bill.paid_at_formatted && bill.paid_at_formatted !== '-') {
+                const parts = bill.paid_at_formatted.split(', ');
+                if (parts.length >= 2) {
+                    dateStr = parts[0];
+                    timeStr = parts[1];
+                } else {
+                    dateStr = bill.paid_at_formatted;
+                }
+            } else {
+                const now = new Date();
+                const mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                dateStr = String(now.getDate()).padStart(2, '0') + ' ' + mNames[now.getMonth()] + ' ' + now.getFullYear();
+                timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ' WIB';
+            }
+
+            // Tagihan Bulan: format singkatan bulan, misal 'Nov 2026'
+            let monthTagihan = 'Nov 2026';
+            if (bill.month_key) {
+                const mParts = String(bill.month_key).split('-');
+                if (mParts.length === 2) {
+                    const mIdx = parseInt(mParts[1], 10) - 1;
+                    const mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                    monthTagihan = (mNames[mIdx] || 'Nov') + ' ' + mParts[0];
+                }
+            } else if (bill.month_label) {
+                const mShortMap = {
+                    'januari': 'Jan', 'februari': 'Feb', 'maret': 'Mar', 'april': 'Apr',
+                    'mei': 'Mei', 'juni': 'Jun', 'juli': 'Jul', 'agustus': 'Agu',
+                    'september': 'Sep', 'oktober': 'Okt', 'november': 'Nov', 'desember': 'Des'
+                };
+                monthTagihan = bill.month_label.replace(/[a-zA-Z]+/g, m => mShortMap[m.toLowerCase()] || m);
+            }
+
+            const area = bill.address || 'Wangon RT 05/01';
+            const customerPhone = bill.customer_phone || '-';
+            const packageName = bill.package_name || 'Paket 20 Mbps';
+            const adminBy = 'Atun';
+
+            const message = `*BANTERPOOL* \n\n` +
+`NOTA ELEKTRONIK\n` +
+`${strukLink}\n\n` +
+`Yth. Bapak / Ibu\n` +
+`${customerName}\n` +
+`${customerPhone}\n` +
+`null\n` +
+`Area : ${area}\n\n` +
+`*PEMBAYARAN*\n` +
+`Tanggal Bayar :${dateStr} | ${timeStr}\n\n` +
+`Tagihan Bulan : \n` +
+`- ${monthTagihan}\n` +
+`Jenis Paket : ${packageName}\n` +
+`Harga Paket : ${rawPrice}\n` +
+`*Sudah Termasuk Pajak\n` +
+`Diskon  : Rp. 0\n` +
+`Total Biaya : ${rawPrice}\n` +
+`Ket : *LUNAS* \n` +
+`Admin By : ${adminBy}\n\n` +
+`terimakasih telah menggunakan layanan internet dari BANTERPOOL\n\n` +
+`SUPPORT BY :\n` +
+`Admin BANTERPOOL`;
+
+            return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(message);
         }
      }">
 
@@ -394,8 +477,8 @@
                     <i class="fa-regular fa-eye"></i> Detail
                   </button>
 
-                  <a href="https://wa.me/{{ preg_replace('/^0/', '62', $bill['customer_phone']) }}?text={{ urlencode(($bill['status'] === 'Lunas' ? 'Halo Bapak/Ibu ' . $bill['customer_name'] . ', terima kasih tagihan internet ' . $bill['id'] . ' sebesar Rp' . $bill['total'] . ' telah lunas terverifikasi.' : 'Halo Bapak/Ibu ' . $bill['customer_name'] . ', kami dari Banterpool mengingatkan tagihan internet ' . $bill['id'] . ' sebesar Rp' . $bill['total'] . ' jatuh tempo pada ' . $bill['due_date'] . '. Terima kasih.')) }}"
-                     target="_blank" title="{{ $bill['status'] === 'Lunas' ? 'Kirim Konfirmasi Lunas WhatsApp' : 'Kirim Pengingat WhatsApp' }}"
+                  <a :href="getWaBuktiLunasUrl(@js($bill))"
+                     target="_blank" title="{{ $bill['status'] === 'Lunas' ? 'Kirim Bukti Lunas WhatsApp' : 'Kirim Pengingat WhatsApp' }}"
                      class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white flex items-center justify-center transition">
                     <i class="fa-brands fa-whatsapp text-sm"></i>
                   </a>
@@ -547,10 +630,17 @@
 
         <!-- Aksi jika sudah lunas -->
         <template x-if="selectedBill?.status === 'Lunas'">
-          <div class="w-full sm:flex-1 flex items-center gap-2">
-            <a :href="'https://wa.me/' + (selectedBill?.customer_phone ? selectedBill.customer_phone.replace(/^0/, '62') : '') + '?text=' + encodeURIComponent('Halo Bapak/Ibu ' + selectedBill?.customer_name + ', terima kasih tagihan internet ' + selectedBill?.id + ' sebesar Rp' + selectedBill?.total + ' telah terverifikasi LUNAS dengan No Kuitansi ' + selectedBill?.receipt_number + '. Terima kasih.')"
+          <div class="w-full sm:flex-1 flex flex-wrap sm:flex-nowrap items-center gap-2">
+            <!-- Tombol Cetak Struk (Sesuai Foto 2) -->
+            <a :href="'/struk/' + selectedBill?.id" target="_blank"
+               class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm text-center">
+              <i class="fa-solid fa-receipt"></i> Cetak Struk
+            </a>
+
+            <!-- Tombol Kirim Bukti Lunas WA Template Baru -->
+            <a :href="getWaBuktiLunasUrl(selectedBill)"
                target="_blank"
-               class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
+               class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm text-center">
               <i class="fa-brands fa-whatsapp text-sm"></i> Kirim Bukti Lunas WA
             </a>
           </div>

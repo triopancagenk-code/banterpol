@@ -306,23 +306,32 @@
             <span class="text-[10px] text-slate-400">Otomatis diganti sesuai data pelanggan</span>
           </div>
           <div class="flex flex-wrap gap-1.5 text-[11px]">
-            <button type="button" @click="insertVariable('{nama}')" class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 font-mono transition">
+            <button type="button" @click="insertVariable('{nama}')" class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 font-mono transition" title="Nama Lengkap Pelanggan">
               + {nama}
             </button>
-            <button type="button" @click="insertVariable('{tagihan}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono transition">
-              + {tagihan}
+            <button type="button" @click="insertVariable('{telepon}')" class="px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 hover:bg-teal-100 font-mono transition" title="Nomor WhatsApp/HP Pelanggan">
+              + {telepon}
             </button>
-            <button type="button" @click="insertVariable('{paket}')" class="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 font-mono transition">
+            <button type="button" @click="insertVariable('{bulan}')" class="px-2.5 py-1 rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-800 hover:bg-cyan-100 font-mono transition" title="Bulan Berjalan Real-time (contoh: November)">
+              + {bulan}
+            </button>
+            <button type="button" @click="insertVariable('{paket}')" class="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 font-mono transition" title="Jenis Paket Internet Pelanggan">
               + {paket}
             </button>
-            <button type="button" @click="insertVariable('{jatuh_tempo}')" class="px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 hover:bg-purple-100 font-mono transition">
-              + {jatuh_tempo}
+            <button type="button" @click="insertVariable('{biaya_paket}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800 hover:bg-indigo-100 font-mono transition" title="Biaya / Tarif Paket Pelanggan">
+              + {biaya_paket}
             </button>
-            <button type="button" @click="insertVariable('{alamat}')" class="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 font-mono transition">
-              + {alamat}
+            <button type="button" @click="insertVariable('{tagihan}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono transition" title="Besar Tagihan Pelanggan">
+              + {tagihan}
             </button>
             <button type="button" @click="insertVariable('{briva}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono font-bold transition" title="BRIVA : 1691101 + 8 digit terakhir nomor pelanggan">
               + {briva}
+            </button>
+            <button type="button" @click="insertVariable('{jatuh_tempo}')" class="px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 hover:bg-purple-100 font-mono transition" title="Batas Jatuh Tempo / Masa Aktif">
+              + {jatuh_tempo}
+            </button>
+            <button type="button" @click="insertVariable('{alamat}')" class="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 font-mono transition" title="Alamat Pelanggan">
+              + {alamat}
             </button>
           </div>
         </div>
@@ -989,25 +998,58 @@ function whatsappGatewayApp() {
             const last8 = digits.length >= 8 ? digits.slice(-8) : digits.padStart(8, '0');
             const sampleBriva = '1691101' + last8;
 
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const now = new Date();
+            const currentMonth = months[now.getMonth()];
+            const currentYear = now.getFullYear();
+
             let text = this.messageText;
 
-            // Bersihkan format prefix jika ada yang mengetik manual 1691101{briva}
-            text = text.replace(/1691101\{briva\}/g, sampleBriva)
-                       .replace(/1691101\{link_bayar\}/g, sampleBriva)
+            // 1. Bersihkan format prefix jika ada yang mengetik manual 1691101{...}
+            text = text.replace(/1691101\{briva\}/gi, sampleBriva)
+                       .replace(/1691101\{link_bayar\}/gi, sampleBriva)
+                       .replace(/1691101\{no[\s_]*hp[\s_]*pelanggan\}/gi, sampleBriva)
+                       .replace(/1691101\{nomor[\s_]*pelanggan\}/gi, sampleBriva)
+                       .replace(/1691101\{telepon\}/gi, sampleBriva)
+                       .replace(/1691101\{phone\}/gi, sampleBriva)
                        .replace(/1691101\s*\(8 digit terakhir nomor [^\)]+\)/gi, sampleBriva);
 
-            // Ganti baris Link Pembayaran jika masih menggunakan format lama
+            // 2. Ganti baris Link Pembayaran jika masih menggunakan format lama
             text = text.replace(/(🔗\s*)?Link Pembayaran\s*:\s*\{link_bayar\}/gi, '💳 BRIVA : ' + sampleBriva);
 
+            // Beri spasi jika ada penulisan rapat antara tag bulan dan tahun (misal {bulan real time}2026)
+            text = text.replace(/(\{bulan[^}]*\})([0-9]{4})/gi, '$1 $2');
+
+            // 3. Replacements variabel dinamis
             return text
-                .replace(/{nama}/g, 'Bpk. Ahmad Fauzi')
-                .replace(/{tagihan}/g, 'Rp110.000')
-                .replace(/{paket}/g, 'Paket 20 Mbps')
-                .replace(/{jatuh_tempo}/g, '5 Juni 2026')
-                .replace(/{alamat}/g, 'Jl. Raya Pernasidi No. 45, Cilongok')
-                .replace(/{nomor_layanan}/g, 'BTP-CLK-001')
-                .replace(/{briva}/g, sampleBriva)
-                .replace(/{link_bayar}/g, sampleBriva);
+                .replace(/{nama}/gi, 'Ahmad Fauzi')
+                .replace(/{no[\s_]*hp[\s_]*pelanggan}/gi, samplePhone)
+                .replace(/{nomor_hp}/gi, samplePhone)
+                .replace(/{no_hp}/gi, samplePhone)
+                .replace(/{telepon}/gi, samplePhone)
+                .replace(/{phone}/gi, samplePhone)
+                .replace(/{bulan[\s_]*sesuai[\s_]*real[\s_]*time}/gi, currentMonth)
+                .replace(/{bulan[\s_]*real[\s_]*time}/gi, currentMonth)
+                .replace(/{bulan}/gi, currentMonth)
+                .replace(/{periode_bulan}/gi, currentMonth)
+                .replace(/{tahun}/gi, currentYear)
+                .replace(/{nejis[\s_]*paket[\s_]*pelanggan}/gi, 'Paket 20 Mbps')
+                .replace(/{jenis[\s_]*paket[\s_]*pelanggan}/gi, 'Paket 20 Mbps')
+                .replace(/{jenis_paket}/gi, 'Paket 20 Mbps')
+                .replace(/{paket}/gi, 'Paket 20 Mbps')
+                .replace(/{biaya\s*\[\s*aket\s*pelanggan}/gi, 'Rp110.000')
+                .replace(/{biaya[\s_]*paket[\s_]*pelanggan}/gi, 'Rp110.000')
+                .replace(/{biaya_paket}/gi, 'Rp110.000')
+                .replace(/{harga_paket}/gi, 'Rp110.000')
+                .replace(/{tagihan[\s_]*pelanggan}/gi, 'Rp110.000')
+                .replace(/{besar_tagihan}/gi, 'Rp110.000')
+                .replace(/{total_tagihan}/gi, 'Rp110.000')
+                .replace(/{tagihan}/gi, 'Rp110.000')
+                .replace(/{jatuh_tempo}/gi, '20 ' + currentMonth + ' ' + currentYear)
+                .replace(/{alamat}/gi, 'Jl. Raya Pernasidi No. 45, Cilongok')
+                .replace(/{nomor_layanan}/gi, 'BTP-CLK-001')
+                .replace(/{briva}/gi, sampleBriva)
+                .replace(/{link_bayar}/gi, sampleBriva);
         },
 
         getTargetSummary() {
