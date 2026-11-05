@@ -9,6 +9,23 @@ use Illuminate\Support\Str;
 class WhatsappGatewayService
 {
     /**
+     * Permanent Default API Token for Fonnte
+     */
+    public const DEFAULT_FONNTE_TOKEN = 'UpPCjN8X2gskDYMWwvNd';
+
+    /**
+     * Get active API Token (supports permanent default with manual override via admin panel)
+     */
+    public function getApiToken(): string
+    {
+        $cached = cache()->get('wa_gateway_api_token');
+        if ($cached !== null && trim((string)$cached) !== '') {
+            return trim((string)$cached);
+        }
+        return trim((string) config('services.fonnte.token', env('FONNTE_API_TOKEN', self::DEFAULT_FONNTE_TOKEN)));
+    }
+
+    /**
      * Get default templates
      */
     public function getTemplates(): array
@@ -26,7 +43,7 @@ class WhatsappGatewayService
                 'icon' => 'fa-file-invoice-dollar',
                 'color' => 'blue',
                 'badge' => 'Tagihan',
-                'message' => "Halo Kak {nama},\n\nTerima kasih telah setia berlangganan WiFi Banterpool ({paket}).\n\nKami ingin menginformasikan tagihan internet periode berjalan Anda:\n💰 Total Tagihan: {tagihan}\n📅 Batas Jatuh Tempo: {jatuh_tempo}\n\nUntuk menghindari isolir koneksi otomatis, silakan lakukan pembayaran melalui transfer bank, e-wallet, atau melalui kolektor resmi kami.\n🔗 Link Pembayaran: {link_bayar}\n\nTerima kasih,\nBilling Support Banterpool",
+                'message' => "Halo Kak {nama},\n\nTerima kasih telah setia berlangganan WiFi Banterpool ({paket}).\n\nKami ingin menginformasikan tagihan internet periode berjalan Anda:\n💰 Total Tagihan: {tagihan}\n📅 Batas Jatuh Tempo: {jatuh_tempo}\n\nUntuk menghindari isolir koneksi otomatis, silakan lakukan pembayaran melalui transfer bank, e-wallet, atau melalui kolektor resmi kami.\n💳 BRIVA : {briva}\n\nTerima kasih,\nBilling Support Banterpool",
             ],
             'outage' => [
                 'title' => 'Pemberitahuan Insiden Jaringan (Emergency Outage)',
@@ -57,7 +74,7 @@ class WhatsappGatewayService
      */
     public function hasValidApiToken(): bool
     {
-        $token = cache()->get('wa_gateway_api_token');
+        $token = $this->getApiToken();
         return !empty($token) && $token !== 'btp_wa_sec_live_9988224411aa';
     }
 
@@ -66,14 +83,18 @@ class WhatsappGatewayService
      */
     public function getGatewayStatus(): array
     {
+        $token = $this->getApiToken();
+        $hasToken = $this->hasValidApiToken();
+
+        $defaultProvider = $hasToken ? 'Fonnte Official Gateway (fonnte.com)' : 'Banterpool Local Gateway (Direct WA Web)';
         $phone = cache()->get('wa_gateway_phone_number', '0881-8679-774');
         $deviceName = cache()->get('wa_gateway_device_name', 'Banterpool NOC Bot');
-        $provider = cache()->get('wa_gateway_provider', 'Banterpool Local Gateway (Direct WA Web)');
-        $hasToken = $this->hasValidApiToken();
+        $provider = cache()->get('wa_gateway_provider', $defaultProvider);
 
         return [
             'status' => $hasToken ? 'ONLINE (API CONNECTED)' : 'ONLINE',
             'is_api_connected' => $hasToken,
+            'api_token' => $token,
             'device_name' => $deviceName,
             'phone_number' => $phone,
             'server' => 'Local Gateway Cluster #1 (Cilongok NOC)',
@@ -104,10 +125,45 @@ class WhatsappGatewayService
     }
 
     /**
+     * Generate BRIVA Number from phone: 1691101 + last 8 digits of phone
+     */
+    public function generateBrivaNumber(?string $phone): string
+    {
+        $digits = preg_replace('/[^0-9]/', '', (string)$phone);
+        if (strlen($digits) >= 8) {
+            $last8 = substr($digits, -8);
+        } elseif (!empty($digits)) {
+            $last8 = str_pad($digits, 8, '0', STR_PAD_LEFT);
+        } else {
+            $last8 = '18679774';
+        }
+        return '1691101' . $last8;
+    }
+
+    /**
      * Replace dynamic variables inside template message
      */
     public function parseTemplateVariables(string $template, array $data): string
     {
+        $phone = $data['phone'] ?? $data['formatted_phone'] ?? '';
+        $briva = $this->generateBrivaNumber($phone);
+        $last8 = substr($briva, 7);
+
+        // 1. Tangani jika ada yang menulis prefix 1691101 diikuti tag variabel atau format teks literal
+        $template = str_replace([
+            '1691101{briva}',
+            '1691101{link_bayar}',
+            '1691101{nomor_pelanggan}',
+            '1691101(8 digit terakhir nomor pelanggan)',
+            '1691101(8 digit terakhir nomor telepon)',
+            '1691101 (8 digit terakhir nomor pelanggan)',
+            '1691101 (8 digit terakhir nomor telepon)',
+        ], $briva, $template);
+
+        // 2. Tangani jika ada kalimat "Link Pembayaran: {link_bayar}" atau sejenisnya
+        $template = preg_replace('/(🔗\s*)?Link Pembayaran\s*:\s*\{link_bayar\}/i', '💳 BRIVA : ' . $briva, $template);
+
+        // 3. Replacements standar
         $replacements = [
             '{nama}' => $data['name'] ?? 'Pelanggan',
             '{tagihan}' => $data['bill_total'] ?? 'Rp110.000',
@@ -115,7 +171,9 @@ class WhatsappGatewayService
             '{jatuh_tempo}' => $data['due_date'] ?? date('d M Y', strtotime('+7 days')),
             '{alamat}' => $data['address'] ?? 'Cilongok, Banyumas',
             '{nomor_layanan}' => $data['customer_id'] ?? 'BTP-' . rand(1000, 9999),
-            '{link_bayar}' => url('/tagihan'),
+            '{briva}' => $briva,
+            '{link_bayar}' => $briva,
+            '{8_digit_hp}' => $last8,
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $template);
@@ -126,7 +184,7 @@ class WhatsappGatewayService
      */
     public function sendApiMessage(string $phone, string $message): array
     {
-        $token = trim((string) cache()->get('wa_gateway_api_token'));
+        $token = $this->getApiToken();
         $provider = cache()->get('wa_gateway_provider', 'Fonnte');
         $formattedPhone = $this->formatPhoneNumber($phone);
 
@@ -212,14 +270,19 @@ class WhatsappGatewayService
     public function sendSingle(string $phone, string $name, string $message, string $type = 'single', string $sentBy = 'Admin NOC'): WhatsappLog
     {
         $formattedPhone = $this->formatPhoneNumber($phone);
-        $apiResult = $this->sendApiMessage($formattedPhone, $message);
+        $personalizedMessage = $this->parseTemplateVariables($message, [
+            'name' => $name,
+            'phone' => $phone,
+            'formatted_phone' => $formattedPhone,
+        ]);
+        $apiResult = $this->sendApiMessage($formattedPhone, $personalizedMessage);
         $status = ($apiResult['is_gateway'] && !$apiResult['success']) ? 'failed' : 'sent';
 
         return WhatsappLog::create([
             'recipient_name' => $name,
             'recipient_phone' => $formattedPhone,
             'message_type' => $type,
-            'message' => $message,
+            'message' => $personalizedMessage,
             'status' => $status,
             'batch_id' => 'SINGLE-' . strtoupper(Str::random(8)),
             'target_filter' => 'single',

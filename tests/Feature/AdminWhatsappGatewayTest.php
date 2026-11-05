@@ -7,11 +7,22 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\WhatsappLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class AdminWhatsappGatewayTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Http::fake([
+            'https://api.fonnte.com/*' => Http::response(['status' => true, 'reason' => 'success'], 200),
+            'https://phone.wablas.com/*' => Http::response(['status' => true], 200),
+        ]);
+    }
 
     private function createAdminUser(): User
     {
@@ -113,6 +124,52 @@ class AdminWhatsappGatewayTest extends TestCase
             'recipient_phone' => '6285811223344',
             'message_type' => 'billing',
         ]);
+    }
+
+    public function test_broadcast_replaces_briva_and_link_bayar_with_unique_customer_briva_numbers(): void
+    {
+        $admin = $this->createAdminUser();
+
+        Order::create([
+            'order_number' => 'ORD-TEST-001',
+            'customer_name' => 'Pelanggan Alpha',
+            'customer_phone' => '081234567890',
+            'customer_email' => 'alpha@example.com',
+            'package_name' => 'Paket 20 Mbps',
+            'address' => 'Jl. Test No. 1',
+            'status' => 'Selesai',
+        ]);
+
+        Order::create([
+            'order_number' => 'ORD-TEST-002',
+            'customer_name' => 'Pelanggan Beta',
+            'customer_phone' => '085811223344',
+            'customer_email' => 'beta@example.com',
+            'package_name' => 'Paket 50 Mbps',
+            'address' => 'Jl. Test No. 2',
+            'status' => 'Selesai',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/whatsapp-gateway/broadcast', [
+            'target_filter' => 'all',
+            'message_type' => 'billing',
+            'message' => "Halo {nama},\nTotal Tagihan: {tagihan}\n💳 BRIVA : {briva}\nLink: {link_bayar}",
+        ]);
+
+        $response->assertRedirect(route('admin.whatsapp', ['tab' => 'logs']));
+
+        // Pelanggan Alpha: HP 081234567890 -> 8 digit terakhir: 34567890 -> BRIVA 169110134567890
+        $logAlpha = WhatsappLog::where('recipient_phone', '6281234567890')->first();
+        $this->assertNotNull($logAlpha);
+        $this->assertStringContainsString('169110134567890', $logAlpha->message);
+
+        // Pelanggan Beta: HP 085811223344 -> 8 digit terakhir: 11223344 -> BRIVA 169110111223344
+        $logBeta = WhatsappLog::where('recipient_phone', '6285811223344')->first();
+        $this->assertNotNull($logBeta);
+        $this->assertStringContainsString('169110111223344', $logBeta->message);
+
+        // Pastikan kedua pelanggan memiliki BRIVA yang berbeda
+        $this->assertNotEquals($logAlpha->message, $logBeta->message);
     }
 
     public function test_admin_can_send_single_whatsapp_message(): void

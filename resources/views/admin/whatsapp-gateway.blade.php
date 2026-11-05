@@ -321,8 +321,8 @@
             <button type="button" @click="insertVariable('{alamat}')" class="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 font-mono transition">
               + {alamat}
             </button>
-            <button type="button" @click="insertVariable('{link_bayar}')" class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 font-mono transition">
-              + {link_bayar}
+            <button type="button" @click="insertVariable('{briva}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono font-bold transition" title="BRIVA : 1691101 + 8 digit terakhir nomor pelanggan">
+              + {briva}
             </button>
           </div>
         </div>
@@ -520,10 +520,18 @@
                 <div class="font-extrabold text-slate-900">{{ $customer['name'] }}</div>
                 <div class="text-[11px] text-slate-400 truncate max-w-xs">{{ $customer['address'] }}</div>
               </td>
-              <td class="p-3.5 font-mono font-bold text-slate-700">
-                <div class="flex items-center gap-1.5">
+              <td class="p-3.5 font-mono text-slate-700">
+                <div class="flex items-center gap-1.5 font-bold">
                   <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i>
                   <span>{{ $customer['phone'] }}</span>
+                </div>
+                @php
+                  $custDigits = preg_replace('/[^0-9]/', '', $customer['phone']);
+                  $custLast8 = strlen($custDigits) >= 8 ? substr($custDigits, -8) : str_pad($custDigits, 8, '0', STR_PAD_LEFT);
+                  $custBriva = '1691101' . $custLast8;
+                @endphp
+                <div class="text-[10px] text-blue-700 font-bold bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded mt-1 inline-block font-mono" title="Nomor BRIVA Pembayaran">
+                  BRIVA: {{ $custBriva }}
                 </div>
               </td>
               <td class="p-3.5">
@@ -773,9 +781,9 @@
       <div>
         <div class="flex items-center justify-between mb-1.5">
           <label class="block text-xs font-bold text-slate-800">API Token / Secret Key (Fonnte)</label>
-          @if(!empty(cache('wa_gateway_api_token')))
+          @if(!empty($gatewayStatus['is_api_connected']))
             <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              <i class="fa-solid fa-circle-check"></i> Token Aktif Terpasang
+              <i class="fa-solid fa-circle-check"></i> Token Aktif Terpasang (Fonnte API Terhubung)
             </span>
           @else
             <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
@@ -783,10 +791,12 @@
             </span>
           @endif
         </div>
-        <input type="text" name="api_token" value="{{ cache('wa_gateway_api_token') }}"
+        <input type="text" name="api_token" value="{{ $gatewayStatus['api_token'] ?? cache('wa_gateway_api_token') }}"
                placeholder="Tempelkan token dari tombol 'Token' di fonnte.com di sini..."
-               class="w-full text-xs font-mono rounded-xl border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 p-3 bg-slate-50">
-        <p class="text-[11px] text-slate-400 mt-1">Klik tombol <b>Token</b> pada perangkat Fonnte Anda, lalu salin dan tempel di sini dan klik <b>Simpan Konfigurasi</b>.</p>
+               class="w-full text-xs font-mono font-bold text-emerald-800 rounded-xl border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 p-3 bg-slate-50">
+        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
+          <span class="text-emerald-700 font-semibold"><i class="fa-solid fa-shield-halved"></i> Token Permanen Fonnte Aktif:</span> Token default <code>UpPCjN8X2gskDYMWwvNd</code> sudah terpasang otomatis. Jika token di fonnte.com berubah di kemudian hari, Anda dapat mengubahnya secara manual di kolom ini lalu klik <b>Simpan Konfigurasi</b>.
+        </p>
       </div>
 
       <div class="pt-4 border-t border-slate-100 space-y-3">
@@ -974,14 +984,30 @@ function whatsappGatewayApp() {
         getPreviewText() {
             if (!this.messageText) return 'Pesan belum diisi...';
 
-            return this.messageText
+            const samplePhone = '08818679774';
+            const digits = samplePhone.replace(/[^0-9]/g, '');
+            const last8 = digits.length >= 8 ? digits.slice(-8) : digits.padStart(8, '0');
+            const sampleBriva = '1691101' + last8;
+
+            let text = this.messageText;
+
+            // Bersihkan format prefix jika ada yang mengetik manual 1691101{briva}
+            text = text.replace(/1691101\{briva\}/g, sampleBriva)
+                       .replace(/1691101\{link_bayar\}/g, sampleBriva)
+                       .replace(/1691101\s*\(8 digit terakhir nomor [^\)]+\)/gi, sampleBriva);
+
+            // Ganti baris Link Pembayaran jika masih menggunakan format lama
+            text = text.replace(/(🔗\s*)?Link Pembayaran\s*:\s*\{link_bayar\}/gi, '💳 BRIVA : ' + sampleBriva);
+
+            return text
                 .replace(/{nama}/g, 'Bpk. Ahmad Fauzi')
                 .replace(/{tagihan}/g, 'Rp110.000')
                 .replace(/{paket}/g, 'Paket 20 Mbps')
                 .replace(/{jatuh_tempo}/g, '5 Juni 2026')
                 .replace(/{alamat}/g, 'Jl. Raya Pernasidi No. 45, Cilongok')
                 .replace(/{nomor_layanan}/g, 'BTP-CLK-001')
-                .replace(/{link_bayar}/g, 'https://banterpool.net/tagihan');
+                .replace(/{briva}/g, sampleBriva)
+                .replace(/{link_bayar}/g, sampleBriva);
         },
 
         getTargetSummary() {
