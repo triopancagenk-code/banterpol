@@ -76,12 +76,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/tagihan', [AdminController::class, 'storeTagihan'])->name('tagihan.store');
     Route::get('/tagihan/export', [AdminController::class, 'exportTagihan'])->name('tagihan.export');
     Route::post('/tagihan/{id}/status', [AdminController::class, 'updateTagihanStatus'])->name('tagihan.status');
+    Route::post('/tagihan/{id}/pay', [AdminController::class, 'payTagihan'])->name('tagihan.pay');
+    Route::post('/tagihan/{id}/toggle-isolir', [AdminController::class, 'toggleIsolirTagihan'])->name('tagihan.toggle-isolir');
+    Route::post('/tagihan/broadcast-wa', [AdminController::class, 'broadcastWaTagihan'])->name('tagihan.broadcast-wa');
+    Route::post('/tagihan/import', [AdminController::class, 'importPelanggan'])->name('tagihan.import');
     Route::get('/laporan-masalah', [AdminController::class, 'laporanMasalah'])->name('laporan');
     Route::post('/laporan-masalah/bulk-delete', [AdminController::class, 'bulkDeleteLaporan'])->name('laporan.bulk-delete');
     Route::post('/laporan-masalah/{id}/status', [AdminController::class, 'updateLaporanStatus'])->name('laporan.status');
     Route::delete('/laporan-masalah/{id}', [AdminController::class, 'deleteLaporan'])->name('laporan.delete');
     Route::get('/mrtg', [AdminController::class, 'mrtg'])->name('mrtg');
     Route::get('/odc-map', [AdminController::class, 'odcMap'])->name('odc-map');
+    Route::get('/mikrotik/peta', [AdminController::class, 'odcMap'])->name('mikrotik.peta');
     Route::post('/odc-map/save-marker', [AdminController::class, 'saveOdcMarker'])->name('odc-map.save-marker');
     Route::post('/odc-map/delete-marker', [AdminController::class, 'deleteOdcMarker'])->name('odc-map.delete-marker');
     Route::get('/odc-map/export-kml', [AdminController::class, 'exportOdcKml'])->name('odc-map.export-kml');

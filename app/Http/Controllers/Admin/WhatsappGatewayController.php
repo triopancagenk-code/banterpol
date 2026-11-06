@@ -190,6 +190,8 @@ class WhatsappGatewayController extends Controller
             $recipients = $allCustomers;
         } elseif ($targetFilter === 'unpaid') {
             $recipients = collect($allCustomers)->whereIn('bill_status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])->values()->all();
+        } elseif ($targetFilter === 'paid') {
+            $recipients = collect($allCustomers)->where('bill_status', 'Lunas')->values()->all();
         } elseif (str_starts_with($targetFilter, 'odc-')) {
             $odcCode = strtoupper(str_replace('odc-', '', $targetFilter));
             $recipients = collect($allCustomers)->filter(function ($c) use ($odcCode) {

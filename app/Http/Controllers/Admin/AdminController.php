@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\MikrotikController;
 use App\Models\Bill;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
 use App\Services\BillingService;
 use App\Services\CustomerImportService;
+use App\Services\WhatsappGatewayService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -29,25 +31,57 @@ class AdminController extends Controller
                 });
 
                 return $filteredBills->map(function ($b) {
+                    $order = $b->order;
                     $paidAt = $b->paid_at;
                     $paidAtFormatted = $paidAt ? \Carbon\Carbon::parse($paidAt)->translatedFormat('d M Y, H:i') . ' WIB' : ($b->status === 'Lunas' ? ($b->updated_at ? $b->updated_at->translatedFormat('d M Y, H:i') . ' WIB' : 'Terverifikasi') : '-');
                     $paidDateOnly = $paidAt ? \Carbon\Carbon::parse($paidAt)->translatedFormat('d M Y') : ($b->status === 'Lunas' ? ($b->updated_at ? $b->updated_at->translatedFormat('d M Y') : '-') : '-');
                     $monthKey = $paidAt ? $paidAt->format('Y-m') : ($b->updated_at && $b->status === 'Lunas' ? $b->updated_at->format('Y-m') : ($b->created_at ? $b->created_at->format('Y-m') : date('Y-m')));
                     $monthLabel = $paidAt ? \Carbon\Carbon::parse($paidAt)->translatedFormat('F Y') : ($b->updated_at && $b->status === 'Lunas' ? $b->updated_at->translatedFormat('F Y') : ($b->created_at ? $b->created_at->translatedFormat('F Y') : date('F Y')));
 
+                    // Tentukan Wilayah (e.g. RW 05 Lesmana atau Alamat)
+                    $wilayah = 'Banyumas';
+                    if ($order && !empty($order->village)) {
+                        $wilayah = ($order->address ? $order->address . ', ' : '') . $order->village;
+                    } elseif (!empty($b->address)) {
+                        $wilayah = $b->address;
+                    }
+
+                    // Tentukan PPPoE Secret / Username
+                    $pppoe = '-';
+                    if ($order && !empty($order->pppoe)) {
+                        $pppoe = $order->pppoe;
+                    } elseif (!empty($b->customer_name)) {
+                        $pppoe = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $b->customer_name)) . '_home';
+                    }
+
+                    // Tentukan Status Jaringan (Aktif vs Isolir)
+                    $isIsolir = false;
+                    if (cache()->has('customer_isolir_' . $b->id)) {
+                        $isIsolir = (bool) cache()->get('customer_isolir_' . $b->id);
+                    } elseif ($order) {
+                        $orderStatus = strtolower($order->status ?? '');
+                        $isIsolir = in_array($orderStatus, ['isolir', 'non-aktif', 'isolir otomatis']);
+                    }
+
                     return [
                         'id' => $b->bill_number,
+                        'bill_id' => $b->id,
+                        'order_id' => $b->order_id,
                         'customer_name' => $b->customer_name,
                         'customer_phone' => $b->customer_phone,
                         'customer_email' => $b->customer_email ?? '-',
+                        'wilayah' => $wilayah,
+                        'pppoe' => $pppoe,
                         'package_name' => $b->package_name,
-                        'speed' => $b->speed ?? '-',
+                        'speed' => $b->speed ?? ($order->speed ?? '20 Mbps'),
                         'period' => $b->period,
                         'due_date' => $b->due_date,
                         'bill_date' => $b->bill_date,
                         'total' => number_format((float) $b->total, 0, ',', '.'),
                         'total_raw' => (float) $b->total,
                         'status' => $b->status,
+                        'is_isolir' => $isIsolir,
+                        'connection_status' => $isIsolir ? 'ISOLIR' : 'AKTIF',
                         'payment_method' => $b->payment_method ?? ($b->status === 'Lunas' ? 'Verifikasi Admin' : '-'),
                         'proof_image' => null,
                         'created_at' => $b->created_at ? $b->created_at->format('Y-m-d H:i') : '-',
@@ -60,7 +94,7 @@ class AdminController extends Controller
                         'collected_by' => $b->collected_by ?? 'Verifikasi Admin',
                         'collector_notes' => $b->collector_notes ?? '-',
                         'address' => $b->address,
-                        'odp' => 'ODP-CLK-01',
+                        'odp' => $order->assigned_odp ?? 'ODP-CLK-01',
                     ];
                 })->toArray();
             }
@@ -2090,11 +2124,30 @@ class AdminController extends Controller
         $allBills = $this->getBillsData();
         $statusFilter = $request->input('status', 'all');
         $monthFilter = $request->input('month', 'all');
+        $wilayahFilter = $request->input('wilayah', 'all');
         $search = $request->input('q', '');
 
         // Pisahkan tagihan aktif yang perlu dimonitor dan riwayat tagihan yang sudah lunas/terverifikasi
         $activeBills = collect($allBills)->where('status', '!=', 'Lunas');
         $paidBills = collect($allBills)->where('status', 'Lunas');
+
+        // 4 Statistik Utama sesuai Fitur Billing ISP:
+        // 1. Potensi Omset (seluruh tagihan aktif/berjalan)
+        $potensiOmset = collect($allBills)->sum('total_raw');
+        $totalPelangganAktif = collect($allBills)->unique('customer_name')->count();
+
+        // 2. Sudah Terbayar (Lunas)
+        $sudahTerbayarNominal = $paidBills->sum('total_raw');
+        $sudahTerbayarCount = $paidBills->count();
+
+        // 3. Belum Terbayar (Belum Bayar, Menunggu, Jatuh Tempo)
+        $belumTerbayarNominal = $activeBills->sum('total_raw');
+        $belumTerbayarCount = $activeBills->count();
+
+        // Daftar Wilayah yang ada untuk dropdown filter
+        $availableWilayah = collect($allBills)->map(function ($item) {
+            return $item['wilayah'] ?? null;
+        })->filter()->unique()->values()->all();
 
         // Daftar bulan yang tersedia untuk rekap per bulan
         $availableMonths = $paidBills->map(function ($item) {
@@ -2106,15 +2159,26 @@ class AdminController extends Controller
 
         // Filter:
         // - Pilihan 'all' (Semua): HANYA tagihan aktif (yang sudah terverifikasi/lunas tidak tertampil di 'semua')
+        // - Pilihan 'semua_termasuk_lunas' / 'Semua': Menampilkan seluruh tagihan tanpa filter status
         // - Pilihan 'rekap' / 'Lunas': Menampilkan data riwayat rekap tagihan yang sudah lunas
-        $bills = collect($allBills)->filter(function ($item) use ($statusFilter, $monthFilter, $search) {
+        // - Pilihan 'isolir': Menampilkan pelanggan yang berstatus isolir
+        $bills = collect($allBills)->filter(function ($item) use ($statusFilter, $monthFilter, $search, $wilayahFilter) {
             $matchStatus = false;
             if ($statusFilter === 'all') {
                 $matchStatus = ($item['status'] !== 'Lunas');
+            } elseif ($statusFilter === 'semua_termasuk_lunas' || $statusFilter === 'Semua') {
+                $matchStatus = true;
             } elseif ($statusFilter === 'rekap' || $statusFilter === 'Lunas') {
                 $matchStatus = ($item['status'] === 'Lunas');
+            } elseif ($statusFilter === 'isolir') {
+                $matchStatus = !empty($item['is_isolir']);
             } else {
                 $matchStatus = ($item['status'] === $statusFilter);
+            }
+
+            $matchWilayah = true;
+            if ($wilayahFilter !== 'all' && !empty($wilayahFilter)) {
+                $matchWilayah = (isset($item['wilayah']) && (stripos($item['wilayah'], $wilayahFilter) !== false || $item['wilayah'] === $wilayahFilter));
             }
 
             $matchMonth = true;
@@ -2127,10 +2191,12 @@ class AdminController extends Controller
                 (stripos($item['id'] ?? '', $search) !== false) ||
                 (stripos($item['customer_phone'] ?? '', $search) !== false) ||
                 (stripos($item['address'] ?? '', $search) !== false) ||
+                (stripos($item['wilayah'] ?? '', $search) !== false) ||
+                (stripos($item['pppoe'] ?? '', $search) !== false) ||
                 (stripos($item['package_name'] ?? '', $search) !== false) ||
                 (stripos($item['receipt_number'] ?? '', $search) !== false);
 
-            return $matchStatus && $matchMonth && $matchSearch;
+            return $matchStatus && $matchWilayah && $matchMonth && $matchSearch;
         })->values()->all();
 
         $counts = [
@@ -2146,6 +2212,13 @@ class AdminController extends Controller
         $rekapNominal = collect($bills)->where('status', 'Lunas')->sum('total_raw');
         $rekapCount = collect($bills)->where('status', 'Lunas')->count();
 
+        // Informasi MikroTik Router Live
+        $routerInfo = [
+            'model' => 'RB750Gr3',
+            'host' => env('MIKROTIK_HOST', '172.14.10.3'),
+            'port' => env('MIKROTIK_PORT', 23500),
+        ];
+
         // Daftar pelanggan untuk form pilihan cepat saat input tagihan manual (hanya yang sudah selesai / aktif)
         $registeredCustomers = Order::where(function ($q) {
             $q->whereIn('status', ['Selesai', 'Selesai / Aktif', 'selesai', 'aktif'])
@@ -2158,8 +2231,10 @@ class AdminController extends Controller
         $packages = Package::where('is_active', true)->get();
 
         return view('admin.tagihan', compact(
-            'bills', 'statusFilter', 'monthFilter', 'search', 'counts',
-            'availableMonths', 'rekapNominal', 'rekapCount',
+            'bills', 'statusFilter', 'monthFilter', 'wilayahFilter', 'search', 'counts',
+            'availableMonths', 'availableWilayah', 'rekapNominal', 'rekapCount',
+            'potensiOmset', 'totalPelangganAktif', 'sudahTerbayarNominal', 'sudahTerbayarCount',
+            'belumTerbayarNominal', 'belumTerbayarCount', 'routerInfo',
             'registeredCustomers', 'packages'
         ));
     }
@@ -2308,25 +2383,49 @@ class AdminController extends Controller
         $newStatus = $request->input('status', 'Lunas');
         $adminNotes = $request->input('admin_notes', 'Diverifikasi oleh Administrator');
 
-        try {
-            $bill = Bill::where('bill_number', $id)->first();
-            if ($bill) {
-                $bill->status = $newStatus;
-                if ($newStatus === 'Lunas') {
-                    $bill->paid_at = now();
-                    $bill->payment_method = $bill->payment_method ?: 'Verifikasi Admin';
-                    $bill->collected_by = auth()->user()->name ?? 'Administrator';
-                    if (empty($bill->receipt_number)) {
-                        $bill->receipt_number = 'KWT-' . date('Ym') . '-' . rand(100, 999);
+        $bill = Bill::where('bill_number', $id)->orWhere('id', $id)->first();
+        $waSent = false;
+        $waMessage = null;
+
+        if ($bill) {
+            $bill->status = $newStatus;
+            if ($newStatus === 'Lunas') {
+                $bill->paid_at = now();
+                $bill->payment_method = ($bill->payment_method && $bill->payment_method !== '-') ? $bill->payment_method : 'Verifikasi Admin';
+                $bill->collected_by = auth()->user()->name ?? 'Administrator';
+                if (empty($bill->receipt_number)) {
+                    $bill->receipt_number = 'KWT-' . date('Ym') . '-' . rand(100, 999);
+                }
+
+                // Pulihkan isolir jika pelanggan terisolir
+                if ($bill->order) {
+                    if (in_array(strtolower($bill->order->status ?? ''), ['isolir', 'non-aktif'])) {
+                        $bill->order->status = 'Selesai';
+                        $bill->order->save();
                     }
                 }
-                $bill->collector_notes = ($bill->collector_notes ? $bill->collector_notes . " | " : "") . $adminNotes;
-                $bill->save();
+                cache()->put('customer_isolir_' . $bill->id, false);
+
+                // Kirim Invoice Otomatis via WhatsApp ke nomor pelanggan
+                $waResult = $this->sendInvoiceLunasWa($bill, $bill->collected_by);
+                $waSent = $waResult['success'] ?? false;
+                $waMessage = $waResult['message'] ?? null;
+
+                session()->flash('print_struk_id', $bill->bill_number);
+                session()->flash('paid_customer_name', $bill->customer_name);
+                session()->flash('paid_customer_phone', $bill->customer_phone);
+                session()->flash('paid_total', number_format((float)$bill->total, 0, ',', '.'));
+                session()->flash('paid_receipt_number', $bill->receipt_number);
+                session()->flash('paid_bill_id', $bill->id);
+                session()->flash('wa_sent', $waSent);
+                session()->flash('wa_message', $waMessage);
             }
-        } catch (\Exception $e) {}
+            $bill->collector_notes = ($bill->collector_notes ? $bill->collector_notes . " | " : "") . $adminNotes;
+            $bill->save();
+        }
 
         $message = $newStatus === 'Lunas'
-            ? "Tagihan {$id} berhasil diverifikasi Lunas dan telah dipindahkan ke Riwayat / Rekap Pembayaran!"
+            ? "Tagihan {$id} berhasil diverifikasi Lunas!" . ($waSent ? " 📲 Invoice otomatis terkirim ke WhatsApp pelanggan." : "")
             : "Tagihan {$id} berhasil diperbarui menjadi {$newStatus}!";
 
         return redirect()->back()->with('success', $message);
@@ -2382,6 +2481,264 @@ class AdminController extends Controller
         $adminBy = $bill->collected_by ?: 'Atun';
 
         return view('admin.tagihan-struk', compact('bill', 'customerCode', 'paidDate', 'paidTime', 'monthLabel', 'adminBy'));
+    }
+
+    /**
+     * Kirim Invoice / Nota Elektronik Pembayaran Lunas via WhatsApp Otomatis ke Pelanggan
+     */
+    private function sendInvoiceLunasWa(Bill $bill, ?string $adminName = null): array
+    {
+        $phone = trim((string)$bill->customer_phone);
+        if (empty($phone)) {
+            return [
+                'success' => false,
+                'reason' => 'Nomor WhatsApp pelanggan tidak ditemukan.',
+            ];
+        }
+
+        $gatewayService = app(WhatsappGatewayService::class);
+        $formattedPhone = $gatewayService->formatPhoneNumber($phone);
+        $strukLink = url('/struk/' . rawurlencode($bill->bill_number));
+
+        // Format Tanggal & Waktu Realtime
+        $now = now();
+        $dateStr = $now->translatedFormat('d M Y');
+        $timeStr = $now->format('H:i') . ' WIB';
+
+        // Format Bulan Tagihan (misal: "Nov 2026")
+        $monthTagihan = $now->translatedFormat('M Y');
+        if (!empty($bill->period) && preg_match('/[a-zA-Z]+\s+\d{4}/', $bill->period, $m)) {
+            $monthTagihan = $m[0];
+        }
+
+        // Tentukan Area / Wilayah
+        $order = $bill->order;
+        $area = 'Banyumas';
+        if ($order && !empty($order->village)) {
+            $area = ($order->address ? $order->address . ', ' : '') . $order->village;
+        } elseif (!empty($bill->address)) {
+            $area = $bill->address;
+        }
+
+        $customerName = $bill->customer_name ?: 'Pelanggan';
+        $displayPhone = str_starts_with($formattedPhone, '62') ? '0' . substr($formattedPhone, 2) : $phone;
+        $packageName = $bill->package_name ?: 'Paket 20 Mbps';
+        $totalFormatted = 'Rp. ' . number_format((float)$bill->total, 0, ',', '.');
+        $adminBy = $adminName ?: ($bill->collected_by ?: 'Atun');
+
+        // Template Nota Elektronik Sesuai Permintaan
+        $message = "*BANTERPOOL* \n\n" .
+            "NOTA ELEKTRONIK\n" .
+            "{$strukLink}\n\n" .
+            "Yth. Bapak / Ibu\n" .
+            "{$customerName}\n" .
+            "{$displayPhone}\n" .
+            "null\n" .
+            "Area : {$area}\n\n" .
+            "*PEMBAYARAN*\n" .
+            "Tanggal Bayar :{$dateStr} | {$timeStr}\n\n" .
+            "Tagihan Bulan : \n" .
+            "- {$monthTagihan}\n" .
+            "Jenis Paket : {$packageName}\n" .
+            "Harga Paket : {$totalFormatted}\n" .
+            "*Sudah Termasuk Pajak\n" .
+            "Diskon  : Rp. 0\n" .
+            "Total Biaya : {$totalFormatted}\n" .
+            "Ket : *LUNAS* \n" .
+            "Admin By : {$adminBy}\n\n" .
+            "terimakasih telah menggunakan layanan internet dari BANTERPOOL\n\n" .
+            "SUPPORT BY :\n" .
+            "Admin BANTERPOOL";
+
+        try {
+            $log = $gatewayService->sendSingle($formattedPhone, $customerName, $message, 'invoice', $adminBy);
+            return [
+                'success' => true,
+                'phone'   => $formattedPhone,
+                'message' => $message,
+                'log_id'  => $log->id ?? null,
+            ];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Gagal kirim invoice WA otomatis: " . $e->getMessage());
+            return [
+                'success' => false,
+                'reason'  => $e->getMessage(),
+                'message' => $message,
+            ];
+        }
+    }
+
+    /**
+     * Bayar Tagihan Cepat (Quick Pay dari Pop-up Admin)
+     */
+    public function payTagihan(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|string',
+            'collected_by'   => 'required|string',
+            'admin_notes'    => 'nullable|string',
+        ]);
+
+        $bill = Bill::where('bill_number', $id)->orWhere('id', $id)->firstOrFail();
+        $bill->status = 'Lunas';
+        $bill->paid_at = now();
+        $bill->payment_method = $validated['payment_method'];
+        $bill->collected_by = $validated['collected_by'];
+        if (empty($bill->receipt_number)) {
+            $bill->receipt_number = 'KWT-' . date('Ym') . '-' . rand(100, 999);
+        }
+        $note = $validated['admin_notes'] ?? "Pembayaran via {$validated['payment_method']} diterima oleh {$validated['collected_by']}";
+        $bill->collector_notes = ($bill->collector_notes ? $bill->collector_notes . " | " : "") . $note;
+        $bill->save();
+
+        // Jika ada order yang terisolir, otomatis pulihkan / aktifkan kembali
+        if ($bill->order) {
+            if (in_array(strtolower($bill->order->status ?? ''), ['isolir', 'non-aktif'])) {
+                $bill->order->status = 'Selesai';
+                $bill->order->save();
+            }
+        }
+        cache()->put('customer_isolir_' . $bill->id, false);
+
+        // Kirim Invoice Lunas Otomatis ke WhatsApp Pelanggan
+        $waResult = $this->sendInvoiceLunasWa($bill, $bill->collected_by);
+
+        // Flash data untuk memunculkan struk otomatis & notifikasi WhatsApp
+        session()->flash('print_struk_id', $bill->bill_number);
+        session()->flash('paid_customer_name', $bill->customer_name);
+        session()->flash('paid_customer_phone', $bill->customer_phone);
+        session()->flash('paid_total', number_format((float)$bill->total, 0, ',', '.'));
+        session()->flash('paid_receipt_number', $bill->receipt_number);
+        session()->flash('paid_bill_id', $bill->id);
+        session()->flash('wa_sent', $waResult['success'] ?? false);
+        session()->flash('wa_message', $waResult['message'] ?? null);
+
+        $successMsg = "Pembayaran tagihan {$bill->bill_number} untuk {$bill->customer_name} berhasil diverifikasi Lunas!";
+        if (!empty($waResult['success'])) {
+            $successMsg .= " 📲 Invoice otomatis berhasil dikirimkan ke WhatsApp pelanggan ({$bill->customer_phone}).";
+        }
+
+        return redirect()->back()->with('success', $successMsg);
+    }
+
+    /**
+     * Toggle Status Koneksi Pelanggan (Aktif / Isolir)
+     */
+    public function toggleIsolirTagihan(Request $request, $id)
+    {
+        $bill = Bill::where('bill_number', $id)->orWhere('id', $id)->firstOrFail();
+        $order = $bill->order;
+
+        $currentIsolir = false;
+        if (cache()->has('customer_isolir_' . $bill->id)) {
+            $currentIsolir = (bool) cache()->get('customer_isolir_' . $bill->id);
+        } elseif ($order) {
+            $currentIsolir = in_array(strtolower($order->status ?? ''), ['isolir', 'non-aktif']);
+        }
+
+        $newIsolir = !$currentIsolir;
+
+        if ($order) {
+            $order->status = $newIsolir ? 'Isolir' : 'Selesai';
+            $order->save();
+        }
+        cache()->put('customer_isolir_' . $bill->id, $newIsolir);
+
+        // Jika router MikroTik aktif, coba toggle isolir Winbox
+        try {
+            $mikrotik = app(MikrotikController::class);
+            $pppoeUsername = $order->pppoe ?? strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $bill->customer_name)) . '_home';
+            $mikrotik->toggleIsolir(new Request([
+                'raw_name' => $pppoeUsername,
+                'action'   => $newIsolir ? 'isolir' : 'unisolir',
+            ]));
+        } catch (\Throwable $e) {}
+
+        $statusLabel = $newIsolir ? 'ISOLIR' : 'AKTIF';
+        return redirect()->back()->with('success', "Status jaringan pelanggan {$bill->customer_name} berhasil diubah menjadi {$statusLabel}!");
+    }
+
+    /**
+     * Kirim Tagihan / Bukti Pembayaran via Broadcast WhatsApp ke Pelanggan Terpilih
+     */
+    public function broadcastWaTagihan(Request $request, WhatsappGatewayService $gatewayService)
+    {
+        $selectedIds = (array) $request->input('selected_bills', []);
+        $targetFilter = $request->input('target_filter', '');
+        $broadcastType = $request->input('broadcast_type', 'auto'); // 'receipt' (bukti lunas), 'billing' (tagihan), or 'auto'
+
+        if (empty($selectedIds) && $targetFilter === 'unpaid') {
+            $bills = Bill::where('status', '!=', 'Lunas')->get();
+        } elseif (empty($selectedIds)) {
+            return redirect()->back()->with('error', 'Pilih minimal satu nama pelanggan untuk mengirim via WhatsApp!');
+        } else {
+            $bills = Bill::whereIn('bill_number', $selectedIds)
+                ->orWhereIn('id', $selectedIds)
+                ->get();
+        }
+
+        if ($bills->isEmpty()) {
+            return redirect()->back()->with('error', 'Data tagihan / pelanggan yang dipilih tidak ditemukan.');
+        }
+
+        $adminName = auth()->user()->name ?? 'Administrator';
+        $sentCount = 0;
+        $receiptCount = 0;
+        $billingCount = 0;
+
+        foreach ($bills as $b) {
+            $phone = trim((string)$b->customer_phone);
+            if (empty($phone)) {
+                continue;
+            }
+
+            // Tentukan apakah kirim Bukti Pembayaran (Lunas) atau Pengingat Tagihan
+            $isReceipt = ($broadcastType === 'receipt' || $broadcastType === 'bukti_pembayaran' || $broadcastType === 'bukti_lunas');
+            if ($broadcastType === 'auto') {
+                $isReceipt = ($b->status === 'Lunas');
+            }
+
+            if ($isReceipt) {
+                // Kirim Bukti Pembayaran (Nota Elektronik)
+                $res = $this->sendInvoiceLunasWa($b, $b->collected_by ?: $adminName);
+                if (!empty($res['success'])) {
+                    $sentCount++;
+                    $receiptCount++;
+                }
+            } else {
+                // Kirim Pengingat Tagihan Bulanan (Billing Reminder)
+                $template = $gatewayService->getTemplates()['billing']['message'] ?? '';
+                $recipientData = [
+                    'name'         => $b->customer_name,
+                    'phone'        => $phone,
+                    'package_name' => $b->package_name,
+                    'bill_total'   => 'Rp' . number_format((float)$b->total, 0, ',', '.'),
+                    'due_date'     => $b->due_date ?? ('20 ' . date('M Y')),
+                    'address'      => $b->address ?? 'Banyumas',
+                    'id'           => $b->bill_number,
+                ];
+                $message = $gatewayService->parseTemplateVariables($template, $recipientData);
+                try {
+                    $gatewayService->sendSingle($phone, $b->customer_name, $message, 'billing', $adminName);
+                    $sentCount++;
+                    $billingCount++;
+                } catch (\Throwable $e) {}
+            }
+        }
+
+        if ($sentCount === 0) {
+            return redirect()->back()->with('error', 'Gagal mengirim pesan WhatsApp. Pastikan nomor telepon pelanggan valid.');
+        }
+
+        if ($receiptCount > 0 && $billingCount === 0) {
+            $msg = "🚀 Berhasil mengirimkan Bukti Pembayaran (Nota Elektronik) via WhatsApp ke {$receiptCount} pelanggan terpilih!";
+        } elseif ($billingCount > 0 && $receiptCount === 0) {
+            $msg = "🚀 Berhasil memproses broadcast Pengingat Tagihan WhatsApp ke {$billingCount} pelanggan terpilih!";
+        } else {
+            $msg = "🚀 Berhasil memproses broadcast WhatsApp: {$receiptCount} Bukti Pembayaran & {$billingCount} Tagihan terkirim!";
+        }
+
+        return redirect()->back()->with('success', $msg);
     }
 
     /**

@@ -45,6 +45,13 @@ class WhatsappGatewayService
                 'badge' => 'Tagihan',
                 'message' => "Yth. Bpk/Ibu {nama}\n{telepon}\n\nPEMBERITAHUAN\nTagihan Bulan : {bulan}\nJenis Paket : {paket}\nBiaya Paket : {biaya_paket}\nBesar Tagihan : {tagihan}\n\nMasa aktif s/d 20 {bulan} 2026\n\nNomor Virtual Acount : {briva}\n\nPastikan untuk membayar menggunakan Virtual Acount seperti BRIVA, DANA dll\n\nKet : BELUM TERBAYAR\n\nINFO TAMBAHAN\nUntuk menghindari isolir otomatis, silakan lakukan pembayaran sebelum tanggal jatuh tempo, dan pastikan mengirim bukti transaksi melalui nomor ini.\n\nTerimakasih",
             ],
+            'receipt' => [
+                'title' => 'Bukti Pembayaran Lunas (Nota Elektronik)',
+                'icon' => 'fa-receipt',
+                'color' => 'emerald',
+                'badge' => 'Bukti Lunas',
+                'message' => "*BANTERPOOL* \n\nNOTA ELEKTRONIK\n{link_struk}\n\nYth. Bapak / Ibu\n{nama}\n{telepon}\nnull\nArea : {alamat}\n\n*PEMBAYARAN*\nTanggal Bayar :{tanggal_bayar} | {waktu_bayar}\n\nTagihan Bulan : \n- {bulan_singkat} {tahun}\nJenis Paket : {paket}\nHarga Paket : {biaya_paket}\n*Sudah Termasuk Pajak\nDiskon  : Rp. 0\nTotal Biaya : {tagihan}\nKet : *LUNAS* \nAdmin By : {admin_by}\n\nterimakasih telah menggunakan layanan internet dari BANTERPOOL\n\nSUPPORT BY :\nAdmin BANTERPOOL",
+            ],
             'outage' => [
                 'title' => 'Pemberitahuan Insiden Jaringan (Emergency Outage)',
                 'icon' => 'fa-triangle-exclamation',
@@ -174,6 +181,11 @@ class WhatsappGatewayService
         $dueDate = $data['due_date'] ?? ('20 ' . $currentMonth . ' ' . $currentYear);
         $address = $data['address'] ?? 'Cilongok, Banyumas';
         $customerId = $data['customer_id'] ?? $data['id'] ?? ('BTP-' . rand(1000, 9999));
+        $strukLink = $data['struk_link'] ?? $data['link_struk'] ?? (url('/struk/' . ($data['id'] ?? ($customerId ?? 'INV-001'))));
+        $paidDate = $data['paid_date'] ?? date('d M Y');
+        $paidTime = $data['paid_time'] ?? (date('H:i') . ' WIB');
+        $monthShort = $data['month_short'] ?? date('M');
+        $adminBy = $data['admin_by'] ?? ($data['collected_by'] ?? 'Atun');
 
         // 1. Tangani jika ada yang menulis prefix 1691101 diikuti tag variabel atau format teks literal
         $template = str_replace([
@@ -245,6 +257,15 @@ class WhatsappGatewayService
             '{jatuh_tempo}' => $dueDate,
             '{alamat}' => $address,
             '{nomor_layanan}' => $customerId,
+
+            // Bukti Pembayaran / Nota Elektronik
+            '{link_struk}' => $strukLink,
+            '{link_cetak_struk}' => $strukLink,
+            '{LINK CETAK STRUK}' => $strukLink,
+            '{tanggal_bayar}' => $paidDate,
+            '{waktu_bayar}' => $paidTime,
+            '{bulan_singkat}' => $monthShort,
+            '{admin_by}' => $adminBy,
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $template);
