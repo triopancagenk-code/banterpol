@@ -57,15 +57,16 @@ function tagihanManager() {
                 alert('Silakan centang minimal 1 pelanggan pada tabel di bawah terlebih dahulu, atau klik tombol "Broadcast Belum Bayar" pada kartu Kirim Tagihan di atas.');
                 return;
             }
-            const selected = this.getSelectedCustomers();
-            const allPaid = selected.every(b => b.status === 'Lunas');
-            if (allPaid) {
+            const isRekap = {{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'true' : 'false' }};
+            if (isRekap) {
                 this.selectedBuktiCustomerIds = [...this.selectedBillIds];
                 this.openBroadcastBuktiModal = true;
             } else {
-                if (confirm('Kirim pesan tagihan WhatsApp resmi ke ' + this.selectedBillIds.length + ' pelanggan terpilih?')) {
+                if (confirm('Kirim pengingat tagihan WhatsApp resmi ke ' + this.selectedBillIds.length + ' pelanggan terpilih?')) {
                     const form = document.getElementById('floatingBroadcastForm');
                     if (form) {
+                        const typeInput = document.getElementById('floating_broadcast_type');
+                        if (typeInput) typeInput.value = 'billing';
                         form.submit();
                     }
                 }
@@ -75,7 +76,8 @@ function tagihanManager() {
         openBroadcastInGateway() {
             const selected = this.getSelectedCustomers();
             const phones = selected.map(b => b.customer_phone).filter(p => !!p).join(',');
-            const tpl = (selected.some(b => b.status === 'Lunas')) ? 'receipt' : 'billing';
+            const isRekap = {{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'true' : 'false' }};
+            const tpl = isRekap ? 'receipt' : 'billing';
             window.location.href = '{{ route("admin.whatsapp") }}?tab=broadcast&target=manual&template=' + tpl + '&numbers=' + encodeURIComponent(phones);
         },
 
@@ -821,38 +823,35 @@ function tagihanManager() {
           <p class="text-xs font-bold text-slate-900 leading-tight">
             <span class="text-brand font-black text-sm" x-text="selectedBillIds.length"></span> Pelanggan Dipilih
           </p>
-          <p class="text-[10px] text-slate-500">Siap kirim broadcast WhatsApp resmi Banterpool</p>
+          @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+            <p class="text-[10px] text-slate-500">Siap kirim bukti pembayaran / nota elektronik via WhatsApp</p>
+          @else
+            <p class="text-[10px] text-slate-500">Siap kirim tagihan bulanan via WhatsApp Gateway</p>
+          @endif
         </div>
       </div>
 
       <div class="flex items-center gap-2">
-        <!-- Form Kirim Broadcast WA / Bukti Pembayaran -->
+        <!-- Form Kirim Broadcast WA -->
         <form action="{{ route('admin.tagihan.broadcast-wa') }}" method="POST" id="floatingBroadcastForm" class="inline flex items-center gap-2">
           @csrf
-          <input type="hidden" name="broadcast_type" id="floating_broadcast_type" value="{{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'receipt' : 'auto' }}">
+          <input type="hidden" name="broadcast_type" id="floating_broadcast_type" value="{{ ($statusFilter === 'rekap' || $statusFilter === 'Lunas') ? 'receipt' : 'billing' }}">
           <template x-for="id in selectedBillIds" :key="id">
             <input type="hidden" name="selected_bills[]" :value="id">
           </template>
 
           @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
             <button type="submit"
-                    class="bg-brand hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md shadow-brand/20">
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md shadow-emerald-600/20">
               <i class="fa-solid fa-receipt text-amber-200 text-sm"></i>
               <span>Kirim Bukti Pembayaran WA (<span x-text="selectedBillIds.length"></span>)</span>
             </button>
           @else
-            <button type="submit" @click="document.getElementById('floating_broadcast_type').value = 'receipt'"
-                    title="Kirim Nota Elektronik / Bukti Pembayaran Lunas"
-                    class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md shadow-emerald-600/20">
-              <i class="fa-solid fa-receipt text-amber-200 text-sm"></i>
-              <span>Kirim Bukti Pembayaran</span>
-            </button>
-
-            <button type="submit" @click="document.getElementById('floating_broadcast_type').value = 'billing'"
-                    title="Kirim Pengingat Tagihan Bulanan"
-                    class="bg-brand hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md shadow-brand/20">
+            <button type="submit"
+                    title="Kirim Tagihan Bulanan via WhatsApp"
+                    class="bg-brand hover:bg-red-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md shadow-brand/20">
               <i class="fa-brands fa-whatsapp text-sm"></i>
-              <span>Kirim Tagihan</span>
+              <span>Kirim Tagihan (<span x-text="selectedBillIds.length"></span>)</span>
             </button>
           @endif
         </form>
