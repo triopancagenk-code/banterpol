@@ -53,6 +53,23 @@ class Bill extends Model
         return $this->belongsTo(Order::class);
     }
 
+    public function getVirtualAccountAttribute(): string
+    {
+        if ($this->relationLoaded('order') && $this->order && !empty($this->order->virtual_account)) {
+            return $this->order->virtual_account;
+        }
+
+        if (!empty($this->order_id)) {
+            try {
+                if ($this->order && !empty($this->order->virtual_account)) {
+                    return $this->order->virtual_account;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        return Order::generateVirtualAccount($this->customer_phone);
+    }
+
     /**
      * Cek apakah pesanan terkait tagihan ini sudah berstatus 'Selesai' / 'Selesai / Aktif'.
      * Tagihan pada monitoring tagihan HANYA muncul jika pesanan pemasangannya sudah selesai.

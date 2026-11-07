@@ -39,17 +39,17 @@
 
     <table class="title-table" style="width: 100%;">
         <tr>
-            <td colspan="9" class="company-name">BANTERPOOL INTERNET SERVICE PROVIDER</td>
+            <td colspan="10" class="company-name">BANTERPOOL INTERNET SERVICE PROVIDER</td>
         </tr>
         <tr>
-            <td colspan="9" class="report-title">MASTER DATA PELANGGAN TERDAFTAR (ARSIP PENDAFTARAN FIBER BROADBAND)</td>
+            <td colspan="10" class="report-title">MASTER DATA PELANGGAN TERDAFTAR (ARSIP PENDAFTARAN FIBER BROADBAND)</td>
         </tr>
         <tr>
-            <td colspan="9" class="meta-info">
+            <td colspan="10" class="meta-info">
                 Waktu Unduh: {{ $now }} WIB | Filter Wilayah: Semua Wilayah | Filter Layanan: Semua Layanan | Filter Status: Semua Status | Total Data: {{ count($sampleData) }} Pelanggan
             </td>
         </tr>
-        <tr><td colspan="9"></td></tr>
+        <tr><td colspan="10"></td></tr>
     </table>
 
     <table class="data-table">
@@ -60,6 +60,7 @@
                 <th style="width: 180px;">PPOE</th>
                 <th style="width: 180px;">No KTP</th>
                 <th style="width: 150px;">No Handphone</th>
+                <th style="width: 180px;">No Virtual Account</th>
                 <th style="width: 220px;">Email</th>
                 <th style="width: 150px;">Jenis Layanan</th>
                 <th style="width: 120px;">Harga</th>
@@ -74,6 +75,7 @@
                     <td class="txt-fmt text-center">{{ $s['pppoe'] ?? '-' }}</td>
                     <td class="txt-fmt text-center">{{ $s['id_card_number'] ?? '-' }}</td>
                     <td class="txt-fmt text-center">{{ $s['customer_phone'] ?? '-' }}</td>
+                    <td class="txt-fmt text-center" style="font-family: monospace; font-weight: bold; color: #1D4ED8;">{{ $s['virtual_account'] ?? '-' }}</td>
                     <td>{{ $s['customer_email'] ?? '-' }}</td>
                     <td class="text-center">{{ $s['package_name'] ?? '-' }}</td>
                     <td class="num-fmt">{{ (float) ($s['price'] ?? 0) }}</td>

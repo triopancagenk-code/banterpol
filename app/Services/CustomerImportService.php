@@ -386,6 +386,13 @@ class CustomerImportService
                     $orderNumberRaw = self::getValue($row, $fieldMap, 'order_number');
                     $orderNumber = (!empty($orderNumberRaw) && $orderNumberRaw !== '-') ? $orderNumberRaw : null;
 
+                    $vaRaw = self::getValue($row, $fieldMap, 'virtual_account');
+                    if (!empty($vaRaw) && $vaRaw !== '-') {
+                        $virtualAccount = preg_replace('/[^0-9]/', '', (string)$vaRaw);
+                    } else {
+                        $virtualAccount = Order::generateVirtualAccount($phone);
+                    }
+
                     $emailRaw = self::getValue($row, $fieldMap, 'customer_email');
                     $email = (!empty($emailRaw) && $emailRaw !== '-') ? $emailRaw : '-';
 
@@ -576,6 +583,9 @@ class CustomerImportService
                                 if ($phone !== '-') {
                                     $existingOrder->customer_phone = $phone;
                                 }
+                                if (!empty($virtualAccount) && $virtualAccount !== '-') {
+                                    $existingOrder->virtual_account = $virtualAccount;
+                                }
                                 if ($email !== '-') {
                                     $existingOrder->customer_email = $email;
                                 }
@@ -676,6 +686,7 @@ class CustomerImportService
                             'birth_place' => $birthPlace,
                             'birth_date' => $birthDate,
                             'customer_phone' => $phone,
+                            'virtual_account' => $virtualAccount,
                             'customer_email' => $email,
                             'package_name' => $packageName,
                             'speed' => $speed,
@@ -779,7 +790,10 @@ class CustomerImportService
     public static function downloadTemplate(string $format = 'xlsx')
     {
         $format = strtolower($format);
-        $templatePath = public_path('template/template_data_pelanggan_fix.xlsx');
+        $templatePath = base_path('template_excell_data_pelanggan_banterpool.xlsx');
+        if (!file_exists($templatePath)) {
+            $templatePath = public_path('template/template_data_pelanggan_fix.xlsx');
+        }
         if (!file_exists($templatePath)) {
             $templatePath = base_path('template data pelanggan fix.xlsx');
         }
@@ -802,6 +816,7 @@ class CustomerImportService
                 'pppoe' => 'bambang_sudarsono',
                 'id_card_number' => '3302190102850001',
                 'customer_phone' => '081234567890',
+                'virtual_account' => '169910181234567890',
                 'customer_email' => 'bambang.sudarsono@gmail.com',
                 'package_name' => '20 Mbps',
                 'price' => '110000',
@@ -812,6 +827,7 @@ class CustomerImportService
                 'pppoe' => 'siti_nurhaliza',
                 'id_card_number' => '3302191506920002',
                 'customer_phone' => '085712345678',
+                'virtual_account' => '169910185712345678',
                 'customer_email' => 'siti.nurhaliza92@gmail.com',
                 'package_name' => '30 Mbps',
                 'price' => '165000',
@@ -822,6 +838,7 @@ class CustomerImportService
                 'pppoe' => 'rahmat_hidayat',
                 'id_card_number' => '3302192008980003',
                 'customer_phone' => '087812345678',
+                'virtual_account' => '169910187812345678',
                 'customer_email' => 'rahmat.hidayat@gmail.com',
                 'package_name' => '50 Mbps',
                 'price' => '220000',
@@ -840,7 +857,7 @@ class CustomerImportService
     }
 
     /**
-     * Download Template File CSV (Format 9 Kolom Resmi template data pelanggan fix.xlsx)
+     * Download Template File CSV (Format 10 Kolom Resmi template data pelanggan fix.xlsx)
      */
     public static function downloadCsvTemplate()
     {
@@ -851,6 +868,7 @@ class CustomerImportService
             'PPOE',
             'No KTP',
             'No Handphone',
+            'No Virtual Account',
             'Email',
             'Jenis Layanan',
             'Harga',
@@ -864,6 +882,7 @@ class CustomerImportService
                 'bambang_sudarsono',
                 "'3302190102850001",
                 '081234567890',
+                '169910181234567890',
                 'bambang.sudarsono@gmail.com',
                 '20 Mbps',
                 '110000',
@@ -875,6 +894,7 @@ class CustomerImportService
                 'siti_nurhaliza',
                 "'3302191506920002",
                 '085712345678',
+                '169910185712345678',
                 'siti.nurhaliza92@gmail.com',
                 '30 Mbps',
                 '165000',
@@ -886,6 +906,7 @@ class CustomerImportService
                 'rahmat_hidayat',
                 "'3302192008980003",
                 '087812345678',
+                '169910187812345678',
                 'rahmat.hidayat@gmail.com',
                 '50 Mbps',
                 '220000',
@@ -1629,6 +1650,10 @@ class CustomerImportService
                 'no_telepon', 'nomor_telepon', 'telepon', 'no_telp', 'nomor_telp', 'telp',
                 'kontak', 'no_kontak', 'nomor_kontak', 'customer_phone', 'phone', 'mobile',
                 'handphone', 'hp', 'wa',
+            ],
+            'virtual_account' => [
+                'no_virtual_account', 'nomor_virtual_account', 'virtual_account', 'no_va', 'nomor_va', 'va',
+                'briva', 'va_number', 'virtual_account_number', 'no_rekening_va', 'nomor_rekening_va',
             ],
             'customer_email' => [
                 'alamat_email', 'email_pelanggan', 'email_address', 'customer_email',

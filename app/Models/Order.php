@@ -44,6 +44,7 @@ class Order extends Model
         'material_used',
         'installed_at',
         'pppoe',
+        'virtual_account',
     ];
 
     protected $casts = [
@@ -75,6 +76,38 @@ class Order extends Model
         }
 
         return $clean;
+    }
+
+    /**
+     * Generate standard Virtual Account BRI (BRIVA) Banterpool (Kode BRIVA: 1699101)
+     */
+    public static function generateVirtualAccount(?string $phone = null, ?int $id = 0): string
+    {
+        $cleanPhone = preg_replace('/\D/', '', (string) $phone);
+        if (str_starts_with($cleanPhone, '62')) {
+            $cleanPhone = substr($cleanPhone, 2);
+        } elseif (str_starts_with($cleanPhone, '0')) {
+            $cleanPhone = substr($cleanPhone, 1);
+        }
+
+        if (!empty($cleanPhone)) {
+            return '1699101' . $cleanPhone;
+        }
+
+        $suffix = str_pad((string) ($id ?: mt_rand(10000000, 99999999)), 10, '0', STR_PAD_LEFT);
+        return '1699101' . $suffix;
+    }
+
+    /**
+     * Accessor untuk atribut virtual_account
+     */
+    public function getVirtualAccountAttribute(?string $value): string
+    {
+        if (!empty($value) && $value !== '-') {
+            return $value;
+        }
+
+        return static::generateVirtualAccount($this->customer_phone, (int) $this->id);
     }
 
     /**

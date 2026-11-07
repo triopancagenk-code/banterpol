@@ -1567,11 +1567,12 @@ class AdminController extends Controller
                   ->orWhere('pppoe', 'like', "{$lowerSearch}%")
                   ->orWhere('id_card_number', 'like', "{$search}%")
                   ->orWhere('customer_phone', 'like', "{$search}%")
+                  ->orWhere('virtual_account', 'like', "{$search}%")
                   ->orWhere('order_number', 'like', "{$search}%");
             })
             ->orderBy('customer_name', 'asc')
             ->limit(10)
-            ->get(['id', 'customer_name', 'pppoe', 'id_card_number', 'customer_phone', 'village', 'address', 'package_name']);
+            ->get(['id', 'customer_name', 'pppoe', 'id_card_number', 'customer_phone', 'virtual_account', 'village', 'address', 'package_name']);
 
             return response()->json($results);
         }
@@ -1595,6 +1596,7 @@ class AdminController extends Controller
                   ->orWhere('pppoe', 'like', "{$lowerSearch}%")
                   ->orWhere('id_card_number', 'like', "{$trimmedSearch}%")
                   ->orWhere('customer_phone', 'like', "{$trimmedSearch}%")
+                  ->orWhere('virtual_account', 'like', "{$trimmedSearch}%")
                   ->orWhere('order_number', 'like', "{$trimmedSearch}%");
 
                 // Jika pencarian lebih dari 2 karakter, dukung pencarian kata berikutnya atau desa/alamat
@@ -1768,6 +1770,7 @@ class AdminController extends Controller
             'birth_date' => 'nullable|date',
             'birth_place' => 'nullable|string|max:100',
             'customer_phone' => 'nullable|string|max:50',
+            'virtual_account' => 'nullable|string|max:50',
             'customer_email' => 'nullable|string|max:100',
             'package_name' => 'nullable|string|max:100',
             'price' => 'nullable|numeric',
@@ -1827,6 +1830,10 @@ class AdminController extends Controller
 
         $adminNotePrefix = (auth()->check() && auth()->user()->isBanterpoolAdmin()) ? 'Pelanggan Banterpool dari input manual Admin Banterpool' : 'Pelanggan terdaftar dari input manual Admin';
 
+        $virtualAccount = !empty($validated['virtual_account'])
+            ? preg_replace('/[^0-9]/', '', $validated['virtual_account'])
+            : Order::generateVirtualAccount($validated['customer_phone'] ?? null);
+
         $order = Order::create([
             'order_number' => $orderNumber,
             'customer_name' => $validated['customer_name'],
@@ -1835,6 +1842,7 @@ class AdminController extends Controller
             'birth_date' => $validated['birth_date'] ?? null,
             'birth_place' => $validated['birth_place'] ?? 'Banyumas',
             'customer_phone' => !empty($validated['customer_phone']) ? $validated['customer_phone'] : '-',
+            'virtual_account' => $virtualAccount,
             'customer_email' => !empty($validated['customer_email']) ? $validated['customer_email'] : '-',
             'package_name' => $packageName,
             'speed' => $speed,
@@ -1869,6 +1877,7 @@ class AdminController extends Controller
             'birth_date' => 'nullable|date',
             'birth_place' => 'nullable|string|max:100',
             'customer_phone' => 'nullable|string|max:50',
+            'virtual_account' => 'nullable|string|max:50',
             'customer_email' => 'nullable|string|max:100',
             'package_name' => 'nullable|string|max:100',
             'price' => 'nullable|numeric',
@@ -1902,6 +1911,11 @@ class AdminController extends Controller
         $order->birth_date = !empty($validated['birth_date']) ? $validated['birth_date'] : $order->birth_date;
         $order->birth_place = !empty($validated['birth_place']) ? $validated['birth_place'] : ($order->birth_place ?: '-');
         $order->customer_phone = !empty($validated['customer_phone']) ? $validated['customer_phone'] : ($order->customer_phone ?: '-');
+        if ($request->has('virtual_account')) {
+            $order->virtual_account = !empty($validated['virtual_account']) 
+                ? preg_replace('/[^0-9]/', '', $validated['virtual_account']) 
+                : Order::generateVirtualAccount($order->customer_phone, $order->id);
+        }
         $order->customer_email = !empty($validated['customer_email']) ? $validated['customer_email'] : ($order->customer_email ?: '-');
         $order->package_name = $packageName;
         $order->speed = $speed;
@@ -2000,6 +2014,7 @@ class AdminController extends Controller
                   ->orWhere('customer_name', 'like', " {$upperSearch}%")
                   ->orWhere('id_card_number', 'like', "{$trimmedSearch}%")
                   ->orWhere('customer_phone', 'like', "{$trimmedSearch}%")
+                  ->orWhere('virtual_account', 'like', "{$trimmedSearch}%")
                   ->orWhere('order_number', 'like', "{$trimmedSearch}%");
 
                 if (strlen($trimmedSearch) > 2) {

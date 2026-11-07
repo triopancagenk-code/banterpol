@@ -187,7 +187,7 @@
         @endif
       </div>
       <p class="text-xs text-slate-500 mt-1">
-        Data pendaftaran pelanggan terintegrasi (No, Nama Pemohon, No KTP, No Handphone, Jenis Layanan, Harga, dan Alamat).
+        Data pendaftaran pelanggan terintegrasi (No, Nama Pemohon, PPOE, No KTP, No Handphone, No Virtual Account, Email, Jenis Layanan, Harga, dan Alamat).
       </p>
     </div>
 
@@ -393,7 +393,7 @@
                  @keydown="onKeyDown($event)"
                  @focus="if (suggestions.length > 0) showDropdown = true"
                  autocomplete="off"
-                 placeholder="Cari NIK, PPOE, Nama, No. HP, Email, Alamat..."
+                 placeholder="Cari NIK, PPOE, Nama, No. HP, No. VA, Email, Alamat..."
                  class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand transition">
 
           <!-- Spinner Loading -->
@@ -545,6 +545,7 @@
             <th class="py-3.5 px-4 text-center">PPOE</th>
             <th class="py-3.5 px-4 text-center">No KTP</th>
             <th class="py-3.5 px-4 text-center">No Handphone</th>
+            <th class="py-3.5 px-4 text-center">No Virtual Account</th>
             <th class="py-3.5 px-4 text-center">Email</th>
             <th class="py-3.5 px-4 text-center">Jenis Layanan</th>
             <th class="py-3.5 px-4 text-center">Harga</th>
@@ -644,7 +645,25 @@
                 @endif
               </td>
 
-              <!-- 6. Email -->
+              <!-- 6. No Virtual Account -->
+              <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                @php
+                  $vaVal = $customer->virtual_account ?: \App\Models\Order::generateVirtualAccount($customer->customer_phone, $customer->id);
+                @endphp
+                <div class="inline-flex items-center justify-center gap-1 font-mono text-[11px] font-bold bg-blue-50 text-blue-800 px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs">
+                  <i class="fa-solid fa-credit-card text-[10px] text-blue-600"></i>
+                  <span>{{ $vaVal }}</span>
+                  <button type="button"
+                          @click="copyToClipboard('{{ $vaVal }}', 'va-{{ $customer->id }}')"
+                          class="text-blue-400 hover:text-blue-700 text-xs p-0.5 transition ml-0.5"
+                          title="Salin No Virtual Account">
+                    <i class="fa-regular fa-copy text-[11px]" x-show="copiedText !== 'va-{{ $customer->id }}'"></i>
+                    <i class="fa-solid fa-check text-[11px] text-emerald-600" x-show="copiedText === 'va-{{ $customer->id }}'"></i>
+                  </button>
+                </div>
+              </td>
+
+              <!-- 7. Email -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($customer->customer_email && $customer->customer_email !== '-')
                   <span class="text-[11px] text-slate-600 font-mono">{{ $customer->customer_email }}</span>
@@ -653,7 +672,7 @@
                 @endif
               </td>
 
-              <!-- 7. Jenis Layanan -->
+              <!-- 8. Jenis Layanan -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($customer->package_name && $customer->package_name !== '-')
                   <div class="font-bold text-slate-900 text-xs">
@@ -664,7 +683,7 @@
                 @endif
               </td>
 
-              <!-- 8. Harga -->
+              <!-- 9. Harga -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if((float) ($customer->price ?? 0) > 0)
                   <div class="text-brand font-black text-xs">
@@ -675,14 +694,14 @@
                 @endif
               </td>
 
-              <!-- 9. Alamat -->
+              <!-- 10. Alamat -->
               <td class="py-3.5 px-4 text-center">
                 <p class="text-xs text-slate-700 leading-relaxed max-w-[280px] mx-auto">
                   {{ $customer->address }}
                 </p>
               </td>
 
-              <!-- 10. Status -->
+              <!-- 11. Status -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 @if($customer->status === 'Selesai' || strtolower($customer->status) === 'aktif')
                   <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-300 inline-flex items-center gap-1">
@@ -703,7 +722,7 @@
                 @endif
               </td>
 
-              <!-- 11. Aksi -->
+              <!-- 12. Aksi -->
               <td class="py-3.5 px-4 whitespace-nowrap text-center">
                 <div class="flex items-center justify-center gap-1.5">
                   
@@ -741,7 +760,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="12" class="text-center py-16 text-slate-400">
+              <td colspan="13" class="text-center py-16 text-slate-400">
                 <i class="fa-solid fa-users-slash text-4xl mb-3 text-slate-300"></i>
                 <p class="font-bold text-sm text-slate-600">Tidak ada data pelanggan yang sesuai</p>
                 <p class="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter wilayah Anda.</p>
@@ -894,6 +913,19 @@
                   <p class="font-mono font-bold text-slate-900 text-sm" x-text="selectedCustomer.customer_phone"></p>
                 </div>
                 <div>
+                  <p class="text-[11px] text-slate-500">No. Virtual Account (BRIVA):</p>
+                  <div class="flex items-center gap-2">
+                    <p class="font-mono font-bold text-blue-700 text-sm" x-text="selectedCustomer.virtual_account || '-'"></p>
+                    <button type="button"
+                            @click="copyToClipboard(selectedCustomer.virtual_account, 'modal-va')"
+                            class="text-blue-500 hover:text-blue-700 text-xs transition"
+                            title="Salin Virtual Account">
+                      <i class="fa-regular fa-copy" x-show="copiedText !== 'modal-va'"></i>
+                      <i class="fa-solid fa-check text-emerald-600" x-show="copiedText === 'modal-va'"></i>
+                    </button>
+                  </div>
+                </div>
+                <div>
                   <p class="text-[11px] text-slate-500">Alamat Email:</p>
                   <p class="font-semibold text-blue-600 truncate text-xs" x-text="selectedCustomer.customer_email || '-'"></p>
                 </div>
@@ -1008,6 +1040,16 @@
               <label class="block font-bold text-slate-700 mb-1">No. Handphone / WhatsApp</label>
               <input type="text" name="customer_phone" placeholder="08xxxxxxxxxx"
                      class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono">
+            </div>
+
+            <!-- No Virtual Account -->
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">
+                <i class="fa-solid fa-credit-card text-brand mr-1"></i> No. Virtual Account (BRIVA)
+                <span class="text-slate-400 font-normal text-[10px]">(Opsional - otomatis jika kosong)</span>
+              </label>
+              <input type="text" name="virtual_account" placeholder="Contoh: 169910182117232885"
+                     class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono font-semibold">
             </div>
 
             <!-- Tempat Lahir -->
@@ -1188,6 +1230,15 @@
                 <label class="block font-bold text-slate-700 mb-1">No. Handphone / WhatsApp</label>
                 <input type="text" name="customer_phone" x-model="selectedCustomer.customer_phone"
                        class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono font-semibold">
+              </div>
+
+              <!-- No Virtual Account -->
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">
+                  <i class="fa-solid fa-credit-card text-brand mr-1"></i> No. Virtual Account (BRIVA)
+                </label>
+                <input type="text" name="virtual_account" x-model="selectedCustomer.virtual_account" placeholder="Contoh: 169910182117232885"
+                       class="w-full text-xs p-2.5 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-mono font-bold text-slate-900">
               </div>
 
               <!-- Tempat Lahir -->
@@ -1491,7 +1542,7 @@
                     class="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-700 transition">
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-table-list text-slate-400"></i>
-                <span>Lihat Format Kolom Resmi (9 Kolom)</span>
+                <span>Lihat Format Kolom Resmi (10 Kolom)</span>
               </div>
               <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform"
                  :class="openGuide ? 'rotate-180' : ''"></i>
@@ -1521,24 +1572,28 @@
                   <p class="text-[10px] text-slate-500">Nomor WhatsApp aktif</p>
                 </div>
                 <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">6. Email</p>
+                  <p class="font-bold text-slate-900">6. No Virtual Account</p>
+                  <p class="text-[10px] text-slate-500">Nomor VA Pembayaran (BRIVA)</p>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <p class="font-bold text-slate-900">7. Email</p>
                   <p class="text-[10px] text-slate-500">Alamat surel pelanggan</p>
                 </div>
                 <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">7. Jenis Layanan</p>
+                  <p class="font-bold text-slate-900">8. Jenis Layanan</p>
                   <p class="text-[10px] text-slate-500">Paket internet (20/30/50 Mbps)</p>
                 </div>
                 <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">8. Harga</p>
+                  <p class="font-bold text-slate-900">9. Harga</p>
                   <p class="text-[10px] text-slate-500">Tarif iuran bulanan (Rp)</p>
                 </div>
-                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                  <p class="font-bold text-slate-900">9. Alamat <span class="text-red-500 font-normal">*Wajib</span></p>
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100 sm:col-span-3">
+                  <p class="font-bold text-slate-900">10. Alamat <span class="text-red-500 font-normal">*Wajib</span></p>
                   <p class="text-[10px] text-slate-500">Alamat domisili/pemasangan</p>
                 </div>
               </div>
               <p class="text-[10px] text-slate-400 italic">
-                Tips: Berkas hasil "Export Excel" dari halaman ini juga menggunakan format 9 kolom resmi ini dan dapat langsung diimpor kembali!
+                Tips: Berkas hasil "Export Excel" dari halaman ini juga menggunakan format 10 kolom resmi ini dan dapat langsung diimpor kembali!
               </p>
             </div>
           </div>

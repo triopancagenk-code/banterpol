@@ -16,7 +16,7 @@
     briVA: {
         name: 'BRI Virtual Account',
         code: 'BRIVA',
-        va: '7701 5544 3322 1100',
+        va: '{{ $customerData['virtual_account'] ?? '169910182117232885' }}',
         owner: 'BANTERPOOL - {{ strtoupper($customerData['name'] ?? 'PELANGGAN') }}',
         logo: '{{ asset('image/banks/bri.svg') }}'
     },
@@ -59,6 +59,7 @@
         const searchParams = new URLSearchParams(currentUrl.search);
         searchParams.set('status', status);
         searchParams.set('payment_method', this.getPaymentMethodLabel());
+        searchParams.set('virtual_account', this.briVA.va);
         window.location.href = '{{ route("payment.status") }}?' + searchParams.toString();
     }
 }">

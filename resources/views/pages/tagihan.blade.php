@@ -517,6 +517,10 @@
             <span>Metode Pembayaran</span>
             <span class="font-bold text-slate-900" x-text="selectedBill?.payment_method || 'BRI Virtual Account'"></span>
           </div>
+          <div class="flex justify-between text-slate-600">
+            <span>No. Virtual Account</span>
+            <span class="font-mono font-bold text-blue-700" x-text="selectedBill?.virtual_account || '-'"></span>
+          </div>
           <div class="border-t border-slate-100 pt-2.5 flex justify-between font-black text-sm text-slate-900">
             <span>Total Pembayaran:</span>
             <span class="text-brand text-base" x-text="'Rp' + (selectedBill?.total || '0')"></span>

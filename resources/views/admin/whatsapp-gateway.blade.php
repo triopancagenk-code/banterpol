@@ -324,7 +324,7 @@
             <button type="button" @click="insertVariable('{tagihan}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono transition" title="Besar Tagihan Pelanggan">
               + {tagihan}
             </button>
-            <button type="button" @click="insertVariable('{briva}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono font-bold transition" title="BRIVA : 1691101 + 8 digit terakhir nomor pelanggan">
+            <button type="button" @click="insertVariable('{briva}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono font-bold transition" title="BRIVA : 1699101 + 8 digit terakhir nomor pelanggan">
               + {briva}
             </button>
             <button type="button" @click="insertVariable('{jatuh_tempo}')" class="px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 hover:bg-purple-100 font-mono transition" title="Batas Jatuh Tempo / Masa Aktif">
@@ -537,7 +537,7 @@
                 @php
                   $custDigits = preg_replace('/[^0-9]/', '', $customer['phone']);
                   $custLast8 = strlen($custDigits) >= 8 ? substr($custDigits, -8) : str_pad($custDigits, 8, '0', STR_PAD_LEFT);
-                  $custBriva = '1691101' . $custLast8;
+                  $custBriva = '1699101' . $custLast8;
                 @endphp
                 <div class="text-[10px] text-blue-700 font-bold bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded mt-1 inline-block font-mono" title="Nomor BRIVA Pembayaran">
                   BRIVA: {{ $custBriva }}
@@ -996,7 +996,7 @@ function whatsappGatewayApp() {
             const samplePhone = '08818679774';
             const digits = samplePhone.replace(/[^0-9]/g, '');
             const last8 = digits.length >= 8 ? digits.slice(-8) : digits.padStart(8, '0');
-            const sampleBriva = '1691101' + last8;
+            const sampleBriva = '1699101' + last8;
 
             const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             const now = new Date();
@@ -1005,14 +1005,14 @@ function whatsappGatewayApp() {
 
             let text = this.messageText;
 
-            // 1. Bersihkan format prefix jika ada yang mengetik manual 1691101{...}
-            text = text.replace(/1691101\{briva\}/gi, sampleBriva)
-                       .replace(/1691101\{link_bayar\}/gi, sampleBriva)
-                       .replace(/1691101\{no[\s_]*hp[\s_]*pelanggan\}/gi, sampleBriva)
-                       .replace(/1691101\{nomor[\s_]*pelanggan\}/gi, sampleBriva)
-                       .replace(/1691101\{telepon\}/gi, sampleBriva)
-                       .replace(/1691101\{phone\}/gi, sampleBriva)
-                       .replace(/1691101\s*\(8 digit terakhir nomor [^\)]+\)/gi, sampleBriva);
+            // 1. Bersihkan format prefix jika ada yang mengetik manual 1699101{...} atau 1691101{...}
+            text = text.replace(/169[91]101\{briva\}/gi, sampleBriva)
+                       .replace(/169[91]101\{link_bayar\}/gi, sampleBriva)
+                       .replace(/169[91]101\{no[\s_]*hp[\s_]*pelanggan\}/gi, sampleBriva)
+                       .replace(/169[91]101\{nomor[\s_]*pelanggan\}/gi, sampleBriva)
+                       .replace(/169[91]101\{telepon\}/gi, sampleBriva)
+                       .replace(/169[91]101\{phone\}/gi, sampleBriva)
+                       .replace(/169[91]101\s*\(8 digit terakhir nomor [^\)]+\)/gi, sampleBriva);
 
             // 2. Ganti baris Link Pembayaran jika masih menggunakan format lama
             text = text.replace(/(🔗\s*)?Link Pembayaran\s*:\s*\{link_bayar\}/gi, '💳 BRIVA : ' + sampleBriva);

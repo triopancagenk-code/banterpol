@@ -31,8 +31,8 @@
         briVA: {
             name: 'BRI Virtual Account',
             code: 'BRIVA',
-            va: '7701 5599 8822 110',
-            owner: 'BANTERPOOL - {{ auth()->user()->name ?? ($billData['customer_name'] ?? 'Pelanggan') }}',
+            va: '{{ $billData['virtual_account'] ?? '169910182117232885' }}',
+            owner: 'BANTERPOOL - {{ strtoupper($billData['customer_name'] ?? (auth()->user()->name ?? 'Pelanggan')) }}',
             logo: '{{ asset('image/banks/bri.svg') }}'
         },
 

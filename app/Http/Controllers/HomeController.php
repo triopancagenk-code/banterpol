@@ -262,6 +262,7 @@ class HomeController extends Controller
                 'tax' => number_format($activeBillModel->tax, 0, ',', '.'),
                 'total' => number_format($activeBillModel->total, 0, ',', '.'),
                 'total_raw' => (int) $activeBillModel->total,
+                'virtual_account' => $activeBillModel->virtual_account,
                 'status' => $activeBillModel->status === 'Jatuh Tempo' ? 'Jatuh Tempo' : ($activeBillModel->status === 'Menunggu Verifikasi' ? 'Menunggu Verifikasi' : 'Belum Dibayar'),
                 'has_unpaid' => true,
             ];
@@ -277,6 +278,7 @@ class HomeController extends Controller
                 'tax' => '0',
                 'total' => '0',
                 'total_raw' => 0,
+                'virtual_account' => '-',
                 'status' => 'Lunas',
                 'has_unpaid' => false,
             ];
@@ -284,10 +286,12 @@ class HomeController extends Controller
 
         // Susun daftar tagihan terstruktur seperti pada POV Admin dan Direktur
         $allBillsData = $userAllBills->map(function ($b) {
+            $vaNumber = $b->virtual_account;
             return [
                 'id' => $b->bill_number,
                 'customer_name' => $b->customer_name,
                 'customer_phone' => $b->customer_phone,
+                'virtual_account' => $vaNumber,
                 'customer_email' => $b->customer_email ?? '-',
                 'package_name' => $b->package_name,
                 'speed' => $b->speed ?? '20 Mbps',
@@ -314,6 +318,7 @@ class HomeController extends Controller
             $matchSearch = empty($search) ||
                 (stripos($item['package_name'], $search) !== false) ||
                 (stripos($item['id'], $search) !== false) ||
+                (stripos($item['virtual_account'] ?? '', $search) !== false) ||
                 (stripos($item['period'], $search) !== false) ||
                 (stripos($item['due_date'], $search) !== false) ||
                 (stripos($item['payment_method'], $search) !== false) ||
@@ -376,8 +381,38 @@ class HomeController extends Controller
             return redirect()->route('tagihan')->with('info', 'Tidak ada tagihan tertunda yang perlu dibayar.');
         }
 
+        $customerOrder = $dbBill ? $dbBill->order : null;
+        if (!$customerOrder && $dbBill) {
+            $customerOrder = Order::where('customer_phone', $dbBill->customer_phone)
+                ->orWhere('customer_email', $dbBill->customer_email)
+                ->orWhere('customer_name', $dbBill->customer_name)
+                ->latest('id')
+                ->first();
+        }
+        if (!$customerOrder && auth()->check()) {
+            $user = auth()->user();
+            $customerOrder = Order::where('user_id', $user->id)
+                ->orWhere('customer_email', $user->email)
+                ->orWhere('customer_name', $user->name)
+                ->latest('id')
+                ->first();
+        }
+
+        $vaNumber = null;
+        if ($customerOrder && !empty($customerOrder->virtual_account)) {
+            $vaNumber = $customerOrder->virtual_account;
+        } elseif ($dbBill) {
+            $vaNumber = $dbBill->virtual_account;
+        } else {
+            $vaNumber = Order::generateVirtualAccount(auth()->user()?->phone);
+        }
+
+        $customerName = $dbBill ? $dbBill->customer_name : ($customerOrder ? $customerOrder->customer_name : (auth()->user()?->name ?? 'Pelanggan'));
+
         $billData = [
             'invoice' => $invoice ?? ('INV-' . date('Ym') . '-0001'),
+            'virtual_account' => $vaNumber,
+            'customer_name' => $customerName,
             'package_name' => $dbBill ? $dbBill->package_name : $request->input('package', 'Paket WiFi Banterpool'),
             'period' => $dbBill ? $dbBill->period : $request->input('period', now()->locale('id')->translatedFormat('F Y')),
             'due_date' => $dbBill ? $dbBill->due_date : $request->input('due_date', '05 ' . now()->locale('id')->addMonth()->translatedFormat('M Y')),
@@ -479,6 +514,19 @@ class HomeController extends Controller
             'installation_time' => $request->input('installation_time', 'pagi'),
         ];
 
+        $existingOrder = null;
+        if (!empty($customerData['phone']) && $customerData['phone'] !== '08xxxxxxxxxx') {
+            $existingOrder = Order::where('customer_phone', $customerData['phone'])->latest('id')->first();
+        }
+        if (!$existingOrder && !empty($customerData['id_card_number'])) {
+            $existingOrder = Order::where('id_card_number', $customerData['id_card_number'])->latest('id')->first();
+        }
+        if (!$existingOrder && auth()->check()) {
+            $existingOrder = Order::where('user_id', auth()->id())->latest('id')->first();
+        }
+
+        $customerData['virtual_account'] = $existingOrder ? $existingOrder->virtual_account : Order::generateVirtualAccount($customerData['phone']);
+
         return view('pages.payment', compact('customerData'));
     }
 
@@ -506,13 +554,20 @@ class HomeController extends Controller
             try {
                 $address = $request->input('address', (auth()->user() && auth()->user()->address) ? auth()->user()->address : 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas');
                 $village = \App\Services\CustomerImportService::resolveVillage(null, null, $address);
+                $phone = $request->input('phone', (auth()->user() && auth()->user()->phone) ? auth()->user()->phone : '081234567890');
+                $va = $request->input('virtual_account');
+                if (empty($va)) {
+                    $existing = Order::where('customer_phone', $phone)->latest('id')->first();
+                    $va = $existing ? $existing->virtual_account : Order::generateVirtualAccount($phone);
+                }
 
                 $order = Order::updateOrCreate(
                     ['order_number' => $orderNumber],
                     [
                         'user_id' => auth()->id(),
                         'customer_name' => $request->input('name', auth()->user() ? auth()->user()->name : 'Pelanggan Baru'),
-                        'customer_phone' => $request->input('phone', (auth()->user() && auth()->user()->phone) ? auth()->user()->phone : '081234567890'),
+                        'customer_phone' => $phone,
+                        'virtual_account' => $va,
                         'customer_email' => $request->input('email', auth()->user() ? auth()->user()->email : 'pelanggan@gmail.com'),
                         'id_card_number' => $request->input('id_card_number'),
                         'birth_place' => $request->input('birth_place'),

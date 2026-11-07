@@ -132,7 +132,7 @@ class WhatsappGatewayService
     }
 
     /**
-     * Generate BRIVA Number from phone: 1691101 + last 8 digits of phone
+     * Generate BRIVA Number from phone: 1699101 + last 8 digits of phone
      */
     public function generateBrivaNumber(?string $phone): string
     {
@@ -144,7 +144,7 @@ class WhatsappGatewayService
         } else {
             $last8 = '18679774';
         }
-        return '1691101' . $last8;
+        return '1699101' . $last8;
     }
 
     /**
@@ -154,8 +154,8 @@ class WhatsappGatewayService
     {
         $phone = $data['phone'] ?? $data['formatted_phone'] ?? '';
         $rawPhone = !empty($phone) ? $phone : '08818679774';
-        $briva = $this->generateBrivaNumber($phone);
-        $last8 = substr($briva, 7);
+        $briva = $data['virtual_account'] ?? $data['briva'] ?? $this->generateBrivaNumber($phone);
+        $last8 = substr($briva, -8);
 
         $indonesianMonths = [
             1 => 'Januari',
@@ -187,8 +187,20 @@ class WhatsappGatewayService
         $monthShort = $data['month_short'] ?? date('M');
         $adminBy = $data['admin_by'] ?? ($data['collected_by'] ?? 'Atun');
 
-        // 1. Tangani jika ada yang menulis prefix 1691101 diikuti tag variabel atau format teks literal
+        // 1. Tangani jika ada yang menulis prefix 1699101 atau 1691101 diikuti tag variabel atau format teks literal
         $template = str_replace([
+            '1699101{briva}',
+            '1699101{link_bayar}',
+            '1699101{nomor_pelanggan}',
+            '1699101{no hp pelanggan}',
+            '1699101{no_hp_pelanggan}',
+            '1699101{no_hp}',
+            '1699101{telepon}',
+            '1699101{phone}',
+            '1699101(8 digit terakhir nomor pelanggan)',
+            '1699101(8 digit terakhir nomor telepon)',
+            '1699101 (8 digit terakhir nomor pelanggan)',
+            '1699101 (8 digit terakhir nomor telepon)',
             '1691101{briva}',
             '1691101{link_bayar}',
             '1691101{nomor_pelanggan}',
@@ -203,8 +215,8 @@ class WhatsappGatewayService
             '1691101 (8 digit terakhir nomor telepon)',
         ], $briva, $template);
 
-        // Regex fallback untuk variasi 1691101{...}
-        $template = preg_replace('/1691101\s*\{(?:no[\s_]*hp[\s_]*pelanggan|telepon|phone|no_hp|briva|link_bayar)\}/i', $briva, $template);
+        // Regex fallback untuk variasi 1699101{...} dan 1691101{...}
+        $template = preg_replace('/169[91]101\s*\{(?:no[\s_]*hp[\s_]*pelanggan|telepon|phone|no_hp|briva|link_bayar)\}/i', $briva, $template);
 
         // 2. Tangani jika ada kalimat "Link Pembayaran: {link_bayar}" atau sejenisnya
         $template = preg_replace('/(🔗\s*)?Link Pembayaran\s*:\s*\{link_bayar\}/i', '💳 BRIVA : ' . $briva, $template);

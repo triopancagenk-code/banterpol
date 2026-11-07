@@ -223,10 +223,28 @@ class CustomerImport implements ToCollection, WithEvents
             return;
         }
 
-        // Cek jika berkas menggunakan format template 9-kolom resmi (No, Nama Pemohon, PPOE, No KTP, No Handphone, Email, Jenis Layanan, Harga, Alamat)
+        // Cek jika berkas menggunakan format template 10-kolom atau 9-kolom resmi
+        $isTenColumnTemplate = isset($fieldMap['virtual_account']) || (isset($cleanedRows[$headerIndex][5]) && stripos((string)$cleanedRows[$headerIndex][5], 'virtual') !== false);
         $isNineColumnTemplate = count($cleanedRows[$headerIndex]) <= 12 && (isset($fieldMap['pppoe']) || (isset($cleanedRows[$headerIndex][2]) && stripos((string)$cleanedRows[$headerIndex][2], 'ppoe') !== false));
 
-        if ($isNineColumnTemplate) {
+        if ($isTenColumnTemplate) {
+            $tenColumnPositions = [
+                'customer_name' => 1,   // B: Nama Pemohon
+                'pppoe' => 2,           // C: PPOE
+                'id_card_number' => 3,  // D: No KTP
+                'customer_phone' => 4,  // E: No Handphone
+                'virtual_account' => 5, // F: No Virtual Account
+                'customer_email' => 6,  // G: Email
+                'package_name' => 7,    // H: Jenis Layanan
+                'price' => 8,           // I: Harga
+                'address' => 9,         // J: Alamat
+            ];
+            foreach ($tenColumnPositions as $field => $pos) {
+                if (!isset($fieldMap[$field]) && !in_array($pos, $fieldMap, true) && isset($cleanedRows[$headerIndex][$pos])) {
+                    $fieldMap[$field] = $pos;
+                }
+            }
+        } elseif ($isNineColumnTemplate) {
             $nineColumnPositions = [
                 'customer_name' => 1, // B: Nama Pemohon
                 'pppoe' => 2,         // C: PPOE
@@ -379,6 +397,17 @@ class CustomerImport implements ToCollection, WithEvents
             $orderNumberRaw = $this->getVal($row, $fieldMap, 'order_number');
             $orderNumber = (!empty($orderNumberRaw) && $orderNumberRaw !== '-') ? trim((string)$orderNumberRaw) : null;
 
+            // Virtual Account
+            $vaRaw = $this->getVal($row, $fieldMap, 'virtual_account');
+            if (!empty($vaRaw) && $vaRaw !== '-') {
+                if (is_numeric($vaRaw) && preg_match('/[eE]/i', (string)$vaRaw)) {
+                    $vaRaw = sprintf('%.0f', (float)$vaRaw);
+                }
+                $virtualAccount = preg_replace('/[^0-9]/', '', (string)$vaRaw);
+            } else {
+                $virtualAccount = Order::generateVirtualAccount($phone);
+            }
+
             // Email
             $emailRaw = $this->getVal($row, $fieldMap, 'customer_email');
             $email = (!empty($emailRaw) && $emailRaw !== '-') ? trim((string)$emailRaw) : '-';
@@ -508,6 +537,11 @@ class CustomerImport implements ToCollection, WithEvents
                         if ($phone !== '-') {
                             $existingOrder->customer_phone = $phone;
                         }
+                        if (!empty($virtualAccount) && $virtualAccount !== '-') {
+                            $existingOrder->virtual_account = $virtualAccount;
+                        } elseif (empty($existingOrder->virtual_account)) {
+                            $existingOrder->virtual_account = Order::generateVirtualAccount($existingOrder->customer_phone, $existingOrder->id);
+                        }
                         if ($email !== '-') {
                             $existingOrder->customer_email = $email;
                         }
@@ -592,6 +626,7 @@ class CustomerImport implements ToCollection, WithEvents
                     'birth_place' => $birthPlace,
                     'birth_date' => $birthDate,
                     'customer_phone' => $phone,
+                    'virtual_account' => $virtualAccount,
                     'customer_email' => $email,
                     'package_name' => $packageName,
                     'speed' => $speed,
