@@ -790,15 +790,9 @@ class CustomerImportService
     public static function downloadTemplate(string $format = 'xlsx')
     {
         $format = strtolower($format);
-        $templatePath = base_path('template_excell_data_pelanggan_banterpool.xlsx');
+        $templatePath = public_path('template/template_excell_data_pelanggan_banterpool.xlsx');
         if (!file_exists($templatePath)) {
-            $templatePath = public_path('template/template_data_pelanggan_fix.xlsx');
-        }
-        if (!file_exists($templatePath)) {
-            $templatePath = base_path('template data pelanggan fix.xlsx');
-        }
-        if (!file_exists($templatePath)) {
-            $templatePath = base_path('template.xlsx');
+            $templatePath = base_path('template_excell_data_pelanggan_banterpool.xlsx');
         }
 
         if (($format === 'xlsx' || $format === 'excel') && file_exists($templatePath)) {
