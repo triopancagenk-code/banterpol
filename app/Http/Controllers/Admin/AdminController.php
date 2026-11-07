@@ -94,6 +94,7 @@ class AdminController extends Controller
                         'collected_by' => $b->collected_by ?? 'Verifikasi Admin',
                         'collector_notes' => $b->collector_notes ?? '-',
                         'address' => $b->address,
+                        'virtual_account' => $b->virtual_account,
                         'odp' => $order->assigned_odp ?? 'ODP-CLK-01',
                     ];
                 })->toArray();

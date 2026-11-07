@@ -161,6 +161,8 @@ function tagihanManager() {
             const dueMonth = mNames[now.getMonth()];
             const year = now.getFullYear();
 
+            const vaNumber = bill.virtual_account || ('1699101' + (rawPhone.length >= 8 ? rawPhone.slice(-8) : rawPhone));
+
             const message = `Yth. Bpk/Ibu ${customerName}\n` +
 `${displayPhone}\n\n` +
 `PEMBERITAHUAN\n` +
@@ -169,7 +171,7 @@ function tagihanManager() {
 `Biaya Paket : ${rawPrice}\n` +
 `Besar Tagihan : ${rawPrice}\n\n` +
 `Masa aktif s/d 20 ${dueMonth} ${year}\n\n` +
-`Nomor Virtual Acount : 1691101${displayPhone}\n\n` +
+`Nomor Virtual Acount : ${vaNumber}\n\n` +
 `Pastikan untuk membayar menggunakan Virtual Acount seperti BRIVA, DANA dll\n\n` +
 `Ket : BELUM TERBAYAR\n\n` +
 `INFO TAMBAHAN\n` +
@@ -1742,7 +1744,7 @@ Besar Tagihan : {tagihan}
 
 Masa aktif s/d 20 {{ date('F Y') }}
 
-Nomor Virtual Acount : 1691101{no hp pelanggan}
+Nomor Virtual Acount : {virtual_account}
 
 Pastikan untuk membayar menggunakan Virtual Acount seperti BRIVA, DANA dll
 

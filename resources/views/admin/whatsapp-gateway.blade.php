@@ -324,8 +324,8 @@
             <button type="button" @click="insertVariable('{tagihan}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono transition" title="Besar Tagihan Pelanggan">
               + {tagihan}
             </button>
-            <button type="button" @click="insertVariable('{briva}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono font-bold transition" title="BRIVA : 1699101 + 8 digit terakhir nomor pelanggan">
-              + {briva}
+            <button type="button" @click="insertVariable('{virtual_account}')" class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 font-mono font-bold transition" title="No Virtual Account (Sesuai Data Pelanggan)">
+              + {virtual_account}
             </button>
             <button type="button" @click="insertVariable('{jatuh_tempo}')" class="px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 hover:bg-purple-100 font-mono transition" title="Batas Jatuh Tempo / Masa Aktif">
               + {jatuh_tempo}
@@ -535,12 +535,14 @@
                   <span>{{ $customer['phone'] }}</span>
                 </div>
                 @php
-                  $custDigits = preg_replace('/[^0-9]/', '', $customer['phone']);
-                  $custLast8 = strlen($custDigits) >= 8 ? substr($custDigits, -8) : str_pad($custDigits, 8, '0', STR_PAD_LEFT);
-                  $custBriva = '1699101' . $custLast8;
+                  $custVa = !empty($customer['virtual_account']) && $customer['virtual_account'] !== '-'
+                      ? $customer['virtual_account']
+                      : (!empty($customer['briva']) && $customer['briva'] !== '-'
+                          ? $customer['briva']
+                          : \App\Models\Order::generateVirtualAccount($customer['phone']));
                 @endphp
-                <div class="text-[10px] text-blue-700 font-bold bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded mt-1 inline-block font-mono" title="Nomor BRIVA Pembayaran">
-                  BRIVA: {{ $custBriva }}
+                <div class="text-[10px] text-blue-700 font-bold bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded mt-1 inline-block font-mono" title="Nomor Virtual Account Pelanggan">
+                  VA: {{ $custVa }}
                 </div>
               </td>
               <td class="p-3.5">
@@ -1048,6 +1050,11 @@ function whatsappGatewayApp() {
                 .replace(/{jatuh_tempo}/gi, '20 ' + currentMonth + ' ' + currentYear)
                 .replace(/{alamat}/gi, 'Jl. Raya Pernasidi No. 45, Cilongok')
                 .replace(/{nomor_layanan}/gi, 'BTP-CLK-001')
+                .replace(/{virtual_account}/gi, sampleBriva)
+                .replace(/{no[\s_]*virtual[\s_]*account}/gi, sampleBriva)
+                .replace(/{nomor[\s_]*virtual[\s_]*account}/gi, sampleBriva)
+                .replace(/{no[\s_]*va}/gi, sampleBriva)
+                .replace(/{va}/gi, sampleBriva)
                 .replace(/{briva}/gi, sampleBriva)
                 .replace(/{link_bayar}/gi, sampleBriva);
         },

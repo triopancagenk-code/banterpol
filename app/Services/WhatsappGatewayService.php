@@ -154,7 +154,39 @@ class WhatsappGatewayService
     {
         $phone = $data['phone'] ?? $data['formatted_phone'] ?? '';
         $rawPhone = !empty($phone) ? $phone : '08818679774';
-        $briva = $data['virtual_account'] ?? $data['briva'] ?? $this->generateBrivaNumber($phone);
+
+        // 1. Prioritaskan No Virtual Account yang tercatat pada data pelanggan
+        $briva = !empty($data['virtual_account']) ? $data['virtual_account'] : (!empty($data['briva']) ? $data['briva'] : null);
+
+        // Jika belum ada di payload data, cek langsung ke database Order pelanggan berdasarkan nomor HP
+        if (empty($briva) || $briva === '-') {
+            try {
+                $cleanDigits = preg_replace('/[^0-9]/', '', (string)$rawPhone);
+                if (!empty($cleanDigits)) {
+                    $trailing8 = strlen($cleanDigits) >= 8 ? substr($cleanDigits, -8) : $cleanDigits;
+                    $foundOrder = \App\Models\Order::where(function ($q) use ($cleanDigits, $trailing8) {
+                        $q->where('customer_phone', $cleanDigits)
+                          ->orWhere('customer_phone', '0' . ltrim($cleanDigits, '0'))
+                          ->orWhere('customer_phone', '62' . ltrim($cleanDigits, '0'))
+                          ->orWhere('customer_phone', 'LIKE', '%' . $trailing8);
+                    })
+                    ->whereNotNull('virtual_account')
+                    ->where('virtual_account', '!=', '')
+                    ->where('virtual_account', '!=', '-')
+                    ->first();
+
+                    if ($foundOrder && !empty($foundOrder->virtual_account)) {
+                        $briva = $foundOrder->virtual_account;
+                    }
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // Jika tetap belum ada di database, gunakan acuan resmi (Kode BRIVA 1699101 + 8 digit terakhir HP)
+        if (empty($briva) || $briva === '-') {
+            $briva = $this->generateBrivaNumber($rawPhone);
+        }
+
         $last8 = substr($briva, -8);
 
         $indonesianMonths = [
@@ -260,7 +292,15 @@ class WhatsappGatewayService
             '{besar_tagihan}' => $billTotal,
             '{total_tagihan}' => $billTotal,
 
-            // Virtual Account / BRIVA
+            // Virtual Account / BRIVA (Mengikuti Master Data Pelanggan)
+            '{virtual_account}' => $briva,
+            '{no_virtual_account}' => $briva,
+            '{nomor_virtual_account}' => $briva,
+            '{no virtual account}' => $briva,
+            '{nomor virtual account}' => $briva,
+            '{no_va}' => $briva,
+            '{no va}' => $briva,
+            '{va}' => $briva,
             '{briva}' => $briva,
             '{link_bayar}' => $briva,
             '{8_digit_hp}' => $last8,

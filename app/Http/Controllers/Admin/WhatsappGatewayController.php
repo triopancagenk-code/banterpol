@@ -51,11 +51,15 @@ class WhatsappGatewayController extends Controller
                         : 'Rp' . number_format((float) ($order->total ?? $order->price ?? 0), 0, ',', '.');
                     $dueDate = $latestBill && !empty($latestBill->due_date) ? $latestBill->due_date : '20 Tiap Bulan';
 
+                    $vaNumber = $order->virtual_account;
+
                     $customersByPhone[$phone] = [
                         'id' => $order->order_number ?: ('PLG-' . str_pad($order->id, 5, '0', STR_PAD_LEFT)),
                         'name' => $order->customer_name ?: 'Pelanggan Banterpool',
                         'phone' => $rawPhone,
                         'formatted_phone' => $phone,
+                        'virtual_account' => $vaNumber,
+                        'briva' => $vaNumber,
                         'email' => $order->customer_email ?? '-',
                         'address' => $order->address ?? ($order->village ? 'Desa ' . $order->village . ', Banyumas' : '-'),
                         'package_name' => $order->package_name ?? 'Paket Internet',
@@ -86,11 +90,15 @@ class WhatsappGatewayController extends Controller
                 }
 
                 if (!isset($customersByPhone[$phone])) {
+                    $vaNumber = $bill->virtual_account;
+
                     $customersByPhone[$phone] = [
                         'id' => $bill->bill_number ?: ('BILL-' . $bill->id),
                         'name' => $bill->customer_name ?: 'Pelanggan Tagihan',
                         'phone' => $rawPhone,
                         'formatted_phone' => $phone,
+                        'virtual_account' => $vaNumber,
+                        'briva' => $vaNumber,
                         'email' => $bill->customer_email ?? '-',
                         'address' => $bill->address ?? 'Kecamatan Cilongok, Banyumas',
                         'package_name' => $bill->package_name ?? 'Paket 20 Mbps',
