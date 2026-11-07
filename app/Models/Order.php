@@ -79,23 +79,22 @@ class Order extends Model
     }
 
     /**
-     * Generate standard Virtual Account BRI (BRIVA) Banterpool (Kode BRIVA: 1699101)
+     * Generate acuan nomor Virtual Account BRI (BRIVA) Banterpool:
+     * Kode BRIVA (1699101) + 8 digit terakhir nomor telepon pelanggan (total 15 digit).
+     * Namun untuk nomor VA pelanggan tetap memprioritaskan nilai yang tersimpan di database.
      */
     public static function generateVirtualAccount(?string $phone = null, ?int $id = 0): string
     {
         $cleanPhone = preg_replace('/\D/', '', (string) $phone);
-        if (str_starts_with($cleanPhone, '62')) {
-            $cleanPhone = substr($cleanPhone, 2);
-        } elseif (str_starts_with($cleanPhone, '0')) {
-            $cleanPhone = substr($cleanPhone, 1);
+        if (strlen($cleanPhone) >= 8) {
+            $last8 = substr($cleanPhone, -8);
+        } elseif (!empty($cleanPhone)) {
+            $last8 = str_pad($cleanPhone, 8, '0', STR_PAD_LEFT);
+        } else {
+            $last8 = str_pad((string) ($id ?: mt_rand(10000000, 99999999)), 8, '0', STR_PAD_LEFT);
         }
 
-        if (!empty($cleanPhone)) {
-            return '1699101' . $cleanPhone;
-        }
-
-        $suffix = str_pad((string) ($id ?: mt_rand(10000000, 99999999)), 10, '0', STR_PAD_LEFT);
-        return '1699101' . $suffix;
+        return '1699101' . $last8;
     }
 
     /**
