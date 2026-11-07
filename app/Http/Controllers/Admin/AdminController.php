@@ -1830,11 +1830,13 @@ class AdminController extends Controller
 
         $adminNotePrefix = (auth()->check() && auth()->user()->isBanterpoolAdmin()) ? 'Pelanggan Banterpool dari input manual Admin Banterpool' : 'Pelanggan terdaftar dari input manual Admin';
 
+        $hasVa = \App\Services\CustomerImportService::ensureVirtualAccountColumnExists();
+
         $virtualAccount = !empty($validated['virtual_account'])
             ? preg_replace('/[^0-9]/', '', $validated['virtual_account'])
             : Order::generateVirtualAccount($validated['customer_phone'] ?? null);
 
-        $order = Order::create([
+        $orderData = [
             'order_number' => $orderNumber,
             'customer_name' => $validated['customer_name'],
             'pppoe' => $pppoe,
@@ -1842,7 +1844,6 @@ class AdminController extends Controller
             'birth_date' => $validated['birth_date'] ?? null,
             'birth_place' => $validated['birth_place'] ?? 'Banyumas',
             'customer_phone' => !empty($validated['customer_phone']) ? $validated['customer_phone'] : '-',
-            'virtual_account' => $virtualAccount,
             'customer_email' => !empty($validated['customer_email']) ? $validated['customer_email'] : '-',
             'package_name' => $packageName,
             'speed' => $speed,
@@ -1858,7 +1859,13 @@ class AdminController extends Controller
             'installed_at' => now(),
             'assigned_odp' => $assignedOdp,
             'admin_notes' => $adminNotePrefix . ($wilayah ? " ({$wilayah})" : '') . '.',
-        ]);
+        ];
+
+        if ($hasVa) {
+            $orderData['virtual_account'] = $virtualAccount;
+        }
+
+        $order = Order::create($orderData);
 
         return redirect()->back()->with('success', "Pelanggan baru {$order->customer_name} berhasil ditambahkan dengan NIK: {$order->id_card_number}.");
     }
@@ -1911,7 +1918,7 @@ class AdminController extends Controller
         $order->birth_date = !empty($validated['birth_date']) ? $validated['birth_date'] : $order->birth_date;
         $order->birth_place = !empty($validated['birth_place']) ? $validated['birth_place'] : ($order->birth_place ?: '-');
         $order->customer_phone = !empty($validated['customer_phone']) ? $validated['customer_phone'] : ($order->customer_phone ?: '-');
-        if ($request->has('virtual_account')) {
+        if ($request->has('virtual_account') && \App\Services\CustomerImportService::ensureVirtualAccountColumnExists()) {
             $order->virtual_account = !empty($validated['virtual_account']) 
                 ? preg_replace('/[^0-9]/', '', $validated['virtual_account']) 
                 : Order::generateVirtualAccount($order->customer_phone, $order->id);

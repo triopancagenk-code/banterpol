@@ -49,10 +49,16 @@ class CustomerImport implements ToCollection, WithEvents
     protected string $yearPrefix;
     protected int $maxSeq = 0;
 
+    /**
+     * Flag ketersediaan kolom virtual_account di tabel database
+     */
+    protected bool $hasVirtualAccountColumn = true;
+
     public function __construct(bool $updateExisting = true)
     {
         $this->updateExisting = $updateExisting;
         $this->yearPrefix = 'PLG-' . date('Y') . '-';
+        $this->hasVirtualAccountColumn = CustomerImportService::ensureVirtualAccountColumnExists();
         $this->initializeCache();
     }
 
@@ -537,10 +543,12 @@ class CustomerImport implements ToCollection, WithEvents
                         if ($phone !== '-') {
                             $existingOrder->customer_phone = $phone;
                         }
-                        if (!empty($virtualAccount) && $virtualAccount !== '-') {
-                            $existingOrder->virtual_account = $virtualAccount;
-                        } elseif (empty($existingOrder->virtual_account)) {
-                            $existingOrder->virtual_account = Order::generateVirtualAccount($existingOrder->customer_phone, $existingOrder->id);
+                        if ($this->hasVirtualAccountColumn) {
+                            if (!empty($virtualAccount) && $virtualAccount !== '-') {
+                                $existingOrder->virtual_account = $virtualAccount;
+                            } elseif (empty($existingOrder->virtual_account)) {
+                                $existingOrder->virtual_account = Order::generateVirtualAccount($existingOrder->customer_phone, $existingOrder->id);
+                            }
                         }
                         if ($email !== '-') {
                             $existingOrder->customer_email = $email;
@@ -618,7 +626,7 @@ class CustomerImport implements ToCollection, WithEvents
                     } while (isset($this->existingByNumber[$orderNumber]));
                 }
 
-                $newOrder = Order::create([
+                $newOrderData = [
                     'order_number' => $orderNumber,
                     'customer_name' => $name,
                     'pppoe' => $pppoe,
@@ -626,7 +634,6 @@ class CustomerImport implements ToCollection, WithEvents
                     'birth_place' => $birthPlace,
                     'birth_date' => $birthDate,
                     'customer_phone' => $phone,
-                    'virtual_account' => $virtualAccount,
                     'customer_email' => $email,
                     'package_name' => $packageName,
                     'speed' => $speed,
@@ -646,7 +653,14 @@ class CustomerImport implements ToCollection, WithEvents
                     'assigned_odp' => $assignedOdp,
                     'admin_notes' => $adminNotes,
                     'created_at' => $createdAt,
-                ]);
+                    'updated_at' => $createdAt,
+                ];
+
+                if ($this->hasVirtualAccountColumn) {
+                    $newOrderData['virtual_account'] = $virtualAccount;
+                }
+
+                $newOrder = Order::create($newOrderData);
 
                 $this->updateCacheRecord($newOrder);
 

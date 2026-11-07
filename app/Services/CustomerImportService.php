@@ -8,11 +8,34 @@ use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 use Maatwebsite\Excel\Facades\Excel;
 use ZipArchive;
 
 class CustomerImportService
 {
+    /**
+     * Memastikan kolom virtual_account sudah ada di tabel orders secara otomatis (self-healing migration)
+     */
+    public static function ensureVirtualAccountColumnExists(): bool
+    {
+        try {
+            if (!Schema::hasColumn('orders', 'virtual_account')) {
+                Schema::table('orders', function (Blueprint $table) {
+                    $table->string('virtual_account', 50)->nullable()->after('customer_phone')->index();
+                });
+            }
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('Self-healing check kolom virtual_account: ' . $e->getMessage());
+            try {
+                return Schema::hasColumn('orders', 'virtual_account');
+            } catch (\Throwable $ex) {
+                return false;
+            }
+        }
+    }
     /**
      * Parsing dan impor file Excel / CSV ke database pelanggan (orders) menggunakan Laravel-Excel.
      *
@@ -26,6 +49,10 @@ class CustomerImportService
         @ini_set('max_execution_time', '0');
         @set_time_limit(0);
         @ini_set('pcre.backtrack_limit', '100000000');
+
+        $hasVa = self::ensureVirtualAccountColumnExists();
+
+        self::ensureVirtualAccountColumnExists();
 
         DB::beginTransaction();
         try {
@@ -76,6 +103,8 @@ class CustomerImportService
         @ini_set('max_execution_time', '0');
         @set_time_limit(0);
         @ini_set('pcre.backtrack_limit', '100000000');
+
+        $hasVa = self::ensureVirtualAccountColumnExists();
 
         $sheets = [];
         try {
@@ -583,7 +612,7 @@ class CustomerImportService
                                 if ($phone !== '-') {
                                     $existingOrder->customer_phone = $phone;
                                 }
-                                if (!empty($virtualAccount) && $virtualAccount !== '-') {
+                                if ($hasVa && !empty($virtualAccount) && $virtualAccount !== '-') {
                                     $existingOrder->virtual_account = $virtualAccount;
                                 }
                                 if ($email !== '-') {
@@ -678,7 +707,7 @@ class CustomerImportService
                             } while (isset($existingOrdersByNumber[$orderNumber]));
                         }
 
-                        $newOrder = Order::create([
+                        $newOrderData = [
                             'order_number' => $orderNumber,
                             'customer_name' => $name,
                             'pppoe' => $pppoe,
@@ -686,7 +715,6 @@ class CustomerImportService
                             'birth_place' => $birthPlace,
                             'birth_date' => $birthDate,
                             'customer_phone' => $phone,
-                            'virtual_account' => $virtualAccount,
                             'customer_email' => $email,
                             'package_name' => $packageName,
                             'speed' => $speed,
@@ -708,7 +736,11 @@ class CustomerImportService
                             'assigned_odp' => $assignedOdp,
                             'admin_notes' => $adminNotes,
                             'created_at' => $createdAt,
-                        ]);
+                        ];
+                        if ($hasVa) {
+                            $newOrderData['virtual_account'] = $virtualAccount;
+                        }
+                        $newOrder = Order::create($newOrderData);
 
                         $existingOrdersByNumber[$orderNumber] = $newOrder->id;
                         if (!empty($nik)) {
