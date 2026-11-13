@@ -36,8 +36,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/tagihan/pembayaran/konfirmasi', [HomeController::class, 'confirmPaymentTagihan'])->name('tagihan.payment.confirm');
     Route::get('/checkout', [HomeController::class, 'checkout'])->name('checkout');
     Route::get('/payment', [HomeController::class, 'payment'])->name('payment');
-    Route::get('/payment/status', [HomeController::class, 'paymentStatus'])->name('payment.status');
+    Route::match(['get', 'post'], '/payment/status', [HomeController::class, 'paymentStatus'])->name('payment.status');
     Route::get('/order/detail', [HomeController::class, 'orderDetail'])->name('order.detail');
+    Route::get('/order/status', [HomeController::class, 'orderDetail'])->name('order.status');
 
     // Halaman Pengaduan Pelanggan (Laporan Masalah)
     Route::get('/laporan-masalah', [HomeController::class, 'laporanMasalah'])->name('laporan.index');

@@ -185,14 +185,29 @@
           <i class="fa-solid fa-circle-check text-2xl"></i>
         </div>
         <div>
-          <p class="text-xs text-emerald-800 font-semibold uppercase tracking-wider">Semua Tagihan Lunas</p>
-          <h3 class="text-xl sm:text-2xl font-black text-emerald-700 tracking-tight my-0.5">Tidak Ada Tunggakan</h3>
-          <p class="text-xs text-emerald-600">Terima kasih atas pembayaran tepat waktu. Layanan internet aktif normal.</p>
+          @if(!empty($isNewlyPaidCustomer))
+            <div class="flex items-center gap-2">
+              <p class="text-xs text-emerald-800 font-bold uppercase tracking-wider">Pembayaran Pemasangan Lunas</p>
+              <span class="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                Lunas
+              </span>
+            </div>
+            <h3 class="text-xl sm:text-2xl font-black text-emerald-700 tracking-tight my-0.5">Tidak Ada Tagihan Berjalan</h3>
+            <p class="text-xs text-emerald-600">Biaya pemasangan Anda sudah lunas dan mencakup paket langganan bulan pertama. Layanan internet aktif normal.</p>
+          @else
+            <p class="text-xs text-emerald-800 font-semibold uppercase tracking-wider">Semua Tagihan Lunas</p>
+            <h3 class="text-xl sm:text-2xl font-black text-emerald-700 tracking-tight my-0.5">Tidak Ada Tunggakan</h3>
+            <p class="text-xs text-emerald-600">Terima kasih atas pembayaran tepat waktu. Layanan internet aktif normal.</p>
+          @endif
         </div>
       </div>
-      <div class="text-xs text-emerald-700 font-medium bg-white/70 border border-emerald-200 px-3.5 py-2 rounded-xl shrink-0">
+      <div class="text-xs text-emerald-700 font-medium bg-white/80 border border-emerald-200 px-3.5 py-2 rounded-xl shrink-0">
         <i class="fa-solid fa-calendar-check text-emerald-600 mr-1"></i>
-        Tagihan bulan selanjutnya otomatis terbit setiap jatuh tempo tanggal 05 setelah pembayaran lunas.
+        @if(!empty($isNewlyPaidCustomer))
+          Tagihan berikutnya akan muncul untuk bulan <strong>{{ $nextBillMonthName ?? 'selanjutnya' }}</strong> (terbit {{ $nextBillDateFormatted ?? 'tanggal 05' }}).
+        @else
+          Tagihan bulan selanjutnya otomatis terbit setiap tanggal 05 setelah pembayaran lunas.
+        @endif
       </div>
     </div>
   @endif
@@ -361,8 +376,13 @@
             <tr>
               <td colspan="8" class="text-center py-12 text-slate-400">
                 <i class="fa-solid fa-receipt text-3xl mb-2 text-slate-300"></i>
-                <p class="font-medium text-slate-600">Tidak ada tagihan yang cocok dengan filter atau pencarian.</p>
-                <p class="text-xs text-slate-400 mt-1">Tidak ada data riwayat tagihan untuk filter yang dipilih.</p>
+                @if(!empty($isNewlyPaidCustomer))
+                  <p class="font-medium text-slate-600">Belum ada tagihan untuk bulan ini.</p>
+                  <p class="text-xs text-slate-400 mt-1">Pembayaran pemasangan Anda sudah lunas dan mencakup biaya langganan bulan pertama. Tagihan akan muncul untuk bulan selanjutnya ({{ $nextBillMonthName ?? 'bulan berikutnya' }}).</p>
+                @else
+                  <p class="font-medium text-slate-600">Tidak ada tagihan yang cocok dengan filter atau pencarian.</p>
+                  <p class="text-xs text-slate-400 mt-1">Tidak ada data riwayat tagihan untuk filter yang dipilih.</p>
+                @endif
               </td>
             </tr>
           @endforelse

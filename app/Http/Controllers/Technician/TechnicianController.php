@@ -233,7 +233,11 @@ class TechnicianController extends Controller
             );
         }
 
-        if ($status === 'Selesai') {
+        if (strcasecmp(trim((string)$order->payment_status), 'Lunas') === 0) {
+            \App\Models\Bill::where('order_id', $order->id)
+                ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
+                ->delete();
+        } elseif ($status === 'Selesai') {
             BillingService::generateBillForOrder($order);
         }
 

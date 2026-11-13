@@ -1,3 +1,32 @@
+@php
+  // Cek apakah pelanggan memiliki pesanan yang sedang aktif diproses (belum selesai/terpasang)
+  $pendingOrder = null;
+  try {
+      if (auth()->check()) {
+          $pendingOrder = \App\Models\Order::where(function ($q) {
+              $q->where('user_id', auth()->id())
+                ->orWhere('customer_email', auth()->user()->email);
+              if (!empty(auth()->user()->phone)) {
+                  $q->orWhere('customer_phone', auth()->user()->phone);
+              }
+          })
+          ->where('order_number', 'not like', 'PLG-%')
+          ->whereNotIn('status', ['Selesai', 'Aktif', 'Dibatalkan', 'Batal'])
+          ->latest('id')
+          ->first();
+      }
+
+      if (!$pendingOrder && session('customer_order_number')) {
+          $pendingOrder = \App\Models\Order::where('order_number', session('customer_order_number'))
+              ->where('order_number', 'not like', 'PLG-%')
+              ->whereNotIn('status', ['Selesai', 'Aktif', 'Dibatalkan', 'Batal'])
+              ->first();
+      }
+  } catch (\Throwable $e) {}
+
+  $hasPendingOrder = ($pendingOrder !== null);
+@endphp
+
 <nav class="bg-white/85 backdrop-blur-md border-b border-gray-200/60 sticky top-0 z-50 py-3 transition duration-150" x-data="{ mobileMenuOpen: false }">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
 
@@ -14,6 +43,12 @@
     <div class="hidden md:flex gap-6 text-sm font-medium">
       <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }}">Beranda</a>
       <a href="{{ route('paket') }}" class="{{ request()->routeIs('paket') ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }}">Berlangganan</a>
+      @if($hasPendingOrder)
+        <a href="{{ route('order.detail', ['order_number' => $pendingOrder->order_number ?? '']) }}" class="{{ (request()->routeIs('order*') || request()->routeIs('payment.status')) ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }} inline-flex items-center gap-1.5">
+          <span>Status Pesanan</span>
+          <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+        </a>
+      @endif
       <a href="{{ auth()->check() ? route('tagihan') : route('login') }}" class="{{ request()->routeIs('tagihan*') ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }}">Tagihan</a>
       <a href="{{ auth()->check() ? route('laporan.index') : route('login') }}" class="{{ request()->routeIs('laporan*') ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }}">Laporan Masalah</a>
       <a href="{{ route('tentang-kami') }}" class="{{ request()->routeIs('tentang-kami*') ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }}">Tentang Kami</a>
@@ -53,9 +88,9 @@
                 'title' => 'Pesanan ' . $co->order_number,
                 'desc' => ($co->package_name ?? 'WiFi') . ' • Status: ' . $co->status,
                 'time' => $co->created_at ? $co->created_at->diffForHumans() : 'Baru saja',
-                'url' => route('tagihan'),
+                'url' => route('order.detail', ['order_number' => $co->order_number]),
                 'icon' => 'fa-solid fa-box',
-                'icon_bg' => 'bg-blue-100 text-blue-600',
+                'icon_bg' => 'bg-amber-100 text-amber-600',
               ];
             }
 
@@ -175,6 +210,16 @@
               </a>
             @endif
 
+            @if($hasPendingOrder)
+              <a href="{{ route('order.detail', ['order_number' => $pendingOrder->order_number ?? '']) }}" class="flex items-center justify-between px-4 py-2 text-xs text-amber-700 hover:bg-amber-50 font-bold transition">
+                <div class="flex items-center gap-2.5">
+                  <i class="fa-solid fa-clock-rotate-left text-sm text-amber-600"></i>
+                  <span>Status Pesanan Saya</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              </a>
+            @endif
+
             <a href="{{ route('profile.edit') }}" class="flex items-center gap-2.5 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 hover:text-brand font-semibold transition">
               <i class="fa-solid fa-gear text-sm text-gray-400"></i>
               <span>Pengaturan</span>
@@ -224,6 +269,20 @@
       <i class="fa-solid fa-box-archive text-sm w-5 text-center {{ request()->routeIs('paket') ? 'text-brand' : 'text-gray-400' }}"></i>
       <span>Berlangganan</span>
     </a>
+
+    @if($hasPendingOrder)
+      <a href="{{ route('order.detail', ['order_number' => $pendingOrder->order_number ?? '']) }}"
+         class="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition {{ (request()->routeIs('order*') || request()->routeIs('payment.status')) ? 'bg-amber-50 text-amber-800' : 'text-amber-800 bg-amber-50/60 hover:bg-amber-100' }}">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-clock-rotate-left text-sm w-5 text-center text-amber-600"></i>
+          <span>Status Pesanan</span>
+        </div>
+        <span class="inline-flex items-center gap-1 text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-extrabold">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
+          <span>Diproses</span>
+        </span>
+      </a>
+    @endif
 
     <a href="{{ auth()->check() ? route('tagihan') : route('login') }}"
        class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition {{ request()->routeIs('tagihan*') ? 'bg-red-50 text-brand' : 'text-gray-700 hover:bg-gray-50 hover:text-brand' }}">

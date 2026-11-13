@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>@yield('title', 'WiFi Banterpool')</title>
 
@@ -13,6 +13,12 @@
   @vite(['resources/css/app.css', 'resources/js/app.js'])
 
   <style>
+    /* Cegah zoom-in dan zoom-out di perangkat mobile */
+    html, body {
+      touch-action: pan-x pan-y;
+      -webkit-text-size-adjust: 100%;
+    }
+
     /* Latar Belakang Garis Merah Dinamis dengan Animasi Scroll */
     body {
       background-color: #ffffff;
@@ -159,6 +165,13 @@
       // Inisialisasi posisi awal saat halaman dibuka
       requestAnimationFrame(renderWave);
     })();
+  </script>
+
+  <script>
+    // Nonaktifkan gesture pinch-to-zoom pada perangkat mobile
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
+    document.addEventListener('gestureend', function (e) { e.preventDefault(); });
   </script>
 
   @stack('scripts')

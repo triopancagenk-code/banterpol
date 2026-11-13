@@ -29,13 +29,35 @@ class HomeController extends Controller
         return null;
     }
 
+    public static function getUserExistingOrder(?User $user = null): ?Order
+    {
+        $user = $user ?: auth()->user();
+        if (!$user) {
+            return null;
+        }
+
+        return Order::where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+              ->orWhere('customer_email', $user->email);
+            if (!empty($user->phone)) {
+                $q->orWhere('customer_phone', $user->phone);
+            }
+        })
+        ->where('order_number', 'not like', 'PLG-%')
+        ->whereNotIn('status', ['Dibatalkan', 'Batal'])
+        ->latest('id')
+        ->first();
+    }
+
     public function index()
     {
         if ($redirect = $this->redirectIfStaff()) {
             return $redirect;
         }
 
-        return view('pages.home');
+        $existingOrder = self::getUserExistingOrder();
+
+        return view('pages.home', compact('existingOrder'));
     }
 
     public function tentangKami()
@@ -51,7 +73,9 @@ class HomeController extends Controller
             $packages = collect();
         }
 
-        return view('pages.paket', compact('packages'));
+        $existingOrder = self::getUserExistingOrder();
+
+        return view('pages.paket', compact('packages', 'existingOrder'));
     }
 
     public function tagihan(Request $request)
@@ -246,6 +270,36 @@ class HomeController extends Controller
             })->whereNotIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'Dibatalkan'])->latest('id')->first();
         }
 
+        // Cek apakah pelanggan baru yang sudah lunas pembayaran pemasangan di bulan ini / jadwal mendatang
+        $nowJakarta = now('Asia/Jakarta');
+        $newlyPaidOrder = Order::where(function ($q) use ($user, $targetOrderId, $targetEmail, $targetPhone) {
+            if ($user) $q->where('user_id', $user->id);
+            if (!empty($targetOrderId)) $q->orWhere('id', $targetOrderId);
+            if (!empty($targetEmail)) $q->orWhere('customer_email', $targetEmail);
+            if (!empty($targetPhone)) $q->orWhere('customer_phone', $targetPhone);
+        })
+        ->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif'])
+        ->where('payment_status', 'Lunas')
+        ->latest('id')
+        ->first();
+
+        $isNewlyPaidCustomer = false;
+        $nextBillMonthName = null;
+        $nextBillDateFormatted = null;
+
+        if ($newlyPaidOrder) {
+            $installDate = $newlyPaidOrder->installed_at 
+                ? \Carbon\Carbon::parse($newlyPaidOrder->installed_at) 
+                : ($newlyPaidOrder->installation_date ? \Carbon\Carbon::parse($newlyPaidOrder->installation_date) : ($newlyPaidOrder->created_at ? \Carbon\Carbon::parse($newlyPaidOrder->created_at) : $nowJakarta));
+
+            if ($installDate->format('Y-m') >= $nowJakarta->format('Y-m')) {
+                $isNewlyPaidCustomer = true;
+                $nextMonth = $installDate->copy()->addMonth()->startOfMonth();
+                $nextBillMonthName = $nextMonth->translatedFormat('F Y');
+                $nextBillDateFormatted = '05 ' . $nextMonth->translatedFormat('M Y');
+            }
+        }
+
         // Tagihan belum bayar / jatuh tempo aktif pengguna (tagihan bulan selanjutnya jika sebelumnya sudah lunas)
         $activeBillModel = $userAllBills->whereIn('status', ['Belum Bayar', 'Jatuh Tempo', 'Menunggu Verifikasi'])->first();
         $userPaidBills = $userAllBills->where('status', 'Lunas');
@@ -352,7 +406,8 @@ class HomeController extends Controller
 
         return view('pages.tagihan', compact(
             'activeBill', 'historyBills', 'bills', 'statusFilter', 'search', 'counts',
-            'isAdminPreview', 'adminPreviewCustomer', 'availablePreviewCustomers', 'inProgressOrder'
+            'isAdminPreview', 'adminPreviewCustomer', 'availablePreviewCustomers', 'inProgressOrder',
+            'isNewlyPaidCustomer', 'nextBillMonthName', 'nextBillDateFormatted'
         ));
     }
 
@@ -477,10 +532,20 @@ class HomeController extends Controller
 
     public function checkout(Request $request)
     {
+        if (auth()->check()) {
+            $existingOrder = self::getUserExistingOrder();
+            if ($existingOrder) {
+                if (in_array($existingOrder->status, ['Selesai', 'Aktif'])) {
+                    return redirect()->route('tagihan')->with('warning', '1 akun hanya dapat memiliki 1 layanan internet aktif. Akun Anda telah terdaftar pada ' . $existingOrder->package_name . '.');
+                }
+                return redirect()->route('order.detail', ['order_number' => $existingOrder->order_number])->with('warning', '1 akun hanya dapat memesan 1 layanan internet. Anda telah memiliki pengajuan pesanan aktif (' . $existingOrder->order_number . ').');
+            }
+        }
+
         $customerData = [
-            'name' => $request->input('name', 'Nama Pelanggan'),
-            'phone' => $request->input('phone', '08xxxxxxxxxx'),
-            'email' => $request->input('email', 'emailpelanggan@gmail.com'),
+            'name' => $request->input('name', (auth()->user() ? auth()->user()->name : 'Nama Pelanggan')),
+            'phone' => $request->input('phone', (auth()->user() && auth()->user()->phone ? auth()->user()->phone : '08xxxxxxxxxx')),
+            'email' => $request->input('email', (auth()->user() ? auth()->user()->email : 'emailpelanggan@gmail.com')),
             'id_card_number' => $request->input('id_card_number'),
             'birth_place' => $request->input('birth_place'),
             'birth_date' => $request->input('birth_date'),
@@ -500,38 +565,24 @@ class HomeController extends Controller
             return redirect()->route('tagihan.payment', $request->query());
         }
 
-        $customerData = [
-            'name' => $request->input('name', 'Nama Pelanggan'),
-            'phone' => $request->input('phone', '08xxxxxxxxxx'),
-            'email' => $request->input('email', 'emailpelanggan@gmail.com'),
-            'id_card_number' => $request->input('id_card_number'),
-            'birth_place' => $request->input('birth_place'),
-            'birth_date' => $request->input('birth_date'),
-            'address' => $request->input('address', 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas'),
-            'latitude' => $request->input('latitude', '-7.413200'),
-            'longitude' => $request->input('longitude', '109.138800'),
-            'installation_date' => $request->input('installation_date'),
-            'installation_time' => $request->input('installation_time', 'pagi'),
-        ];
-
-        $existingOrder = null;
-        if (!empty($customerData['phone']) && $customerData['phone'] !== '08xxxxxxxxxx') {
-            $existingOrder = Order::where('customer_phone', $customerData['phone'])->latest('id')->first();
-        }
-        if (!$existingOrder && !empty($customerData['id_card_number'])) {
-            $existingOrder = Order::where('id_card_number', $customerData['id_card_number'])->latest('id')->first();
-        }
-        if (!$existingOrder && auth()->check()) {
-            $existingOrder = Order::where('user_id', auth()->id())->latest('id')->first();
-        }
-
-        $customerData['virtual_account'] = $existingOrder ? $existingOrder->virtual_account : Order::generateVirtualAccount($customerData['phone']);
-
-        return view('pages.payment', compact('customerData'));
+        // Pelanggan baru hanya mengajukan pesanan (tidak langsung bayar di awal).
+        // Dialihkan langsung ke konfirmasi pengajuan pesanan dengan status 'Menunggu Konfirmasi'.
+        return redirect()->route('payment.status', $request->query());
     }
 
     public function paymentStatus(Request $request)
     {
+        if (auth()->check()) {
+            $existingOrder = self::getUserExistingOrder();
+            $reqOrderNum = $request->input('order_number');
+            if ($existingOrder && (!$reqOrderNum || $reqOrderNum !== $existingOrder->order_number)) {
+                if (in_array($existingOrder->status, ['Selesai', 'Aktif'])) {
+                    return redirect()->route('tagihan')->with('warning', '1 akun hanya dapat memiliki 1 layanan internet aktif. Akun Anda telah terdaftar pada ' . $existingOrder->package_name . '.');
+                }
+                return redirect()->route('order.detail', ['order_number' => $existingOrder->order_number])->with('warning', '1 akun hanya dapat memesan 1 layanan internet. Anda telah memiliki pengajuan pesanan aktif (' . $existingOrder->order_number . ').');
+            }
+        }
+
         $isSuccess = $request->input('status') !== 'failed';
         $packageName = $request->input('package_name', 'Paket 20 Mbps');
         $speed = $request->input('package_speed', '20 Mbps');
@@ -547,6 +598,7 @@ class HomeController extends Controller
         $total = $priceRaw;
 
         $orderNumber = $request->input('order_number');
+        $order = null;
         
         if (!$orderNumber && $isSuccess) {
             $orderNumber = 'ORD-' . date('Ymd') . '-' . rand(100, 999);
@@ -584,15 +636,15 @@ class HomeController extends Controller
                         'total' => $total,
                         'installation_date' => $request->input('installation_date', now()->addDay()->format('Y-m-d')),
                         'installation_time' => $request->input('installation_time', 'pagi'),
-                        'payment_method' => $request->input('payment_method', 'BRI Virtual Account'),
-                        'payment_status' => 'Lunas',
+                        'payment_method' => $request->input('payment_method', 'Bayar Setelah Pemasangan (Konfirmasi Admin)'),
+                        'payment_status' => 'Menunggu Pembayaran',
                         'status' => 'Menunggu Konfirmasi',
-                        'admin_notes' => 'Pesanan baru masuk dari website pelanggan.',
+                        'admin_notes' => 'Pengajuan pesanan baru dari website pelanggan.',
                     ]
                 );
 
-                // Catatan alur: Tagihan terbit saat status pesanan sudah 'Selesai'
-                if ($order->status === 'Selesai') {
+                // Catatan alur: Tagihan terbit saat status pesanan sudah 'Selesai' dan belum lunas
+                if ($order->status === 'Selesai' && strcasecmp(trim((string)$order->payment_status), 'Lunas') !== 0) {
                     BillingService::generateBillForOrder($order);
                 }
 
@@ -614,40 +666,50 @@ class HomeController extends Controller
             } catch (\Exception $e) {
                 // Resilient fallback
             }
+        } elseif ($orderNumber) {
+            try {
+                $order = Order::where('order_number', $orderNumber)->first();
+            } catch (\Exception $e) {}
         }
 
         $customerData = [
-            'order_number' => $orderNumber ?: 'ORD-' . date('Ymd') . '-000123',
-            'name' => $request->input('name', 'Nama Pelanggan'),
-            'phone' => $request->input('phone', '08xxxxxxxxxx'),
-            'email' => $request->input('email', 'emailpelanggan@gmail.com'),
-            'id_card_number' => $request->input('id_card_number'),
-            'birth_place' => $request->input('birth_place'),
-            'birth_date' => $request->input('birth_date'),
-            'address' => $request->input('address', 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas'),
-            'latitude' => $request->input('latitude', '-7.413200'),
-            'longitude' => $request->input('longitude', '109.138800'),
-            'installation_date' => $request->input('installation_date'),
-            'installation_time' => $request->input('installation_time', 'pagi'),
-            'package_name' => $packageName,
-            'package_speed' => $speed,
-            'price' => number_format($priceRaw, 0, ',', '.'),
+            'order_number' => $orderNumber ?: ($order ? $order->order_number : 'ORD-' . date('Ymd') . '-000123'),
+            'name' => $order ? $order->customer_name : $request->input('name', 'Nama Pelanggan'),
+            'phone' => $order ? $order->customer_phone : $request->input('phone', '08xxxxxxxxxx'),
+            'email' => $order ? $order->customer_email : $request->input('email', 'emailpelanggan@gmail.com'),
+            'id_card_number' => $order ? $order->id_card_number : $request->input('id_card_number'),
+            'birth_place' => $order ? $order->birth_place : $request->input('birth_place'),
+            'birth_date' => $order ? ($order->birth_date ? $order->birth_date->format('Y-m-d') : null) : $request->input('birth_date'),
+            'address' => $order ? $order->address : $request->input('address', 'Jl. Raya Pernasidi No. 45, Kec. Cilongok, Kab. Banyumas'),
+            'latitude' => $order ? $order->latitude : $request->input('latitude', '-7.413200'),
+            'longitude' => $order ? $order->longitude : $request->input('longitude', '109.138800'),
+            'installation_date' => $order ? ($order->installation_date ? $order->installation_date->format('Y-m-d') : null) : $request->input('installation_date'),
+            'installation_time' => $order ? $order->installation_time : $request->input('installation_time', 'pagi'),
+            'package_name' => $order ? $order->package_name : $packageName,
+            'package_speed' => $order ? $order->speed : $speed,
+            'price' => number_format($order ? $order->price : $priceRaw, 0, ',', '.'),
             'tax' => number_format($tax, 0, ',', '.'),
-            'total' => number_format($total, 0, ',', '.'),
+            'total' => number_format($order ? $order->total : $total, 0, ',', '.'),
+            'status' => $order ? $order->status : 'Menunggu Konfirmasi',
+            'payment_status' => $order ? $order->payment_status : 'Menunggu Pembayaran',
+            'payment_method' => $order ? $order->payment_method : 'Bayar Setelah Pemasangan (Konfirmasi Admin)',
+            'created_at' => $order ? $order->created_at : now(),
         ];
 
-        return view('pages.payment-status', compact('customerData'));
+        return view('pages.payment-status', compact('customerData', 'order'));
     }
 
     public function orderDetail(Request $request)
     {
-        $orderNumber = $request->input('order_number');
+        $orderNumber = $request->input('order_number') ?: session('customer_order_number');
         $order = null;
         if ($orderNumber) {
             try {
                 $order = Order::where('order_number', $orderNumber)->where('order_number', 'not like', 'PLG-%')->first();
             } catch (\Exception $e) {}
-        } elseif (auth()->check()) {
+        }
+        
+        if (!$order && auth()->check()) {
             try {
                 $order = Order::where(function ($q) {
                     $q->where('user_id', auth()->id())
@@ -656,6 +718,20 @@ class HomeController extends Controller
                 ->where('order_number', 'not like', 'PLG-%')
                 ->latest()
                 ->first();
+            } catch (\Exception $e) {}
+        }
+
+        $userOrders = collect();
+        if (auth()->check()) {
+            try {
+                $userOrders = Order::where(function ($q) {
+                    $q->where('user_id', auth()->id())
+                      ->orWhere('customer_email', auth()->user()->email);
+                })
+                ->where('order_number', 'not like', 'PLG-%')
+                ->latest()
+                ->take(10)
+                ->get();
             } catch (\Exception $e) {}
         }
 
@@ -680,12 +756,15 @@ class HomeController extends Controller
             'tax' => $order ? number_format($order->tax, 0, ',', '.') : '0',
             'total' => $order ? number_format($order->total, 0, ',', '.') : $request->input('package_price', '110.000'),
             'status' => $order ? $order->status : 'Menunggu Konfirmasi',
-            'payment_status' => $order ? $order->payment_status : 'Lunas',
-            'payment_method' => $order ? $order->payment_method : 'BRI Virtual Account',
+            'payment_status' => $order ? $order->payment_status : 'Menunggu Pembayaran',
+            'payment_method' => $order ? $order->payment_method : 'Bayar Setelah Pemasangan (Konfirmasi Admin)',
             'technician' => $order ? $order->technician : null,
+            'technician_notes' => $order ? $order->technician_notes : null,
+            'admin_notes' => $order ? $order->admin_notes : null,
+            'created_at' => $order ? $order->created_at : now(),
         ];
 
-        return view('pages.order-detail', compact('customerData', 'order', 'hasOrder'));
+        return view('pages.order-detail', compact('customerData', 'order', 'hasOrder', 'userOrders'));
     }
 
     public function laporanMasalah(Request $request)

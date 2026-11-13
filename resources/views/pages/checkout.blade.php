@@ -3,75 +3,81 @@
 @section('title', 'WiFi Banterpool - Konfirmasi Pemesanan')
 
 @section('content')
-<div x-data="checkoutApp()" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
+<div x-data="checkoutApp()" class="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative">
 
   <!-- Tombol Kembali -->
-  <a href="{{ route('paket') }}" class="inline-flex items-center gap-2 text-brand font-bold text-sm mb-6 hover:underline">
+  <a href="{{ route('paket') }}" class="inline-flex items-center gap-2 text-brand font-bold text-sm mb-4 sm:mb-6 hover:underline">
     <i class="fa-solid fa-arrow-left"></i> Kembali
   </a>
 
   <!-- Header Section -->
-  <div class="mb-8">
+  <div class="mb-6 sm:mb-8">
     <h1 class="text-2xl sm:text-3xl font-black text-black">Lengkapi Pemesanan</h1>
     <p class="text-xs sm:text-sm text-gray-500 mt-1">Langkah terakhir untuk menikmati internet super cepat dari BANTERPOOL</p>
   </div>
 
   <!-- Stepper Indicator -->
-  <div class="flex items-center justify-between max-w-2xl mb-10 text-xs">
-    <div class="flex items-center gap-2">
-      <div class="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-bold">
-        <i class="fa-solid fa-check text-xs"></i>
+  <div class="w-full mb-8 sm:mb-10 text-xs">
+    <div class="flex items-center justify-between w-full">
+      <!-- Step 1: Pilih Paket -->
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs shrink-0">
+          <i class="fa-solid fa-check text-[10px] sm:text-xs"></i>
+        </div>
+        <div class="leading-tight">
+          <p class="font-bold text-black text-[10px] sm:text-xs whitespace-nowrap">Pilih Paket</p>
+          <p class="text-[8px] sm:text-[10px] text-gray-400 leading-tight truncate max-w-[55px] sm:max-w-none">{{ request('package_name', 'Paket 20 Mbps') }}</p>
+        </div>
       </div>
-      <div>
-        <p class="font-bold text-black">Pilih Paket</p>
-        <p class="text-[10px] text-gray-400">{{ request('package_name', 'Paket 20 Mbps') }}</p>
-      </div>
-    </div>
-    <div class="flex-1 h-[2px] bg-brand mx-3"></div>
+      <div class="flex-1 h-[2px] bg-brand mx-1 sm:mx-3 min-w-[6px]"></div>
 
-    <div class="flex items-center gap-2">
-      <div class="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-bold">
-        <i class="fa-solid fa-check text-xs"></i>
+      <!-- Step 2: Data Pelanggan -->
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs shrink-0">
+          <i class="fa-solid fa-check text-[10px] sm:text-xs"></i>
+        </div>
+        <div class="leading-tight">
+          <p class="font-bold text-black text-[10px] sm:text-xs whitespace-nowrap">Data Pelanggan</p>
+          <p class="text-[8px] sm:text-[10px] text-gray-400 leading-tight">Lengkap</p>
+        </div>
       </div>
-      <div>
-        <p class="font-bold text-black">Data Pelanggan</p>
-        <p class="text-[10px] text-gray-400">Lengkap</p>
-      </div>
-    </div>
-    <div class="flex-1 h-[2px] bg-brand mx-3"></div>
+      <div class="flex-1 h-[2px] bg-brand mx-1 sm:mx-3 min-w-[6px]"></div>
 
-    <div class="flex items-center gap-2">
-      <div class="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs">
-        3
+      <!-- Step 3: Konfirmasi Pesanan -->
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-brand text-white flex items-center justify-center font-bold text-[10px] sm:text-xs shrink-0">
+          3
+        </div>
+        <div class="leading-tight">
+          <p class="font-bold text-black text-[10px] sm:text-xs whitespace-nowrap">Konfirmasi</p>
+          <p class="text-[8px] sm:text-[10px] text-gray-400 leading-tight">Pesanan</p>
+        </div>
       </div>
-      <div>
-        <p class="font-bold text-black">Konfirmasi</p>
-        <p class="text-[10px] text-gray-400">Pembayaran</p>
-      </div>
-    </div>
-    <div class="flex-1 h-[2px] bg-gray-200 mx-3"></div>
+      <div class="flex-1 h-[2px] bg-gray-200 mx-1 sm:mx-3 min-w-[6px]"></div>
 
-    <div class="flex items-center gap-2">
-      <div class="w-7 h-7 rounded-full border border-black text-black flex items-center justify-center font-bold text-xs">
-        4
-      </div>
-      <div>
-        <p class="font-bold text-gray-400">Selesai</p>
-        <p class="text-[10px] text-gray-400">Terhubung</p>
+      <!-- Step 4: Status Pengajuan -->
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-black text-black flex items-center justify-center font-bold text-[10px] sm:text-xs shrink-0">
+          4
+        </div>
+        <div class="leading-tight">
+          <p class="font-bold text-gray-400 text-[10px] sm:text-xs whitespace-nowrap">Status</p>
+          <p class="text-[8px] sm:text-[10px] text-gray-400 leading-tight">Pengajuan</p>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Grid Konten Utama -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+  <div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
 
     <!-- Sisi Kiri: Detail Pemesanan & Form Konfirmasi -->
-    <div class="lg:col-span-8 border border-black rounded-2xl p-6 bg-white space-y-6">
+    <div class="w-full lg:col-span-8 border border-black rounded-2xl p-4 sm:p-6 bg-white space-y-6">
 
       <!-- Detail Pemesanan Card -->
-      <div>
+      <div class="w-full">
         <h3 class="text-sm font-bold text-black mb-3">Detail Pemesanan</h3>
-        <div class="border border-black rounded-xl p-4 bg-white">
+        <div class="w-full border border-black rounded-xl p-3.5 sm:p-4 bg-white">
           <div class="flex items-start justify-between pb-4 border-b border-gray-200">
             <div class="flex items-center gap-3">
               <i class="fa-solid fa-wifi text-brand text-2xl"></i>
@@ -104,9 +110,9 @@
       </div>
 
       <!-- Informasi Pelanggan Card (Dinamis) -->
-      <div>
+      <div class="w-full">
         <h3 class="text-sm font-bold text-black mb-3">Informasi Pelanggan</h3>
-        <div class="border border-black rounded-xl p-4 bg-white grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div class="w-full border border-black rounded-xl p-3.5 sm:p-4 bg-white grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
           <div>
             <p class="text-gray-400 text-[10px] mb-0.5">Nama Lengkap</p>
             <p class="font-bold text-black flex items-center gap-2">
@@ -162,9 +168,9 @@
       </div>
 
       <!-- Metode & Jadwal Pemasangan Card -->
-      <div>
+      <div class="w-full">
         <h3 class="text-sm font-bold text-black mb-3">Metode & Jadwal Pemasangan</h3>
-        <div class="border border-black rounded-xl p-4 bg-white grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div class="w-full border border-black rounded-xl p-3.5 sm:p-4 bg-white grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
           <div>
             <p class="text-gray-400 text-[10px] mb-0.5">Metode Pemasangan</p>
             <p class="font-bold text-black flex items-center gap-2">
@@ -189,7 +195,7 @@
       </div>
 
       <!-- Checkbox & Tombol Bayar -->
-      <div class="pt-2">
+      <div class="w-full pt-2">
         <div class="rounded-xl transition-all duration-300"
              :class="hasError ? 'p-3.5 bg-red-50/90 border border-brand/50 ring-2 ring-brand/20 shadow-sm' : 'py-1'">
           
@@ -203,12 +209,13 @@
               <span>Saya telah membaca dan setuju dengan <a href="javascript:void(0)" @click.prevent="openTermsModal = true" class="text-brand font-semibold hover:underline">Syarat & Ketentuan</a> serta <a href="javascript:void(0)" @click.prevent="openPrivacyModal = true" class="text-brand font-semibold hover:underline">Kebijakan Privasi</a></span>
             </label>
 
-            <!-- Tombol Bayar Sekarang -->
+            <!-- Tombol Lanjut -->
             <button type="button" 
                     id="btnBayarSekarang"
                     @click="handlePayment()" 
-                    class="w-full sm:w-auto shrink-0 bg-brand hover:bg-brand-700 text-white font-bold px-8 py-3 rounded-xl text-xs transition text-center shadow-sm cursor-pointer active:scale-95">
-              Bayar Sekarang
+                    class="w-full sm:w-auto shrink-0 bg-brand hover:bg-brand-700 text-white font-bold px-8 py-3 rounded-xl text-xs transition text-center shadow-sm cursor-pointer active:scale-95 inline-flex items-center justify-center gap-2">
+              <span>Lanjut</span>
+              <i class="fa-solid fa-arrow-right text-[11px]"></i>
             </button>
           </div>
 
@@ -220,7 +227,7 @@
                class="flex items-center gap-2 text-brand text-xs font-semibold mt-2.5 pt-2 border-t border-red-200" 
                style="display: none;">
             <i class="fa-solid fa-circle-exclamation text-sm shrink-0"></i>
-            <span>Harap klik kotak persetujuan terlebih dahulu agar bisa bayar sekarang.</span>
+            <span>Harap klik kotak persetujuan terlebih dahulu untuk melanjutkan pengajuan pesanan.</span>
           </div>
 
         </div>
@@ -229,8 +236,8 @@
     </div>
 
     <!-- Sisi Kanan: Ringkasan Pesanan & Support -->
-    <div class="lg:col-span-4 space-y-6">
-      <div class="border border-black rounded-2xl p-6 bg-white space-y-6">
+    <div class="w-full lg:col-span-4 space-y-6">
+      <div class="w-full border border-black rounded-2xl p-4 sm:p-6 bg-white space-y-6">
         <h3 class="text-base font-black text-black">Ringkasan Pesanan</h3>
 
         <div class="space-y-4 text-xs">
@@ -249,8 +256,17 @@
           </div>
 
           <div class="border-t border-gray-200 pt-3 flex justify-between items-center text-sm">
-            <span class="font-bold text-black">Total Pembayaran</span>
+            <span class="font-bold text-black">Total Estimasi</span>
             <span class="font-black text-brand text-base">Rp{{ request('package_price', '110.000') }} <span class="text-xs font-normal text-gray-500">/bulan</span></span>
+          </div>
+
+          <!-- Keterangan Bebas Biaya di Awal -->
+          <div class="bg-amber-50/90 border border-amber-200/80 rounded-xl p-2.5 flex items-start gap-2 text-[11px] text-amber-900 leading-tight">
+            <i class="fa-solid fa-circle-info text-amber-600 mt-0.5 shrink-0 text-xs"></i>
+            <div>
+              <p class="font-bold text-black">Tanpa Pembayaran di Awal</p>
+              <p class="text-[10px] text-gray-600 mt-0.5">Biaya tidak dibayar sekarang. Pembayaran dilakukan setelah pemasangan selesai dan internet aktif.</p>
+            </div>
           </div>
         </div>
 
@@ -336,14 +352,14 @@
           <span class="font-bold text-black bg-gray-100 px-2 py-1 rounded inline-block my-1 border border-gray-200">
             "Saya telah membaca dan setuju dengan Syarat & Ketentuan serta Kebijakan Privasi"
           </span><br>
-          terlebih dahulu agar bisa melanjutkan ke pembayaran.
+          terlebih dahulu agar bisa melanjutkan pengajuan pesanan.
         </p>
 
         <div class="flex flex-col sm:flex-row gap-3">
           <button type="button" 
                   @click="agreeAndProceed()" 
                   class="flex-1 bg-brand hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-check"></i> Setujui & Bayar Sekarang
+            <i class="fa-solid fa-check"></i> Setujui & Lanjutkan
           </button>
           <button type="button" 
                   @click="closeWarningModal()" 
@@ -440,7 +456,7 @@ function checkoutApp() {
         showWarningModal: false,
         openTermsModal: false,
         openPrivacyModal: false,
-        paymentUrl: @json(route('payment', request()->query())),
+        paymentUrl: @json(route('payment.status', request()->query())),
 
         handlePayment() {
             if (!this.agreed) {

@@ -41,6 +41,48 @@
             </div>
         </div>
 
+        @if(!empty($existingOrder))
+            <!-- Banner Peringatan 1 Akun Hanya 1 Layanan -->
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+                <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-3xl p-5 sm:p-6 shadow-sm">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl shrink-0 mt-0.5">
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="bg-amber-200/80 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Ketentuan Layanan</span>
+                                    <span class="text-xs text-gray-500 font-semibold">1 Akun = 1 Layanan</span>
+                                </div>
+                                <h3 class="font-black text-black text-base mt-1">Akun Anda Sudah Memiliki Layanan Terdaftar</h3>
+                                <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                                    @if(in_array($existingOrder->status, ['Selesai', 'Aktif']))
+                                        Layanan internet Anda saat ini telah aktif (<strong>{{ $existingOrder->package_name }}</strong>). Sesuai kebijakan Banterpool, 1 akun hanya dapat berlangganan 1 layanan internet. Untuk upgrade atau ubah paket, silakan hubungi tim admin.
+                                    @else
+                                        Pengajuan pesanan Anda sedang dalam proses verifikasi dengan Nomor Order: <strong class="font-mono text-brand">{{ $existingOrder->order_number }}</strong> ({{ $existingOrder->package_name }}). Sesuai kebijakan Banterpool, 1 akun hanya dapat memesan 1 layanan internet.
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                        <div class="shrink-0 w-full sm:w-auto">
+                            @if(in_array($existingOrder->status, ['Selesai', 'Aktif']))
+                                <a href="{{ route('tagihan') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white px-6 py-3 rounded-xl text-xs font-bold transition shadow-sm">
+                                    <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i>
+                                    <span>Kelola Tagihan</span>
+                                </a>
+                            @else
+                                <a href="{{ route('order.detail', ['order_number' => $existingOrder->order_number]) }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white px-6 py-3 rounded-xl text-xs font-bold transition shadow-sm">
+                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                    <span>Cek Status Pesanan</span>
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Pricing Cards Grid (3 Pilihan Paket) -->
         <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch">
@@ -676,6 +718,76 @@
             </div>
         </div>
 
+        <!-- MODAL 1 AKUN HANYA 1 LAYANAN INTERNET -->
+        <template x-teleport="body">
+            <div x-show="openAlreadyOrderedModal" 
+                 x-cloak
+                 x-transition:enter="ease-out duration-300" 
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100" 
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100" 
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 z-[100] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                 style="display: none;">
+
+                <div @click.away="openAlreadyOrderedModal = false"
+                     class="my-auto bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 text-center relative shadow-2xl border border-gray-100">
+                    
+                    <div class="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </div>
+
+                    <h3 class="text-lg sm:text-xl font-black text-black mb-2">Batas Pemesanan Tercapai</h3>
+                    
+                    <p class="text-xs text-gray-600 leading-relaxed mb-6">
+                        <strong>1 akun hanya dapat memesan 1 layanan internet</strong>.<br>
+                        @if(!empty($existingOrder))
+                            @if(in_array($existingOrder->status, ['Selesai', 'Aktif']))
+                                Akun Anda telah aktif menggunakan layanan <strong>{{ $existingOrder->package_name }}</strong>. Untuk upgrade atau ubah paket, silakan hubungi tim admin.
+                            @else
+                                Akun Anda saat ini telah memiliki pengajuan pesanan dengan No. Order <span class="font-mono font-bold text-brand">{{ $existingOrder->order_number }}</span> ({{ $existingOrder->package_name }}).
+                            @endif
+                        @else
+                            Akun Anda telah terdaftar memiliki pesanan layanan internet.
+                        @endif
+                    </p>
+
+                    <div class="flex flex-col gap-2.5">
+                        @if(!empty($existingOrder))
+                            @if(in_array($existingOrder->status, ['Selesai', 'Aktif']))
+                                <a href="{{ route('tagihan') }}" 
+                                   class="w-full bg-slate-900 hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i>
+                                    <span>Kelola Tagihan & Layanan</span>
+                                </a>
+                            @else
+                                <a href="{{ route('order.detail', ['order_number' => $existingOrder->order_number]) }}" 
+                                   class="w-full bg-brand hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                    <span>Cek Status Pesanan Saya</span>
+                                </a>
+                            @endif
+                        @endif
+
+                        <a href="https://wa.me/628818679774?text={{ urlencode('Halo Admin BANTERPOOL, saya ingin konsultasi mengenai layanan internet pada akun saya.') }}" 
+                           target="_blank"
+                           class="w-full border border-emerald-600 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                            <i class="fa-brands fa-whatsapp"></i>
+                            <span>Hubungi Admin WhatsApp</span>
+                        </a>
+
+                        <button type="button" 
+                                @click="openAlreadyOrderedModal = false" 
+                                class="w-full border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </template>
+
         <!-- Bottom Help Section -->
         <section class="text-center my-10 px-4">
             <h3 class="text-base font-extrabold text-black">Perlu bantuan memilih paket?</h3>
@@ -730,6 +842,8 @@
         function paketBookingApp() {
             return {
                 openModal: false,
+                openAlreadyOrderedModal: false,
+                hasExistingOrder: @json(!empty($existingOrder)),
                 selectedPaket: {
                     name: 'Paket 30 Mbps',
                     speed: '30 Mbps',
@@ -770,6 +884,10 @@
                 },
 
                 selectPaket(name, speed, price, isPopular, features) {
+                    if (this.hasExistingOrder) {
+                        this.openAlreadyOrderedModal = true;
+                        return;
+                    }
                     this.selectedPaket = {
                         name,
                         speed,

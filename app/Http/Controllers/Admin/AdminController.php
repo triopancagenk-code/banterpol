@@ -1335,8 +1335,9 @@ class AdminController extends Controller
             'installed_at' => ($status === 'Selesai') ? now() : null,
         ]);
 
-        // Jika langsung berstatus 'Selesai', otomatis terbitkan tagihan
-        if ($order->status === 'Selesai') {
+        // Jika berstatus 'Selesai' dan belum lunas, otomatis terbitkan tagihan pemasangan.
+        // Jika sudah Lunas pembayaran pemasangan, pada bulan pemasangan belum muncul tagihan (tagihan akan muncul bulan selanjutnya).
+        if ($order->status === 'Selesai' && strcasecmp(trim((string)$order->payment_status), 'Lunas') !== 0) {
             BillingService::generateBillForOrder($order);
         }
 
@@ -1431,7 +1432,14 @@ class AdminController extends Controller
 
         $order->save();
 
-        if ($order->status === 'Selesai') {
+        if (strcasecmp(trim((string)$order->payment_status), 'Lunas') === 0) {
+            // Pelanggan baru sudah lunas pembayaran pemasangan:
+            // Pada bulan pemasangan belum muncul tagihan karena biaya pemasangan sama saja dengan biaya tagihan bulanan pertama.
+            // Hapus tagihan unpaid bulan berjalan jika sempat terbuat sebelumnya.
+            Bill::where('order_id', $order->id)
+                ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
+                ->delete();
+        } elseif ($order->status === 'Selesai') {
             BillingService::generateBillForOrder($order);
         }
 
