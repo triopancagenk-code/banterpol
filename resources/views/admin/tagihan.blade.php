@@ -949,6 +949,21 @@ function tagihanManager() {
                  class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:ring-brand focus:border-brand font-medium">
         </div>
 
+        <!-- Opsi WhatsApp: Tidak Otomatis Terkirim (Default Tidak Dicentang) -->
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <label class="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-700 select-none">
+            <input type="checkbox" name="send_wa" value="1"
+                   class="w-4 h-4 text-brand rounded border-slate-300 focus:ring-brand focus:ring-1 transition">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i>
+              Kirim bukti pembayaran ke WhatsApp pelanggan
+            </span>
+          </label>
+          <p class="text-[10px] text-slate-500 mt-1 pl-6.5">
+            Bukti pembayaran tidak otomatis terkirim. Centang opsi ini jika ingin mengirim langsung via WhatsApp saat bayar.
+          </p>
+        </div>
+
         <!-- Buttons -->
         <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
           <button type="button" @click="openPayModal = false"
@@ -1144,16 +1159,16 @@ Admin BANTERPOOL
             Tagihan <span class="font-bold text-slate-900">{{ session('print_struk_id') }}</span> atas nama <span class="font-bold text-brand">{{ session('paid_customer_name') }}</span> sebesar <span class="font-black text-slate-900">Rp{{ session('paid_total') }}</span> telah lunas.
           </p>
 
-          <!-- Status Notifikasi WhatsApp Otomatis -->
+          <!-- Status Notifikasi WhatsApp -->
           @if(session('wa_sent'))
             <div class="mt-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-center gap-2">
               <i class="fa-brands fa-whatsapp text-emerald-600 text-base"></i>
-              <span>Invoice otomatis <b>terkirim ke WhatsApp</b> pelanggan!</span>
+              <span>Invoice berhasil <b>dikirimkan ke WhatsApp</b> pelanggan!</span>
             </div>
           @elseif(session('paid_customer_phone'))
-            <div class="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs flex items-center justify-center gap-2">
-              <i class="fa-brands fa-whatsapp text-emerald-600 text-base"></i>
-              <span>WhatsApp Pelanggan: <b>{{ session('paid_customer_phone') }}</b></span>
+            <div class="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs flex items-center justify-center gap-2">
+              <i class="fa-brands fa-whatsapp text-slate-400 text-base"></i>
+              <span>Bukti pembayaran tidak otomatis terkirim ke WhatsApp (<b>{{ session('paid_customer_phone') }}</b>).</span>
             </div>
           @endif
         </div>
@@ -1588,6 +1603,9 @@ Admin BANTERPOOL
                     <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
                     <option value="Jatuh Tempo">Jatuh Tempo</option>
                   </select>
+                  <p class="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1" x-show="billForm.status === 'Lunas'">
+                    <i class="fa-solid fa-circle-check"></i> Jika status Lunas, data pelanggan otomatis masuk ke Data Pelanggan.
+                  </p>
                 </div>
 
                 <!-- Metode Pembayaran -->
