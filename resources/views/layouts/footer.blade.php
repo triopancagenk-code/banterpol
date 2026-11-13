@@ -11,7 +11,17 @@
       <h4 class="text-brand text-sm font-bold mb-3">Navigasi</h4>
       <ul class="text-xs text-gray-600 space-y-2">
         <li><a href="{{ route('home') }}" class="hover:text-brand transition">Beranda</a></li>
-        <li><a href="{{ route('paket') }}" class="hover:text-brand transition">Berlangganan</a></li>
+        @php
+          $footerIsSubscribed = false;
+          try {
+            if (auth()->check()) {
+              $footerIsSubscribed = auth()->user()->isSubscribed();
+            }
+          } catch (\Throwable $e) {}
+        @endphp
+        @if(!$footerIsSubscribed)
+          <li><a href="{{ route('paket') }}" class="hover:text-brand transition">Berlangganan</a></li>
+        @endif
         <li><a href="{{ auth()->check() ? route('tagihan') : route('login') }}" class="hover:text-brand transition">Cek Tagihan</a></li>
         <li><a href="{{ auth()->check() ? route('laporan.index') : route('login') }}" class="hover:text-brand transition">Laporan Masalah</a></li>
         <li><a href="{{ route('tentang-kami') }}" class="hover:text-brand transition">Tentang Kami</a></li>

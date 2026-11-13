@@ -204,7 +204,7 @@ class PelangganBaruPemesananTest extends TestCase
         $this->assertEquals(1, Order::where('user_id', $user->id)->count());
     }
 
-    public function test_paket_page_shows_already_ordered_warning_when_user_has_order(): void
+    public function test_paket_page_does_not_show_warning_banner_notification(): void
     {
         $user = $this->createCustomerUser();
 
@@ -225,8 +225,8 @@ class PelangganBaruPemesananTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('paket'));
         $response->assertStatus(200);
-        $response->assertSee('Akun Anda Sudah Memiliki Layanan Terdaftar');
-        $response->assertSee('1 Akun = 1 Layanan');
+        $response->assertDontSee('Akun Anda Sudah Memiliki Layanan Terdaftar');
+        $response->assertDontSee('1 Akun = 1 Layanan');
     }
 
     public function test_navigation_bar_hides_status_pesanan_for_new_customer_without_orders(): void
@@ -284,5 +284,76 @@ class PelangganBaruPemesananTest extends TestCase
         $response = $this->actingAs($user)->get(route('home'));
         $response->assertStatus(200);
         $response->assertDontSee('Status Pesanan');
+    }
+
+    public function test_navigation_bar_shows_berlangganan_for_new_customer(): void
+    {
+        $user = $this->createCustomerUser();
+
+        $response = $this->actingAs($user)->get(route('home'));
+        $response->assertStatus(200);
+        $response->assertSee(route('paket'));
+        $response->assertSee('Berlangganan');
+    }
+
+    public function test_navigation_bar_hides_berlangganan_for_subscribed_customer(): void
+    {
+        $user = $this->createCustomerUser();
+
+        Order::create([
+            'order_number' => 'ORD-20261113-163',
+            'user_id' => $user->id,
+            'customer_name' => $user->name,
+            'customer_phone' => $user->phone,
+            'customer_email' => $user->email,
+            'address' => 'Jl. Banyumas No. 1',
+            'package_name' => 'Paket 30 Mbps',
+            'speed' => '30 Mbps',
+            'price' => 165000,
+            'total' => 165000,
+            'status' => 'Selesai',
+            'payment_status' => 'Lunas',
+        ]);
+
+        $this->assertTrue($user->isSubscribed());
+
+        // Di dashboard pelanggan (tagihan) maupun beranda, link menu 'Berlangganan' (route paket) tidak muncul
+        $responseTagihan = $this->actingAs($user)->get(route('tagihan'));
+        $responseTagihan->assertStatus(200);
+        $responseTagihan->assertDontSee(route('paket'));
+
+        $responseHome = $this->actingAs($user)->get(route('home'));
+        $responseHome->assertStatus(200);
+        $responseHome->assertDontSee(route('paket'));
+
+        // Jika pelanggan yang sudah berlangganan mencoba membuka route paket langsung, diarahkan ke tagihan
+        $responsePaket = $this->actingAs($user)->get(route('paket'));
+        $responsePaket->assertRedirect(route('tagihan'));
+    }
+
+    public function test_navigation_bar_hides_berlangganan_for_customer_with_bills(): void
+    {
+        $user = $this->createCustomerUser();
+
+        \App\Models\Bill::create([
+            'bill_number' => 'INV-202611-999',
+            'user_id' => $user->id,
+            'customer_name' => $user->name,
+            'customer_email' => $user->email,
+            'customer_phone' => $user->phone,
+            'address' => 'Jl. Banyumas No. 1',
+            'package_name' => 'Paket 30 Mbps',
+            'speed' => '30 Mbps',
+            'period' => 'November 2026',
+            'amount' => 165000,
+            'status' => 'Lunas',
+            'due_date' => now()->addDays(10),
+        ]);
+
+        $this->assertTrue($user->isSubscribed());
+
+        $response = $this->actingAs($user)->get(route('tagihan'));
+        $response->assertStatus(200);
+        $response->assertDontSee(route('paket'));
     }
 }

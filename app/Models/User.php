@@ -110,4 +110,37 @@ class User extends Authenticatable
     {
         return $this->hasMany(Order::class, 'technician_id');
     }
+
+    /**
+     * Memeriksa apakah pengguna sudah berlangganan layanan internet aktif di sistem.
+     */
+    public function isSubscribed(): bool
+    {
+        // 1. Cek pesanan yang sudah selesai atau berstatus pelanggan aktif
+        $hasActiveOrder = Order::where(function ($q) {
+            $q->where('user_id', $this->id)
+              ->orWhere('customer_email', $this->email);
+            if (!empty($this->phone)) {
+                $q->orWhere('customer_phone', $this->phone);
+            }
+        })
+        ->where(function ($q) {
+            $q->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif', 'Non-Aktif', 'non-aktif', 'Isolir', 'isolir'])
+              ->orWhere('order_number', 'like', 'PLG-%');
+        })
+        ->exists();
+
+        if ($hasActiveOrder) {
+            return true;
+        }
+
+        // 2. Cek apakah pengguna memiliki catatan tagihan layanan
+        return Bill::where(function ($q) {
+            $q->where('user_id', $this->id)
+              ->orWhere('customer_email', $this->email);
+            if (!empty($this->phone)) {
+                $q->orWhere('customer_phone', $this->phone);
+            }
+        })->exists();
+    }
 }

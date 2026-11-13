@@ -67,6 +67,11 @@ class HomeController extends Controller
 
     public function paket()
     {
+        // Jika pelanggan sudah berlangganan dan bukan admin, alihkan langsung ke halaman tagihan tanpa notifikasi
+        if (auth()->check() && !auth()->user()->isAdmin() && auth()->user()->isSubscribed()) {
+            return redirect()->route('tagihan');
+        }
+
         try {
             $packages = Package::where('is_active', true)->get();
         } catch (\Exception $e) {
@@ -533,9 +538,12 @@ class HomeController extends Controller
     public function checkout(Request $request)
     {
         if (auth()->check()) {
+            if (!auth()->user()->isAdmin() && auth()->user()->isSubscribed()) {
+                return redirect()->route('tagihan')->with('warning', '1 akun hanya dapat memiliki 1 layanan internet aktif. Akun Anda telah terdaftar sebagai pelanggan Banterpool.');
+            }
             $existingOrder = self::getUserExistingOrder();
             if ($existingOrder) {
-                if (in_array($existingOrder->status, ['Selesai', 'Aktif'])) {
+                if (in_array($existingOrder->status, ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif'])) {
                     return redirect()->route('tagihan')->with('warning', '1 akun hanya dapat memiliki 1 layanan internet aktif. Akun Anda telah terdaftar pada ' . $existingOrder->package_name . '.');
                 }
                 return redirect()->route('order.detail', ['order_number' => $existingOrder->order_number])->with('warning', '1 akun hanya dapat memesan 1 layanan internet. Anda telah memiliki pengajuan pesanan aktif (' . $existingOrder->order_number . ').');

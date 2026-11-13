@@ -1,8 +1,11 @@
 @php
-  // Cek apakah pelanggan memiliki pesanan yang sedang aktif diproses (belum selesai/terpasang)
+  // Cek status langganan dan pesanan yang sedang aktif diproses
   $pendingOrder = null;
+  $isSubscribed = false;
   try {
       if (auth()->check()) {
+          $isSubscribed = auth()->user()->isSubscribed();
+
           $pendingOrder = \App\Models\Order::where(function ($q) {
               $q->where('user_id', auth()->id())
                 ->orWhere('customer_email', auth()->user()->email);
@@ -11,7 +14,7 @@
               }
           })
           ->where('order_number', 'not like', 'PLG-%')
-          ->whereNotIn('status', ['Selesai', 'Aktif', 'Dibatalkan', 'Batal'])
+          ->whereNotIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif', 'Dibatalkan', 'Batal'])
           ->latest('id')
           ->first();
       }
@@ -19,8 +22,14 @@
       if (!$pendingOrder && session('customer_order_number')) {
           $pendingOrder = \App\Models\Order::where('order_number', session('customer_order_number'))
               ->where('order_number', 'not like', 'PLG-%')
-              ->whereNotIn('status', ['Selesai', 'Aktif', 'Dibatalkan', 'Batal'])
+              ->whereNotIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif', 'Dibatalkan', 'Batal'])
               ->first();
+      }
+
+      if (!$isSubscribed && session('customer_order_number')) {
+          $isSubscribed = \App\Models\Order::where('order_number', session('customer_order_number'))
+              ->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif'])
+              ->exists();
       }
   } catch (\Throwable $e) {}
 
@@ -42,7 +51,9 @@
     <!-- Menu Navigasi Desktop -->
     <div class="hidden md:flex gap-6 text-sm font-medium">
       <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }}">Beranda</a>
-      <a href="{{ route('paket') }}" class="{{ request()->routeIs('paket') ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }}">Berlangganan</a>
+      @if(!$isSubscribed && !$hasPendingOrder)
+        <a href="{{ route('paket') }}" class="{{ request()->routeIs('paket') ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }}">Berlangganan</a>
+      @endif
       @if($hasPendingOrder)
         <a href="{{ route('order.detail', ['order_number' => $pendingOrder->order_number ?? '']) }}" class="{{ (request()->routeIs('order*') || request()->routeIs('payment.status')) ? 'text-brand font-bold border-b-2 border-brand pb-1' : 'text-gray-700 hover:text-brand' }} inline-flex items-center gap-1.5">
           <span>Status Pesanan</span>
@@ -264,11 +275,13 @@
       <span>Beranda</span>
     </a>
 
+    @if(!$isSubscribed && !$hasPendingOrder)
     <a href="{{ route('paket') }}"
        class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition {{ request()->routeIs('paket') ? 'bg-red-50 text-brand' : 'text-gray-700 hover:bg-gray-50 hover:text-brand' }}">
       <i class="fa-solid fa-box-archive text-sm w-5 text-center {{ request()->routeIs('paket') ? 'text-brand' : 'text-gray-400' }}"></i>
       <span>Berlangganan</span>
     </a>
+    @endif
 
     @if($hasPendingOrder)
       <a href="{{ route('order.detail', ['order_number' => $pendingOrder->order_number ?? '']) }}"

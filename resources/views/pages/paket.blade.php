@@ -41,48 +41,6 @@
             </div>
         </div>
 
-        @if(!empty($existingOrder))
-            <!-- Banner Peringatan 1 Akun Hanya 1 Layanan -->
-            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
-                <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-3xl p-5 sm:p-6 shadow-sm">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div class="flex items-start gap-4">
-                            <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl shrink-0 mt-0.5">
-                                <i class="fa-solid fa-circle-exclamation"></i>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <span class="bg-amber-200/80 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Ketentuan Layanan</span>
-                                    <span class="text-xs text-gray-500 font-semibold">1 Akun = 1 Layanan</span>
-                                </div>
-                                <h3 class="font-black text-black text-base mt-1">Akun Anda Sudah Memiliki Layanan Terdaftar</h3>
-                                <p class="text-xs text-gray-600 mt-1 leading-relaxed">
-                                    @if(in_array($existingOrder->status, ['Selesai', 'Aktif']))
-                                        Layanan internet Anda saat ini telah aktif (<strong>{{ $existingOrder->package_name }}</strong>). Sesuai kebijakan Banterpool, 1 akun hanya dapat berlangganan 1 layanan internet. Untuk upgrade atau ubah paket, silakan hubungi tim admin.
-                                    @else
-                                        Pengajuan pesanan Anda sedang dalam proses verifikasi dengan Nomor Order: <strong class="font-mono text-brand">{{ $existingOrder->order_number }}</strong> ({{ $existingOrder->package_name }}). Sesuai kebijakan Banterpool, 1 akun hanya dapat memesan 1 layanan internet.
-                                    @endif
-                                </p>
-                            </div>
-                        </div>
-                        <div class="shrink-0 w-full sm:w-auto">
-                            @if(in_array($existingOrder->status, ['Selesai', 'Aktif']))
-                                <a href="{{ route('tagihan') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white px-6 py-3 rounded-xl text-xs font-bold transition shadow-sm">
-                                    <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i>
-                                    <span>Kelola Tagihan</span>
-                                </a>
-                            @else
-                                <a href="{{ route('order.detail', ['order_number' => $existingOrder->order_number]) }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white px-6 py-3 rounded-xl text-xs font-bold transition shadow-sm">
-                                    <i class="fa-solid fa-clock-rotate-left"></i>
-                                    <span>Cek Status Pesanan</span>
-                                </a>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @endif
-
         <!-- Pricing Cards Grid (3 Pilihan Paket) -->
         <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch">
@@ -743,7 +701,7 @@
                     <p class="text-xs text-gray-600 leading-relaxed mb-6">
                         <strong>1 akun hanya dapat memesan 1 layanan internet</strong>.<br>
                         @if(!empty($existingOrder))
-                            @if(in_array($existingOrder->status, ['Selesai', 'Aktif']))
+                            @if(in_array($existingOrder->status, ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif']))
                                 Akun Anda telah aktif menggunakan layanan <strong>{{ $existingOrder->package_name }}</strong>. Untuk upgrade atau ubah paket, silakan hubungi tim admin.
                             @else
                                 Akun Anda saat ini telah memiliki pengajuan pesanan dengan No. Order <span class="font-mono font-bold text-brand">{{ $existingOrder->order_number }}</span> ({{ $existingOrder->package_name }}).
@@ -755,7 +713,7 @@
 
                     <div class="flex flex-col gap-2.5">
                         @if(!empty($existingOrder))
-                            @if(in_array($existingOrder->status, ['Selesai', 'Aktif']))
+                            @if(in_array($existingOrder->status, ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif']))
                                 <a href="{{ route('tagihan') }}" 
                                    class="w-full bg-slate-900 hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
                                     <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i>

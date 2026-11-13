@@ -78,7 +78,7 @@
                 <!-- CTA Button -->
                 <div class="pt-2">
                     @if(!empty($existingOrder))
-                        @if(in_array($existingOrder->status, ['Selesai', 'Aktif']))
+                        @if(in_array($existingOrder->status, ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif']))
                             <a href="{{ route('tagihan') }}"
                                 class="inline-flex items-center gap-2.5 bg-slate-900 hover:bg-black text-white font-extrabold px-6 py-3 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-black/20">
                                 <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i>
@@ -91,6 +91,12 @@
                                 <span>STATUS PESANAN DIPROSES</span>
                             </a>
                         @endif
+                    @elseif(auth()->check() && auth()->user()->isSubscribed())
+                        <a href="{{ route('tagihan') }}"
+                            class="inline-flex items-center gap-2.5 bg-slate-900 hover:bg-black text-white font-extrabold px-6 py-3 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-black/20">
+                            <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i>
+                            <span>KELOLA TAGIHAN & LAYANAN</span>
+                        </a>
                     @else
                         <a href="{{ route('paket') }}"
                             class="inline-flex items-center gap-2.5 bg-brand hover:bg-brand-700 text-white font-extrabold px-6 py-3 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-brand/20">
