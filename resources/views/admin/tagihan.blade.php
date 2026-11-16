@@ -649,12 +649,12 @@ function tagihanManager() {
 
         <!-- Tombol Hapus Semua Data Rekap -->
         <form action="{{ route('admin.tagihan.hapus-semua-rekap') }}" method="POST"
-              onsubmit="return confirm('PENTING: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA REKAP PEMBAYARAN?\n\nSeluruh riwayat tagihan yang telah lunas akan dibersihkan dari rekap dan dikembalikan ke status Belum Bayar di Monitoring Tagihan.')">
+              onsubmit="return confirm('PENTING: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA REKAP PEMBAYARAN secara permanen?\n\nSeluruh data tagihan yang telah lunas ini akan dihapus permanen dari sistem dan tidak kembali ke Monitoring Tagihan.')">
           @csrf
           <button type="submit"
                   class="h-9 px-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer"
                   style="background-color: #dc2626 !important; color: #ffffff !important;"
-                  title="Hapus Seluruh Data Rekap Pembayaran">
+                  title="Hapus Seluruh Data Rekap Pembayaran Secara Permanen">
             <i class="fa-solid fa-trash-can text-xs text-white" style="color: #ffffff !important;"></i>
             <span class="text-white font-bold" style="color: #ffffff !important;">Hapus Semua Rekap</span>
           </button>
@@ -818,10 +818,10 @@ function tagihanManager() {
                       @csrf
                       <input type="hidden" name="status" value="Belum Bayar">
                       <button type="submit"
-                              title="Batalkan Pelunasan (Kembalikan ke Belum Bayar)"
-                              onclick="return confirm('Kembalikan status tagihan ini ke Belum Bayar?')"
+                              title="Kembalikan ke Monitoring Tagihan (Belum Bayar)"
+                              onclick="return confirm('Kembalikan tagihan pelanggan {{ $bill['customer_name'] }} ke Monitoring Tagihan (Belum Bayar)?')"
                               class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white flex items-center justify-center transition shadow-2xs hover:scale-105">
-                        <i class="fa-solid fa-rotate-left text-sm"></i>
+                        <i class="fa-solid fa-arrows-rotate text-sm"></i>
                       </button>
                     </form>
                   @endif
@@ -1946,7 +1946,7 @@ Admin BANTERPOOL</pre>
           </h3>
           <p class="text-xs text-slate-500 mt-1 leading-relaxed">
             @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
-              Pilih tindakan penghapusan untuk riwayat pembayaran terpilih di bawah ini:
+              Apakah Anda yakin ingin menghapus data rekap pembayaran terpilih secara permanen dari sistem?
             @else
               Apakah Anda yakin ingin menghapus data tagihan terpilih secara permanen dari sistem?
             @endif
@@ -1973,33 +1973,15 @@ Admin BANTERPOOL</pre>
           <template x-for="id in selectedBillIds" :key="id">
             <input type="hidden" name="selected_bills[]" :value="id">
           </template>
+          <input type="hidden" name="action_type" value="delete">
 
-          @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
-            <div class="text-left space-y-2 text-xs">
-              <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                <input type="radio" name="action_type" value="reset_rekap" checked
-                       class="mt-0.5 text-brand focus:ring-brand">
-                <div>
-                  <p class="font-bold text-slate-800">Hapus dari Rekap (Kembalikan ke Belum Bayar)</p>
-                  <p class="text-[11px] text-slate-500 mt-0.5">Riwayat pelunasan dihapus dan status tagihan dikembalikan ke Monitoring Tagihan agar dapat ditagihkan kembali.</p>
-                </div>
-              </label>
-
-              <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-red-200 hover:bg-red-50/50 cursor-pointer">
-                <input type="radio" name="action_type" value="delete"
-                       class="mt-0.5 text-red-600 focus:ring-red-500">
-                <div>
-                  <p class="font-bold text-red-700" style="color: #b91c1c !important;">Hapus Tagihan Permanen</p>
-                  <p class="text-[11px] text-slate-500 mt-0.5">Menghapus data record tagihan ini sepenuhnya dari database sistem.</p>
-                </div>
-              </label>
-            </div>
-          @else
-            <input type="hidden" name="action_type" value="delete">
-            <p class="text-[11px] text-slate-400">
-              Tagihan yang dihapus akan dibersihkan dari daftar monitoring. Tindakan ini <strong class="text-red-600" style="color: #dc2626 !important;">tidak dapat dibatalkan</strong>.
-            </p>
-          @endif
+          <p class="text-[11px] text-slate-400">
+            @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+              Data riwayat pembayaran terpilih akan <strong class="text-red-600" style="color: #dc2626 !important;">dihapus secara permanen</strong> dan tidak akan muncul kembali di Monitoring Tagihan.
+            @else
+              Tagihan yang dihapus akan dibersihkan dari daftar monitoring secara permanen. Tindakan ini <strong class="text-red-600" style="color: #dc2626 !important;">tidak dapat dibatalkan</strong>.
+            @endif
+          </p>
 
           <div class="flex items-center justify-center gap-2 pt-2">
             <button type="button" @click="openBulkDeleteModal = false"

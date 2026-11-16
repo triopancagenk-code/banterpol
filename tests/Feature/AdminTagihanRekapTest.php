@@ -300,7 +300,7 @@ class AdminTagihanRekapTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_hapus_semua_rekap_clears_paid_bills_and_resets_to_belum_bayar(): void
+    public function test_hapus_semua_rekap_permanently_deletes_paid_bills(): void
     {
         $admin = $this->createAdminUser();
 
@@ -357,13 +357,8 @@ class AdminTagihanRekapTest extends TestCase
         $response->assertRedirect(route('admin.tagihan', ['status' => 'rekap']));
         $response->assertSessionHas('success');
 
-        // Tagihan terdaftar direset ke Belum Bayar
-        $paidBill->refresh();
-        $this->assertEquals('Belum Bayar', $paidBill->status);
-        $this->assertNull($paidBill->paid_at);
-        $this->assertNull($paidBill->receipt_number);
-
-        // Tagihan orphan dihapus
+        // Seluruh tagihan lunas dihapus permanen (hilang dari database)
+        $this->assertNull(Bill::find($paidBill->id));
         $this->assertNull(Bill::find($orphanPaidBill->id));
 
         // Rekap sekarang kosong (0 lunas)
@@ -733,5 +728,135 @@ class AdminTagihanRekapTest extends TestCase
         $this->assertEquals(1, Bill::where('order_id', $c1->id)->count());
         $this->assertEquals(1, Bill::where('order_id', $c2->id)->count());
         $this->assertEquals(1, Bill::where('order_id', $c3->id)->count());
+    }
+
+    public function test_potensi_omset_customer_count_counts_all_bills_even_with_duplicate_customer_names(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 11, 16, 12, 0, 0, 'Asia/Jakarta'));
+        $admin = $this->createAdminUser();
+
+        // 2 pelanggan berbeda tapi namanya persis sama (misal 'Siti Rahayu')
+        $order1 = Order::create([
+            'order_number' => 'PLG-2026-D01',
+            'customer_name' => 'Siti Rahayu',
+            'customer_phone' => '081200000001',
+            'customer_email' => 'siti1@test.com',
+            'address' => 'Desa A',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
+            'status' => 'Aktif',
+            'payment_status' => 'Menunggu Pembayaran',
+        ]);
+        $order2 = Order::create([
+            'order_number' => 'PLG-2026-D02',
+            'customer_name' => 'Siti Rahayu',
+            'customer_phone' => '081200000002',
+            'customer_email' => 'siti2@test.com',
+            'address' => 'Desa B',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
+            'status' => 'Aktif',
+            'payment_status' => 'Menunggu Pembayaran',
+        ]);
+
+        Bill::create([
+            'bill_number' => 'INV-202611-D01',
+            'order_id' => $order1->id,
+            'customer_name' => 'Siti Rahayu',
+            'customer_phone' => '081200000001',
+            'customer_email' => 'siti1@test.com',
+            'address' => 'Desa A',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Belum Bayar',
+        ]);
+
+        Bill::create([
+            'bill_number' => 'INV-202611-D02',
+            'order_id' => $order2->id,
+            'customer_name' => 'Siti Rahayu',
+            'customer_phone' => '081200000002',
+            'customer_email' => 'siti2@test.com',
+            'address' => 'Desa B',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Belum Bayar',
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.tagihan'));
+        $response->assertOk();
+
+        // Potensi Omset harus menghitung kedua tagihan (2 Pelanggan Aktif, bukan 1 karena nama sama)
+        $response->assertSee('2</span> Pelanggan Aktif', false);
+    }
+
+    public function test_quick_action_refresh_button_returns_lunas_bill_to_belum_bayar(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 11, 16, 12, 0, 0, 'Asia/Jakarta'));
+        $admin = $this->createAdminUser();
+
+        $order = Order::create([
+            'order_number' => 'PLG-2026-REF01',
+            'customer_name' => 'Pelanggan Uji Refresh',
+            'customer_phone' => '081299999999',
+            'customer_email' => 'refresh@test.com',
+            'address' => 'Jl. Refresh No. 1',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
+            'status' => 'Selesai',
+            'payment_status' => 'Lunas',
+        ]);
+
+        $bill = Bill::create([
+            'bill_number' => 'INV-202611-REF01',
+            'order_id' => $order->id,
+            'customer_name' => 'Pelanggan Uji Refresh',
+            'customer_phone' => '081299999999',
+            'customer_email' => 'refresh@test.com',
+            'address' => 'Jl. Refresh No. 1',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Lunas',
+            'paid_at' => now(),
+            'receipt_number' => 'KWT-202611-999',
+        ]);
+
+        // Kirim request tombol refresh pada Aksi Cepat (status=Belum Bayar)
+        $response = $this->actingAs($admin)->post(route('admin.tagihan.status', $bill->id), [
+            'status' => 'Belum Bayar',
+        ]);
+
+        $response->assertSessionHas('success');
+
+        $bill->refresh();
+        $this->assertEquals('Belum Bayar', $bill->status);
+        $this->assertNull($bill->paid_at);
+        $this->assertNull($bill->receipt_number);
+
+        $order->refresh();
+        $this->assertEquals('Menunggu Pembayaran', $order->payment_status);
+
+        // Pastikan tagihan ini muncul di Monitoring Tagihan (status all / belum bayar)
+        $monitoringResp = $this->actingAs($admin)->get(route('admin.tagihan'));
+        $monitoringResp->assertOk();
+        $monitoringResp->assertSee('INV-202611-REF01');
     }
 }

@@ -2190,7 +2190,7 @@ class AdminController extends Controller
         // 4 Statistik Utama sesuai Fitur Billing ISP:
         // 1. Potensi Omset (seluruh tagihan aktif/berjalan)
         $potensiOmset = collect($allBills)->sum('total_raw');
-        $totalPelangganAktif = collect($allBills)->unique('customer_name')->count();
+        $totalPelangganAktif = collect($allBills)->count();
 
         // 2. Sudah Terbayar (Lunas)
         $sudahTerbayarNominal = $paidBills->sum('total_raw');
@@ -2507,6 +2507,17 @@ class AdminController extends Controller
                 session()->flash('paid_bill_id', $bill->id);
                 session()->flash('wa_sent', $waSent);
                 session()->flash('wa_message', $waMessage);
+            } else {
+                // Ketika dikembalikan ke Belum Bayar (via tombol refresh aksi cepat di Rekap)
+                $bill->paid_at = null;
+                $bill->receipt_number = null;
+                $bill->payment_method = null;
+                $bill->collected_by = null;
+
+                if ($bill->order) {
+                    $bill->order->payment_status = 'Menunggu Pembayaran';
+                    $bill->order->save();
+                }
             }
             $bill->collector_notes = ($bill->collector_notes ? $bill->collector_notes . " | " : "") . $adminNotes;
             $bill->save();
@@ -2514,7 +2525,7 @@ class AdminController extends Controller
 
         $message = $newStatus === 'Lunas'
             ? "Tagihan {$id} berhasil diverifikasi Lunas!" . ($waSent ? " 📲 Invoice berhasil dikirimkan ke WhatsApp pelanggan." : "")
-            : "Tagihan {$id} berhasil diperbarui menjadi {$newStatus}!";
+            : "Tagihan {$id} berhasil dikembalikan ke Monitoring Tagihan (status Belum Bayar)!";
 
         return redirect()->back()->with('success', $message);
     }
@@ -3026,20 +3037,10 @@ class AdminController extends Controller
 
             $orderIds = $lunasBills->pluck('order_id')->filter()->unique()->all();
 
-            // 1. Reset tagihan berstatus Lunas kembali menjadi Belum Bayar dan bersihkan riwayat bukti/kuitansi pembayaran
-            Bill::where('status', 'Lunas')->whereNotNull('order_id')->update([
-                'status' => 'Belum Bayar',
-                'paid_at' => null,
-                'receipt_number' => null,
-                'collected_by' => null,
-                'collector_notes' => null,
-                'payment_method' => null,
-            ]);
+            // Hapus seluruh data tagihan berstatus Lunas secara permanen dari sistem
+            Bill::where('status', 'Lunas')->delete();
 
-            // 2. Hapus tagihan tanpa order_id (orphan / data dummy manual)
-            Bill::where('status', 'Lunas')->whereNull('order_id')->delete();
-
-            // 3. Reset payment_status pada pesanan pelanggan terkait
+            // Reset payment_status pada pesanan pelanggan terkait jika ada
             if (!empty($orderIds)) {
                 Order::whereIn('id', $orderIds)->update([
                     'payment_status' => 'Menunggu Pembayaran',
@@ -3047,7 +3048,7 @@ class AdminController extends Controller
             }
 
             return redirect()->route('admin.tagihan', ['status' => 'rekap'])
-                ->with('success', "Seluruh data rekap pembayaran ({$count} data) berhasil dihapus dan dibersihkan dari rekap.");
+                ->with('success', "Seluruh data rekap pembayaran ({$count} data) berhasil dihapus permanen dari sistem.");
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Error hapusSemuaRekap: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Gagal menghapus data rekap: ' . $e->getMessage());
