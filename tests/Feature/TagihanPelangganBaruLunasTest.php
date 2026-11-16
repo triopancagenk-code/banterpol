@@ -32,12 +32,12 @@ class TagihanPelangganBaruLunasTest extends TestCase
         ]);
     }
 
-    public function test_pelanggan_baru_with_lunas_installation_has_no_bill_for_installation_month(): void
+    public function test_semua_pelanggan_di_data_pelanggan_memiliki_tagihan_bulan_ini(): void
     {
         $admin = $this->createAdminUser();
         $user = $this->createCustomerUser();
 
-        // Buat pesanan baru yang sudah terpasang dan status pembayaran pemasangan Lunas di bulan berjalan
+        // Buat pesanan baru yang sudah terpasang di bulan berjalan
         $order = Order::create([
             'order_number' => 'ORD-20261113-163',
             'user_id' => $user->id,
@@ -58,28 +58,27 @@ class TagihanPelangganBaruLunasTest extends TestCase
             'installed_at' => now('Asia/Jakarta'),
         ]);
 
-        // Coba jalankan generateBillForOrder & syncMonthlyBillsFromDataPelanggan
-        BillingService::generateBillForOrder($order);
+        // Jalankan sinkronisasi tagihan bulanan dari data pelanggan
         BillingService::syncMonthlyBillsFromDataPelanggan();
 
-        // Pastikan TIDAK ADA tagihan yang dibuat untuk bulan pemasangan ini
+        // Pastikan tagihan dibuat untuk pelanggan ini pada bulan berjalan
         $bills = Bill::where('order_id', $order->id)->get();
-        $this->assertCount(0, $bills);
+        $this->assertCount(1, $bills);
 
         // Muncul di Data Pelanggan
         $responsePelanggan = $this->actingAs($admin)->get(route('admin.pelanggan'));
         $responsePelanggan->assertOk();
         $responsePelanggan->assertSee($user->name);
 
-        // Tidak muncul di Monitoring Tagihan bulan ini (mengikuti Data Pelanggan lama, bukan Monitoring Pesanan)
+        // Muncul di Monitoring Tagihan (Data Pelanggan dan Monitoring Tagihan sinkron tanpa selisih)
         $responseTagihan = $this->actingAs($admin)->get(route('admin.tagihan'));
         $responseTagihan->assertOk();
         $responseTagihan->assertViewHas('bills', function ($bills) use ($order) {
-            return !collect($bills)->pluck('order_id')->contains($order->id);
+            return collect($bills)->pluck('order_id')->contains($order->id);
         });
     }
 
-    public function test_pelanggan_baru_unpaid_installation_creates_no_bill_for_current_month(): void
+    public function test_pelanggan_baru_unpaid_installation_also_synced_to_bills(): void
     {
         $admin = $this->createAdminUser();
         $user = $this->createCustomerUser('Pelanggan Belum Bayar', 'belumbayar@gmail.com', '081234567892');
@@ -105,20 +104,21 @@ class TagihanPelangganBaruLunasTest extends TestCase
             'installed_at' => now('Asia/Jakarta'),
         ]);
 
-        // Tagihan bulan berjalan tidak terbit untuk pelanggan baru yang baru memesan bulan ini
-        $bill = BillingService::generateBillForOrder($order);
-        $this->assertNull($bill);
+        // Tagihan terbit mengikuti data pelanggan
+        BillingService::syncMonthlyBillsFromDataPelanggan();
+        $bill = Bill::where('order_id', $order->id)->first();
+        $this->assertNotNull($bill);
 
         // Pelanggan muncul di Data Pelanggan
         $responsePelanggan = $this->actingAs($admin)->get(route('admin.pelanggan'));
         $responsePelanggan->assertOk();
         $responsePelanggan->assertSee($order->customer_name);
 
-        // Tagihan tidak muncul di monitoring tagihan bulan berjalan
+        // Tagihan muncul di monitoring tagihan
         $responseTagihan = $this->actingAs($admin)->get(route('admin.tagihan'));
         $responseTagihan->assertOk();
         $responseTagihan->assertViewHas('bills', function ($bills) use ($order) {
-            return !collect($bills)->pluck('order_id')->contains($order->id);
+            return collect($bills)->pluck('order_id')->contains($order->id);
         });
     }
 

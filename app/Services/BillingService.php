@@ -104,16 +104,6 @@ class BillingService
      */
     public static function generateBillForOrder(Order $order): ?Bill
     {
-        // Pelanggan yang baru memesan pada bulan berjalan HANYA muncul di Data Pelanggan,
-        // dan tagihannya untuk data pelanggan baru, baru muncul bulan depan
-        if (self::isNewOrderInCurrentOrFutureMonth($order)) {
-            Bill::where('order_id', $order->id)
-                ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
-                ->delete();
-
-            return null;
-        }
-
         // Pastikan idempoten: jika tagihan untuk order ini sudah ada, kembalikan yang ada
         $existingBill = Bill::where('order_id', $order->id)->first();
         if ($existingBill) {
@@ -329,21 +319,8 @@ class BillingService
         $customers = Order::forCustomerData()->get();
 
         foreach ($customers as $customer) {
-            // Aturan Bisnis:
-            // Yang muncul pada monitoring tagihan itu mengikuti Data Pelanggan (kode PLG- dsb),
-            // sedangkan pelanggan yang baru memesan (kode ORD-) hanya muncul di Data Pelanggan
-            // dan tagihannya untuk data pelanggan baru, baru muncul bulan depan.
-            // Namun jika $forceAll bernilai true, terbitkan tagihan bulan ini untuk seluruh pelanggan di Data Pelanggan.
-            if (!$forceAll && self::isNewOrderInCurrentOrFutureMonth($customer, $month)) {
-                Bill::where('order_id', $customer->id)
-                    ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
-                    ->where(function ($q) use ($dueDateStr, $month) {
-                        $q->where('due_date', $dueDateStr)
-                          ->orWhere('period', 'like', '%' . $month->translatedFormat('M Y') . '%');
-                    })
-                    ->delete();
-                continue;
-            }
+            // Monitoring Tagihan mengikuti Data Pelanggan:
+            // Seluruh pelanggan yang terdaftar di Data Pelanggan diterbitkan tagihan bulanan pada bulan berjalan.
 
             // Cari apakah sudah ada tagihan untuk pelanggan ini pada bulan berjalan
             $existingBill = Bill::where(function ($q) use ($customer) {

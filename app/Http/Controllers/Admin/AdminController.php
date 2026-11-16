@@ -40,11 +40,6 @@ class AdminController extends Controller
                         return false;
                     }
 
-                    // Monitoring tagihan mengikuti Data Pelanggan. Pelanggan baru yang memesan tagihannya baru muncul bulan depan
-                    if (\App\Services\BillingService::isNewOrderInCurrentOrFutureMonth($order)) {
-                        return false;
-                    }
-
                     // Monitoring tagihan: Tagihan belum lunas untuk bulan mendatang hanya boleh muncul pada tanggal 5 bulan tersebut
                     if ($b->status !== 'Lunas') {
                         $now = now('Asia/Jakarta');
