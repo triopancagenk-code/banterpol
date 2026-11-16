@@ -30,6 +30,9 @@ Artisan::command('tickets:prune {--days=3 : Jumlah batas usia hari retensi riway
 // Penjadwalan otomatis berjalan setiap hari
 Schedule::command('tickets:prune')->daily();
 
+// Penjadwalan otomatis penerbitan tagihan bulanan setiap tanggal 5
+Schedule::command('billing:generate-semua-pelanggan')->monthlyOn(5, '00:00');
+
 Artisan::command('billing:hapus-semua-rekap {--delete : Hapus permanen record tagihan lunas}', function () {
     $lunasBills = \App\Models\Bill::where('status', 'Lunas')->get();
     $count = $lunasBills->count();

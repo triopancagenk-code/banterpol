@@ -2173,8 +2173,9 @@ class AdminController extends Controller
      */
     public function tagihan(Request $request)
     {
-        // Otomatis sinkronkan tagihan bulanan dari Data Pelanggan (terbit tgl 5, jatuh tempo tgl 20)
-        BillingService::syncMonthlyBillsFromDataPelanggan();
+        // Periksa dan perbarui status tagihan jatuh tempo & format tanggal (tidak membuat ulang tagihan yang sengaja dihapus admin)
+        BillingService::updateOverdueBills();
+        BillingService::normalizeAllBillDueDates();
 
         $allBills = $this->getBillsData();
         $statusFilter = $request->input('status', 'all');

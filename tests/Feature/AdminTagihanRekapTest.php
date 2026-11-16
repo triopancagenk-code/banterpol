@@ -642,4 +642,96 @@ class AdminTagihanRekapTest extends TestCase
         $response->assertSee('background-color: #dc2626 !important;', false);
         $response->assertDontSee('bg-rose-600', false);
     }
+
+    public function test_bulk_deleted_bills_remain_deleted_and_do_not_recreate_on_page_load(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $c = Order::create([
+            'order_number' => 'PLG-2026-0010',
+            'customer_name' => 'Pelanggan Uji Hapus',
+            'customer_phone' => '0877777777',
+            'customer_email' => 'ujihapus@test.com',
+            'address' => 'Jl. Uji Hapus No. 1',
+            'package_name' => 'Paket 20 Mbps',
+            'price' => 110000,
+            'status' => 'Aktif',
+        ]);
+
+        $bill = Bill::create([
+            'bill_number' => 'INV-202611-010',
+            'order_id' => $c->id,
+            'customer_name' => $c->customer_name,
+            'customer_phone' => $c->customer_phone,
+            'address' => $c->address,
+            'package_name' => $c->package_name,
+            'speed' => '20 Mbps',
+            'due_date' => '20 Nov 2026',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Belum Bayar',
+        ]);
+
+        // Hapus massal / hapus data tagihan
+        $response = $this->actingAs($admin)->post(route('admin.tagihan.bulk-delete'), [
+            'selected_bills' => [$bill->id],
+            'action_type' => 'delete',
+        ]);
+        $response->assertSessionHas('success');
+
+        // Pastikan terhapus di database
+        $this->assertNull(Bill::find($bill->id));
+
+        // Buka kembali halaman admin/tagihan: Tagihan TIDAK boleh dibuat ulang secara gaib
+        $responseGet = $this->actingAs($admin)->get(route('admin.tagihan'));
+        $responseGet->assertOk();
+        $this->assertEquals(0, Bill::where('order_id', $c->id)->count());
+    }
+
+    public function test_sync_bills_with_same_phone_generates_distinct_bills_for_each_customer(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 11, 16, 12, 0, 0, 'Asia/Jakarta'));
+        $admin = $this->createAdminUser();
+
+        // 3 pelanggan berbeda dengan nomor telepon atau nama yang serupa
+        $c1 = Order::create([
+            'order_number' => 'PLG-011',
+            'customer_name' => 'Keluarga Sutrisno 1',
+            'customer_phone' => '081234567000',
+            'customer_email' => 'sutrisno1@test.com',
+            'address' => 'Alamat 1',
+            'package_name' => 'Paket 20 Mbps',
+            'price' => 110000,
+            'status' => 'Aktif',
+        ]);
+        $c2 = Order::create([
+            'order_number' => 'PLG-012',
+            'customer_name' => 'Keluarga Sutrisno 2',
+            'customer_phone' => '081234567000', // Nomor sama
+            'customer_email' => 'sutrisno2@test.com',
+            'address' => 'Alamat 2',
+            'package_name' => 'Paket 20 Mbps',
+            'price' => 110000,
+            'status' => 'Aktif',
+        ]);
+        $c3 = Order::create([
+            'order_number' => 'PLG-013',
+            'customer_name' => 'Keluarga Sutrisno 3',
+            'customer_phone' => '081234567000', // Nomor sama
+            'customer_email' => 'sutrisno3@test.com',
+            'address' => 'Alamat 3',
+            'package_name' => 'Paket 20 Mbps',
+            'price' => 110000,
+            'status' => 'Aktif',
+        ]);
+
+        // Jalankan sinkronisasi
+        $this->actingAs($admin)->post(route('admin.tagihan.generate-semua'));
+
+        // Seluruh 3 pelanggan wajib memiliki tagihan masing-masing (tidak boleh dilewati karena no telepon sama)
+        $this->assertEquals(1, Bill::where('order_id', $c1->id)->count());
+        $this->assertEquals(1, Bill::where('order_id', $c2->id)->count());
+        $this->assertEquals(1, Bill::where('order_id', $c3->id)->count());
+    }
 }

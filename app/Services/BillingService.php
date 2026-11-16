@@ -322,19 +322,32 @@ class BillingService
             // Monitoring Tagihan mengikuti Data Pelanggan:
             // Seluruh pelanggan yang terdaftar di Data Pelanggan diterbitkan tagihan bulanan pada bulan berjalan.
 
-            // Cari apakah sudah ada tagihan untuk pelanggan ini pada bulan berjalan
-            $existingBill = Bill::where(function ($q) use ($customer) {
-                $q->where('order_id', $customer->id);
-                if (!empty($customer->customer_phone) && $customer->customer_phone !== '-') {
-                    $q->orWhere('customer_phone', $customer->customer_phone);
+            // Cari apakah sudah ada tagihan untuk pelanggan ini pada bulan berjalan berdasarkan order_id unik
+            $existingBill = Bill::where('order_id', $customer->id)
+                ->where(function ($q) use ($dueDateStr, $month) {
+                    $q->where('due_date', $dueDateStr)
+                      ->orWhere('period', 'like', '%' . $month->translatedFormat('M Y') . '%');
+                })->first();
+
+            // Jika belum ada berdasarkan order_id, cari apakah ada tagihan manual (order_id null) milik pelanggan ini
+            if (!$existingBill) {
+                $existingBill = Bill::whereNull('order_id')
+                    ->where(function ($q) use ($customer) {
+                        $q->where('customer_name', $customer->customer_name);
+                        if (!empty($customer->customer_phone) && $customer->customer_phone !== '-') {
+                            $q->orWhere('customer_phone', $customer->customer_phone);
+                        }
+                    })
+                    ->where(function ($q) use ($dueDateStr, $month) {
+                        $q->where('due_date', $dueDateStr)
+                          ->orWhere('period', 'like', '%' . $month->translatedFormat('M Y') . '%');
+                    })->first();
+
+                if ($existingBill) {
+                    $existingBill->order_id = $customer->id;
+                    $existingBill->save();
                 }
-                if (!empty($customer->customer_name)) {
-                    $q->orWhere('customer_name', $customer->customer_name);
-                }
-            })->where(function ($q) use ($dueDateStr, $month) {
-                $q->where('due_date', $dueDateStr)
-                  ->orWhere('period', 'like', '%' . $month->translatedFormat('M Y') . '%');
-            })->first();
+            }
 
             if ($existingBill) {
                     // Update due_date jika masih format tanggal lama
