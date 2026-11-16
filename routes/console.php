@@ -29,3 +29,46 @@ Artisan::command('tickets:prune {--days=3 : Jumlah batas usia hari retensi riway
 
 // Penjadwalan otomatis berjalan setiap hari
 Schedule::command('tickets:prune')->daily();
+
+Artisan::command('billing:hapus-semua-rekap {--delete : Hapus permanen record tagihan lunas}', function () {
+    $lunasBills = \App\Models\Bill::where('status', 'Lunas')->get();
+    $count = $lunasBills->count();
+
+    if ($count === 0) {
+        $this->info("Tidak ada data rekap tagihan (Lunas) yang ditemukan.");
+        return 0;
+    }
+
+    $isDeletePermanent = (bool) $this->option('delete');
+    $orderIds = $lunasBills->pluck('order_id')->filter()->unique()->all();
+
+    if ($isDeletePermanent) {
+        \App\Models\Bill::where('status', 'Lunas')->delete();
+        $this->info("Berhasil menghapus secara permanen {$count} data tagihan rekap (Lunas).");
+    } else {
+        \App\Models\Bill::where('status', 'Lunas')->whereNotNull('order_id')->update([
+            'status' => 'Belum Bayar',
+            'paid_at' => null,
+            'receipt_number' => null,
+            'collected_by' => null,
+            'collector_notes' => null,
+            'payment_method' => null,
+        ]);
+
+        \App\Models\Bill::where('status', 'Lunas')->whereNull('order_id')->delete();
+
+        if (!empty($orderIds)) {
+            \App\Models\Order::whereIn('id', $orderIds)->update([
+                'payment_status' => 'Menunggu Pembayaran',
+            ]);
+        }
+
+        $this->info("Berhasil membersihkan {$count} data rekap pembayaran dan mengembalikannya ke status Belum Bayar.");
+    }
+
+    return 0;
+})->purpose('Hapus semua data rekap pembayaran dan reset status tagihan lunas menjadi belum bayar');
+
+Artisan::command('tagihan:hapus-rekap', function () {
+    $this->call('billing:hapus-semua-rekap');
+})->purpose('Alias untuk command billing:hapus-semua-rekap');

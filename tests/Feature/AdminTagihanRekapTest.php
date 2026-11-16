@@ -292,4 +292,143 @@ class AdminTagihanRekapTest extends TestCase
         $adminPov->assertSee($nextBill->bill_number);
         $adminPov->assertSee('Mode Pratinjau Admin');
     }
+
+    public function test_hapus_semua_rekap_clears_paid_bills_and_resets_to_belum_bayar(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $order = Order::create([
+            'order_number' => 'PLG-2026-0099',
+            'customer_name' => 'Pelanggan Hapus Rekap',
+            'customer_phone' => '081234567899',
+            'customer_email' => 'rekap@example.com',
+            'address' => 'Jl. Jenderal Sudirman',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
+            'status' => 'Selesai',
+            'payment_status' => 'Lunas',
+        ]);
+
+        $paidBill = Bill::create([
+            'bill_number' => 'INV-202611-099',
+            'order_id' => $order->id,
+            'customer_name' => 'Pelanggan Hapus Rekap',
+            'customer_phone' => '081234567899',
+            'customer_email' => 'rekap@example.com',
+            'address' => 'Jl. Jenderal Sudirman',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Lunas',
+            'paid_at' => now(),
+            'receipt_number' => 'KWT-202611-099',
+        ]);
+
+        $orphanPaidBill = Bill::create([
+            'bill_number' => 'INV-202611-998',
+            'order_id' => null,
+            'customer_name' => 'Orphan Rekap',
+            'customer_phone' => '081234567898',
+            'customer_email' => 'orphan@example.com',
+            'address' => 'Jl. Jenderal Sudirman',
+            'package_name' => 'Paket 20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Lunas',
+            'paid_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.tagihan.hapus-semua-rekap'));
+        $response->assertRedirect(route('admin.tagihan', ['status' => 'rekap']));
+        $response->assertSessionHas('success');
+
+        // Tagihan terdaftar direset ke Belum Bayar
+        $paidBill->refresh();
+        $this->assertEquals('Belum Bayar', $paidBill->status);
+        $this->assertNull($paidBill->paid_at);
+        $this->assertNull($paidBill->receipt_number);
+
+        // Tagihan orphan dihapus
+        $this->assertNull(Bill::find($orphanPaidBill->id));
+
+        // Rekap sekarang kosong (0 lunas)
+        $this->assertEquals(0, Bill::where('status', 'Lunas')->count());
+    }
+
+    public function test_sidebar_badge_is_consistent_between_monitoring_and_rekap(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $order1 = Order::create([
+            'order_number' => 'PLG-2026-0001',
+            'customer_name' => 'Cust Unpaid',
+            'customer_phone' => '081234567801',
+            'customer_email' => 'unpaid@example.com',
+            'address' => 'Jl. Mawar',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
+            'status' => 'Selesai',
+        ]);
+
+        $order2 = Order::create([
+            'order_number' => 'PLG-2026-0002',
+            'customer_name' => 'Cust Paid',
+            'customer_phone' => '081234567802',
+            'customer_email' => 'paid@example.com',
+            'address' => 'Jl. Melati',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
+            'status' => 'Selesai',
+        ]);
+
+        Bill::create([
+            'bill_number' => 'INV-202611-001',
+            'order_id' => $order1->id,
+            'customer_name' => 'Cust Unpaid',
+            'customer_phone' => '081234567801',
+            'address' => 'Jl. Mawar',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Belum Bayar',
+        ]);
+
+        Bill::create([
+            'bill_number' => 'INV-202611-002',
+            'order_id' => $order2->id,
+            'customer_name' => 'Cust Paid',
+            'customer_phone' => '081234567802',
+            'address' => 'Jl. Melati',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Lunas',
+            'paid_at' => now(),
+        ]);
+
+        // Pada monitoring tagihan: badge tagihan harus 1 (hanya unpaid)
+        $respMonitoring = $this->actingAs($admin)->get(route('admin.tagihan'));
+        $respMonitoring->assertOk();
+
+        // Pada rekap: badge tagihan di sidebar harus TETAP 1 (konsisten, tidak melonjak jadi 2)
+        $respRekap = $this->actingAs($admin)->get(route('admin.tagihan', ['status' => 'rekap']));
+        $respRekap->assertOk();
+    }
 }

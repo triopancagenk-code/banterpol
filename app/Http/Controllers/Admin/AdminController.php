@@ -2981,6 +2981,50 @@ class AdminController extends Controller
     }
 
     /**
+     * Hapus / Bersihkan Seluruh Data Rekapitulasi Pembayaran (Lunas)
+     */
+    public function hapusSemuaRekap(Request $request)
+    {
+        try {
+            $lunasBills = Bill::where('status', 'Lunas')->get();
+            $count = $lunasBills->count();
+
+            if ($count === 0) {
+                return redirect()->route('admin.tagihan', ['status' => 'rekap'])
+                    ->with('info', 'Tidak ada data rekap pembayaran (Lunas) yang tersimpan.');
+            }
+
+            $orderIds = $lunasBills->pluck('order_id')->filter()->unique()->all();
+
+            // 1. Reset tagihan berstatus Lunas kembali menjadi Belum Bayar dan bersihkan riwayat bukti/kuitansi pembayaran
+            Bill::where('status', 'Lunas')->whereNotNull('order_id')->update([
+                'status' => 'Belum Bayar',
+                'paid_at' => null,
+                'receipt_number' => null,
+                'collected_by' => null,
+                'collector_notes' => null,
+                'payment_method' => null,
+            ]);
+
+            // 2. Hapus tagihan tanpa order_id (orphan / data dummy manual)
+            Bill::where('status', 'Lunas')->whereNull('order_id')->delete();
+
+            // 3. Reset payment_status pada pesanan pelanggan terkait
+            if (!empty($orderIds)) {
+                Order::whereIn('id', $orderIds)->update([
+                    'payment_status' => 'Menunggu Pembayaran',
+                ]);
+            }
+
+            return redirect()->route('admin.tagihan', ['status' => 'rekap'])
+                ->with('success', "Seluruh data rekap pembayaran ({$count} data) berhasil dihapus dan dibersihkan dari rekap.");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error hapusSemuaRekap: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menghapus data rekap: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Halaman Pengintaian & Penanganan Laporan Masalah / Trouble Tickets
      */
     public function laporanMasalah(Request $request)

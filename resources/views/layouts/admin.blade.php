@@ -139,10 +139,10 @@
         @php
           $pendingBillsCount = 0;
           try {
-              if (isset($counts['all']) && request()->routeIs('admin.tagihan*') && request('status') !== 'rekap' && request('status') !== 'Lunas') {
-                  $pendingBillsCount = $counts['all'];
+              if (isset($counts['belum_bayar']) && request()->routeIs('admin.tagihan*')) {
+                  $pendingBillsCount = (int)$counts['belum_bayar'] + (int)($counts['menunggu'] ?? 0) + (int)($counts['jatuh_tempo'] ?? 0);
               } else {
-                  $pendingBillsCount = count((new \App\Http\Controllers\Admin\AdminController())->getBillsData());
+                  $pendingBillsCount = \App\Models\Bill::activeForMonitoring()->whereIn('status', ['Menunggu Verifikasi', 'Belum Bayar', 'Jatuh Tempo'])->count();
               }
           } catch (\Exception $e) {}
         @endphp

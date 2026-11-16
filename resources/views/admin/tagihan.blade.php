@@ -583,32 +583,46 @@ function tagihanManager() {
         </div>
       </div>
 
-      <!-- Dropdown Pilih Bulan Rekap -->
-      <form method="GET" action="{{ route('admin.tagihan') }}" class="flex items-center gap-2 shrink-0">
-        <input type="hidden" name="status" value="rekap">
-        @if(!empty($search))
-          <input type="hidden" name="q" value="{{ $search }}">
-        @endif
-        <div class="flex items-center gap-1.5 bg-white border border-emerald-300 rounded-xl px-3 py-1.5 shadow-2xs">
-          <i class="fa-regular fa-calendar text-emerald-600 text-xs"></i>
-          <span class="text-xs font-bold text-slate-600">Bulan:</span>
-          <select name="month" onchange="this.form.submit()"
-                  class="text-xs font-bold bg-transparent border-0 p-0 text-slate-800 focus:ring-0 cursor-pointer">
-            <option value="all">Semua Bulan</option>
-            @foreach($availableMonths ?? [] as $m)
-              <option value="{{ $m['key'] }}" {{ ($monthFilter ?? 'all') === $m['key'] ? 'selected' : '' }}>
-                {{ $m['label'] }}
-              </option>
-            @endforeach
-          </select>
-        </div>
-        @if(($monthFilter ?? 'all') !== 'all')
-          <a href="{{ route('admin.tagihan', ['status' => 'rekap', 'q' => $search]) }}"
-             class="text-xs text-slate-500 hover:text-red-600 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition" title="Tampilkan Semua Bulan">
-            <i class="fa-solid fa-xmark"></i>
-          </a>
-        @endif
-      </form>
+      <!-- Actions Rekap: Filter Bulan & Tombol Hapus Semua Data Rekap -->
+      <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
+        <!-- Dropdown Pilih Bulan Rekap -->
+        <form method="GET" action="{{ route('admin.tagihan') }}" class="flex items-center gap-2 shrink-0">
+          <input type="hidden" name="status" value="rekap">
+          @if(!empty($search))
+            <input type="hidden" name="q" value="{{ $search }}">
+          @endif
+          <div class="flex items-center gap-1.5 bg-white border border-emerald-300 rounded-xl px-3 py-1.5 shadow-2xs">
+            <i class="fa-regular fa-calendar text-emerald-600 text-xs"></i>
+            <span class="text-xs font-bold text-slate-600">Bulan:</span>
+            <select name="month" onchange="this.form.submit()"
+                    class="text-xs font-bold bg-transparent border-0 p-0 text-slate-800 focus:ring-0 cursor-pointer">
+              <option value="all">Semua Bulan</option>
+              @foreach($availableMonths ?? [] as $m)
+                <option value="{{ $m['key'] }}" {{ ($monthFilter ?? 'all') === $m['key'] ? 'selected' : '' }}>
+                  {{ $m['label'] }}
+                </option>
+              @endforeach
+            </select>
+          </div>
+          @if(($monthFilter ?? 'all') !== 'all')
+            <a href="{{ route('admin.tagihan', ['status' => 'rekap', 'q' => $search]) }}"
+               class="text-xs text-slate-500 hover:text-red-600 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition" title="Tampilkan Semua Bulan">
+              <i class="fa-solid fa-xmark"></i>
+            </a>
+          @endif
+        </form>
+
+        <!-- Tombol Hapus Semua Data Rekap -->
+        <form action="{{ route('admin.tagihan.hapus-semua-rekap') }}" method="POST"
+              onsubmit="return confirm('PENTING: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA REKAP PEMBAYARAN?\n\nSeluruh riwayat tagihan yang telah lunas akan dibersihkan dari rekap dan dikembalikan ke status Belum Bayar di Monitoring Tagihan.')">
+          @csrf
+          <button type="submit"
+                  class="h-9 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+            <span>Hapus Semua Rekap</span>
+          </button>
+        </form>
+      </div>
     </div>
   @endif
 
