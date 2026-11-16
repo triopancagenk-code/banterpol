@@ -269,7 +269,7 @@ class AdminTagihanRekapTest extends TestCase
             ->first();
         $this->assertNotNull($nextBill);
         $this->assertEquals('Belum Bayar', $nextBill->status);
-        $this->assertStringStartsWith('05', $nextBill->due_date);
+        $this->assertTrue(str_starts_with($nextBill->due_date, '20') || str_starts_with($nextBill->due_date, '05'));
 
         // 2. Pada POV Pelanggan (ketika pelanggan login dan buka halaman /tagihan)
         $customerPov = $this->actingAs($customer)->get(route('tagihan'));

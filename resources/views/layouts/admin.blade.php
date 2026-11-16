@@ -142,7 +142,7 @@
               if (isset($counts['all']) && request()->routeIs('admin.tagihan*') && request('status') !== 'rekap' && request('status') !== 'Lunas') {
                   $pendingBillsCount = $counts['all'];
               } else {
-                  $pendingBillsCount = \App\Models\Bill::activeForMonitoring()->whereIn('status', ['Menunggu Verifikasi', 'Belum Bayar', 'Jatuh Tempo'])->count();
+                  $pendingBillsCount = count((new \App\Http\Controllers\Admin\AdminController())->getBillsData());
               }
           } catch (\Exception $e) {}
         @endphp

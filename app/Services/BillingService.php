@@ -38,17 +38,65 @@ class BillingService
     }
 
     /**
+     * Memeriksa apakah pesanan merupakan pemesanan baru pada bulan berjalan/mendatang.
+     * Pelanggan yang baru memesan pada bulan berjalan HANYA muncul di Data Pelanggan,
+     * dan tagihannya untuk data pelanggan baru, baru akan muncul bulan depan.
+     */
+    public static function isNewOrderInCurrentOrFutureMonth(Order $customer, ?Carbon $targetMonth = null): bool
+    {
+        $targetMonth = $targetMonth ? $targetMonth->copy()->startOfMonth() : now('Asia/Jakarta')->startOfMonth();
+
+        // 1. Data pelanggan yang sudah ada (kode PLG- atau BTR-) bukan merupakan pesanan baru
+        if (str_starts_with((string)$customer->order_number, 'PLG-') || str_starts_with((string)$customer->order_number, 'BTR-')) {
+            return false;
+        }
+
+        // 2. Jika bukan format pesanan baru (ORD-), maka dianggap sebagai data pelanggan yang sudah ada
+        if (!str_starts_with((string)$customer->order_number, 'ORD-')) {
+            return false;
+        }
+
+        // 3. Jika pelanggan sudah memiliki riwayat tagihan Lunas, berarti bukan lagi pemesanan baru yang menunggu tagihan pertama
+        if (Bill::where('order_id', $customer->id)->where('status', 'Lunas')->exists()) {
+            return false;
+        }
+
+        // 4. Periksa tanggal dari order_number jika ada format ORD-YYYYMM
+        if (preg_match('/ORD-(\d{4})(\d{2})/', (string)$customer->order_number, $matches)) {
+            $orderNumMonthKey = $matches[1] . '-' . $matches[2];
+            if ($orderNumMonthKey < $targetMonth->format('Y-m')) {
+                return false; // Pesanan dari bulan sebelumnya, bukan pesanan baru bulan ini
+            }
+        }
+
+        // 4. Untuk pesanan baru (ORD-): periksa tanggal pemesanan atau tanggal pemasangan
+        $orderDate = null;
+        if (!empty($customer->installed_at)) {
+            $orderDate = Carbon::parse($customer->installed_at);
+        } elseif (!empty($customer->installation_date)) {
+            $orderDate = Carbon::parse($customer->installation_date);
+        } elseif (!empty($customer->created_at)) {
+            $orderDate = Carbon::parse($customer->created_at);
+        }
+
+        if (!$orderDate) {
+            return true;
+        }
+
+        // Jika bulan pemesanan / pemasangan sama atau setelah bulan target,
+        // maka tergolong pelanggan yang baru memesan (tagihan baru muncul bulan depan)
+        return $orderDate->format('Y-m') >= $targetMonth->format('Y-m');
+    }
+
+    /**
      * Menerbitkan tagihan pertama untuk pesanan baru / pendaftaran langganan.
      * Terbit tanggal 05, batas pembayaran maksimal selalu tanggal 20.
      */
     public static function generateBillForOrder(Order $order): ?Bill
     {
-        // Aturan Bisnis:
-        // Jika pelanggan baru sudah melakukan pembayaran pemasangan dengan status 'Lunas',
-        // maka pada tagihan belum muncul tagihan untuk bulan pemasangan karena biaya pemasangan
-        // sama saja dengan biaya tagihan bulanan pertama. Tagihan akan muncul untuk bulan selanjutnya.
-        if (strcasecmp(trim((string)$order->payment_status), 'Lunas') === 0) {
-            // Hapus tagihan unpaid untuk order ini jika sempat terbuat sebelumnya
+        // Pelanggan yang baru memesan pada bulan berjalan HANYA muncul di Data Pelanggan,
+        // dan tagihannya untuk data pelanggan baru, baru muncul bulan depan
+        if (self::isNewOrderInCurrentOrFutureMonth($order)) {
             Bill::where('order_id', $order->id)
                 ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
                 ->delete();
@@ -254,67 +302,47 @@ class BillingService
         }
         $createdCount = 0;
 
-        // Tagihan terbit mulai tanggal 5 setiap bulannya
-        if ($now->day >= 5) {
-            $month = $now->copy()->startOfMonth();
-            $billDateStr = '05 ' . $month->translatedFormat('M Y');
-            $dueDateStr = '20 ' . $month->translatedFormat('M Y');
-            $periodEnd = $month->copy()->endOfMonth();
-            $periodStr = '01 ' . $month->translatedFormat('M Y') . ' – ' . $periodEnd->translatedFormat('d M Y');
+        // Tagihan bulanan untuk pelanggan yang sudah ada (terbit tgl 05, jatuh tempo tgl 20)
+        $month = $now->copy()->startOfMonth();
+        $billDateStr = '05 ' . $month->translatedFormat('M Y');
+        $dueDateStr = '20 ' . $month->translatedFormat('M Y');
+        $periodEnd = $month->copy()->endOfMonth();
+        $periodStr = '01 ' . $month->translatedFormat('M Y') . ' – ' . $periodEnd->translatedFormat('d M Y');
 
-            $monthPrefix = 'INV-' . $month->format('Ym') . '-';
-            $customers = Order::forCustomerData()->get();
+        $monthPrefix = 'INV-' . $month->format('Ym') . '-';
+        $customers = Order::forCustomerData()->get();
 
-            foreach ($customers as $customer) {
-                // Tentukan tanggal pemasangan / pendaftaran pelanggan
-                $installDate = null;
-                if (!empty($customer->installed_at)) {
-                    $installDate = Carbon::parse($customer->installed_at);
-                } elseif (!empty($customer->installation_date)) {
-                    $installDate = Carbon::parse($customer->installation_date);
-                } elseif (!empty($customer->created_at)) {
-                    $installDate = Carbon::parse($customer->created_at);
+        foreach ($customers as $customer) {
+            // Aturan Bisnis:
+            // Yang muncul pada monitoring tagihan itu mengikuti Data Pelanggan (kode PLG- dsb),
+            // sedangkan pelanggan yang baru memesan (kode ORD-) hanya muncul di Data Pelanggan
+            // dan tagihannya untuk data pelanggan baru, baru muncul bulan depan.
+            if (self::isNewOrderInCurrentOrFutureMonth($customer, $month)) {
+                Bill::where('order_id', $customer->id)
+                    ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
+                    ->where(function ($q) use ($dueDateStr, $month) {
+                        $q->where('due_date', $dueDateStr)
+                          ->orWhere('period', 'like', '%' . $month->translatedFormat('M Y') . '%');
+                    })
+                    ->delete();
+                continue;
+            }
+
+            // Cari apakah sudah ada tagihan untuk pelanggan ini pada bulan berjalan
+            $existingBill = Bill::where(function ($q) use ($customer) {
+                $q->where('order_id', $customer->id);
+                if (!empty($customer->customer_phone) && $customer->customer_phone !== '-') {
+                    $q->orWhere('customer_phone', $customer->customer_phone);
                 }
-
-                $isInstallationPaid = (strcasecmp(trim((string)$customer->payment_status), 'Lunas') === 0);
-
-                // Aturan Bisnis:
-                // Pelanggan baru yang sudah melakukan pembayaran pemasangan berstatus 'Lunas'
-                // belum dikenakan tagihan pada bulan pemasangannya (atau jadwal di bulan berjalan/mendatang),
-                // karena biaya pemasangan sama saja dengan biaya tagihan bulanan pertama.
-                // Tagihan baru akan terbit/muncul untuk bulan selanjutnya.
-                $isNewCustomerInCurrentOrFutureMonth = false;
-                if ($installDate && $isInstallationPaid) {
-                    $installMonthKey = $installDate->format('Y-m');
-                    $currentMonthKey = $month->format('Y-m');
-                    if ($installMonthKey >= $currentMonthKey) {
-                        $isNewCustomerInCurrentOrFutureMonth = true;
-                    }
+                if (!empty($customer->customer_name)) {
+                    $q->orWhere('customer_name', $customer->customer_name);
                 }
+            })->where(function ($q) use ($dueDateStr, $month) {
+                $q->where('due_date', $dueDateStr)
+                  ->orWhere('period', 'like', '%' . $month->translatedFormat('M Y') . '%');
+            })->first();
 
-                // Cari apakah sudah ada tagihan untuk pelanggan ini pada bulan berjalan
-                $existingBill = Bill::where(function ($q) use ($customer) {
-                    $q->where('order_id', $customer->id);
-                    if (!empty($customer->customer_phone) && $customer->customer_phone !== '-') {
-                        $q->orWhere('customer_phone', $customer->customer_phone);
-                    }
-                    if (!empty($customer->customer_name)) {
-                        $q->orWhere('customer_name', $customer->customer_name);
-                    }
-                })->where(function ($q) use ($dueDateStr, $month) {
-                    $q->where('due_date', $dueDateStr)
-                      ->orWhere('period', 'like', '%' . $month->translatedFormat('M Y') . '%');
-                })->first();
-
-                if ($isNewCustomerInCurrentOrFutureMonth) {
-                    // Pastikan tidak ada tagihan unpaid bulan ini untuk pelanggan baru yang sudah bayar lunas pemasangan
-                    if ($existingBill && in_array($existingBill->status, ['Belum Bayar', 'Jatuh Tempo'])) {
-                        $existingBill->delete();
-                    }
-                    continue; // Belum muncul tagihan bulan ini, tagihan baru muncul bulan selanjutnya
-                }
-
-                if ($existingBill) {
+            if ($existingBill) {
                     // Update due_date jika masih format tanggal lama
                     if (!preg_match('/^20\s+/i', (string) $existingBill->due_date)) {
                         $existingBill->due_date = $dueDateStr;
@@ -386,7 +414,6 @@ class BillingService
                     $createdCount++;
                 }
             }
-        }
 
         // Periksa dan perbarui status semua tagihan aktif yang melewati tanggal jatuh tempo
         self::updateOverdueBills($now);

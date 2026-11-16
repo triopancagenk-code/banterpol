@@ -21,13 +21,31 @@ class AdminController extends Controller
     /**
      * Data Master Tagihan Pelanggan (Simulasi Database)
      */
-    private function getBillsData()
+    public function getBillsData()
     {
         try {
             $dbBills = Bill::with('order')->latest()->get();
             if ($dbBills->isNotEmpty()) {
                 $filteredBills = $dbBills->filter(function ($b) {
-                    return $b->isOrderCompleted();
+                    if (!$b->order_id) {
+                        return true;
+                    }
+
+                    $order = $b->order ?: Order::find($b->order_id);
+                    if (!$order) {
+                        return false;
+                    }
+
+                    if (in_array(strtolower(trim((string)$order->status)), ['dibatalkan', 'batal'])) {
+                        return false;
+                    }
+
+                    // Monitoring tagihan mengikuti Data Pelanggan. Pelanggan baru yang memesan tagihannya baru muncul bulan depan
+                    if (\App\Services\BillingService::isNewOrderInCurrentOrFutureMonth($order)) {
+                        return false;
+                    }
+
+                    return true;
                 });
 
                 return $filteredBills->map(function ($b) {
@@ -99,7 +117,9 @@ class AdminController extends Controller
                     ];
                 })->toArray();
             }
-        } catch (\Exception $e) {}
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error getBillsData: ' . $e->getMessage());
+        }
 
         return [];
     }
@@ -1150,7 +1170,9 @@ class AdminController extends Controller
             $pendingOrdersCount = Order::where('order_number', 'not like', 'PLG-%')
                 ->where('admin_notes', 'not like', '%input manual Admin%')
                 ->where('status', 'Menunggu Konfirmasi')->count();
-        } catch (\Exception $e) {}
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error dashboard stats: ' . $e->getMessage());
+        }
 
         $stats = [
             'total_customers' => Order::forCustomerData()->count(),
@@ -1335,9 +1357,8 @@ class AdminController extends Controller
             'installed_at' => ($status === 'Selesai') ? now() : null,
         ]);
 
-        // Jika berstatus 'Selesai' dan belum lunas, otomatis terbitkan tagihan pemasangan.
-        // Jika sudah Lunas pembayaran pemasangan, pada bulan pemasangan belum muncul tagihan (tagihan akan muncul bulan selanjutnya).
-        if ($order->status === 'Selesai' && strcasecmp(trim((string)$order->payment_status), 'Lunas') !== 0) {
+        // Pada monitoring tagihan, tetap munculkan tagihan untuk bulan ini
+        if ($order->status === 'Selesai' || in_array(strtolower($order->status), ['selesai', 'aktif', 'selesai / aktif'])) {
             BillingService::generateBillForOrder($order);
         }
 
@@ -1432,14 +1453,8 @@ class AdminController extends Controller
 
         $order->save();
 
-        if (strcasecmp(trim((string)$order->payment_status), 'Lunas') === 0) {
-            // Pelanggan baru sudah lunas pembayaran pemasangan:
-            // Pada bulan pemasangan belum muncul tagihan karena biaya pemasangan sama saja dengan biaya tagihan bulanan pertama.
-            // Hapus tagihan unpaid bulan berjalan jika sempat terbuat sebelumnya.
-            Bill::where('order_id', $order->id)
-                ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
-                ->delete();
-        } elseif ($order->status === 'Selesai') {
+        // Pada monitoring tagihan, tetap munculkan tagihan untuk bulan ini
+        if ($order->status === 'Selesai' || in_array(strtolower($order->status), ['selesai', 'aktif', 'selesai / aktif'])) {
             BillingService::generateBillForOrder($order);
         }
 
@@ -1764,7 +1779,9 @@ class AdminController extends Controller
                 $cust->order_number = $newNumber;
                 $cust->save();
             }
-        } catch (\Exception $e) {}
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error normalizeManualCustomersOrderNumber: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -2231,7 +2248,7 @@ class AdminController extends Controller
         })->values()->all();
 
         $counts = [
-            'all' => $activeBills->count(), // Total tagihan aktif yang perlu dimonitor (tanpa yang sudah lunas)
+            'all' => $activeBills->count(), // Total tagihan aktif Data Pelanggan yang perlu dimonitor (tanpa yang sudah lunas)
             'menunggu' => $activeBills->where('status', 'Menunggu Verifikasi')->count(),
             'belum_bayar' => $activeBills->where('status', 'Belum Bayar')->count(),
             'jatuh_tempo' => $activeBills->where('status', 'Jatuh Tempo')->count(),
@@ -2435,9 +2452,13 @@ class AdminController extends Controller
                 if (empty($bill->receipt_number)) {
                     $bill->receipt_number = 'KWT-' . date('Ym') . '-' . rand(100, 999);
                 }
+                $bill->save();
 
                 // Otomatis masukkan / aktifkan ke Data Pelanggan karena sudah Lunas
                 $this->syncCustomerToDataPelanggan($bill);
+
+                // Terbitkan tagihan bulan selanjutnya untuk pelanggan yang telah lunas
+                BillingService::generateNextBillForPaidBill($bill);
 
                 // Pulihkan isolir jika pelanggan terisolir
                 if ($bill->order) {
@@ -2798,6 +2819,9 @@ class AdminController extends Controller
 
         // Otomatis masukkan / aktifkan ke Data Pelanggan karena sudah Lunas
         $this->syncCustomerToDataPelanggan($bill);
+
+        // Terbitkan tagihan bulan selanjutnya untuk pelanggan yang telah lunas
+        BillingService::generateNextBillForPaidBill($bill);
 
         // Jika ada order yang terisolir, otomatis pulihkan / aktifkan kembali
         if ($bill->order) {

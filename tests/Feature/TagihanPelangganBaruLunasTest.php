@@ -34,6 +34,7 @@ class TagihanPelangganBaruLunasTest extends TestCase
 
     public function test_pelanggan_baru_with_lunas_installation_has_no_bill_for_installation_month(): void
     {
+        $admin = $this->createAdminUser();
         $user = $this->createCustomerUser();
 
         // Buat pesanan baru yang sudah terpasang dan status pembayaran pemasangan Lunas di bulan berjalan
@@ -65,20 +66,20 @@ class TagihanPelangganBaruLunasTest extends TestCase
         $bills = Bill::where('order_id', $order->id)->get();
         $this->assertCount(0, $bills);
 
-        // Akses halaman tagihan sebagai pelanggan
-        $response = $this->actingAs($user)->get(route('tagihan'));
+        // Muncul di Data Pelanggan
+        $responsePelanggan = $this->actingAs($admin)->get(route('admin.pelanggan'));
+        $responsePelanggan->assertOk();
+        $responsePelanggan->assertSee($user->name);
 
-        $response->assertStatus(200);
-        // Pastikan tidak ada tagihan belum dibayar
-        $response->assertDontSee('Total Tagihan Belum Dibayar');
-        $response->assertDontSee('1 tagihan belum dibayar');
-        // Pastikan informasi lunas pemasangan muncul dan tagihan akan terbit bulan depan
-        $response->assertSee('Pembayaran Pemasangan Lunas');
-        $response->assertSee('Tidak Ada Tagihan Berjalan');
-        $response->assertSee('Tagihan berikutnya akan muncul untuk bulan');
+        // Tidak muncul di Monitoring Tagihan bulan ini (mengikuti Data Pelanggan lama, bukan Monitoring Pesanan)
+        $responseTagihan = $this->actingAs($admin)->get(route('admin.tagihan'));
+        $responseTagihan->assertOk();
+        $responseTagihan->assertViewHas('bills', function ($bills) use ($order) {
+            return !collect($bills)->pluck('order_id')->contains($order->id);
+        });
     }
 
-    public function test_pelanggan_baru_unpaid_installation_creates_bill_and_cleans_up_when_marked_lunas(): void
+    public function test_pelanggan_baru_unpaid_installation_creates_no_bill_for_current_month(): void
     {
         $admin = $this->createAdminUser();
         $user = $this->createCustomerUser('Pelanggan Belum Bayar', 'belumbayar@gmail.com', '081234567892');
@@ -104,27 +105,21 @@ class TagihanPelangganBaruLunasTest extends TestCase
             'installed_at' => now('Asia/Jakarta'),
         ]);
 
-        // Tagihan terbit karena pemasangan belum lunas
+        // Tagihan bulan berjalan tidak terbit untuk pelanggan baru yang baru memesan bulan ini
         $bill = BillingService::generateBillForOrder($order);
-        $this->assertNotNull($bill);
-        $this->assertEquals('Belum Bayar', $bill->status);
+        $this->assertNull($bill);
 
-        // Admin kemudian mengonfirmasi pembayaran pemasangan menjadi 'Lunas'
-        $updateResponse = $this->actingAs($admin)->post(route('admin.pesanan.status', ['id' => $order->id]), [
-            'status' => 'Selesai',
-            'payment_status' => 'Lunas',
-        ]);
-        $updateResponse->assertSessionHas('success');
+        // Pelanggan muncul di Data Pelanggan
+        $responsePelanggan = $this->actingAs($admin)->get(route('admin.pelanggan'));
+        $responsePelanggan->assertOk();
+        $responsePelanggan->assertSee($order->customer_name);
 
-        // Tagihan unpaid untuk bulan pemasangan harus otomatis terhapus
-        $remainingBills = Bill::where('order_id', $order->id)->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])->get();
-        $this->assertCount(0, $remainingBills);
-
-        // Di halaman tagihan pelanggan juga tidak muncul tagihan belum dibayar
-        $response = $this->actingAs($user)->get(route('tagihan'));
-        $response->assertStatus(200);
-        $response->assertDontSee('Total Tagihan Belum Dibayar');
-        $response->assertSee('Tidak Ada Tagihan Berjalan');
+        // Tagihan tidak muncul di monitoring tagihan bulan berjalan
+        $responseTagihan = $this->actingAs($admin)->get(route('admin.tagihan'));
+        $responseTagihan->assertOk();
+        $responseTagihan->assertViewHas('bills', function ($bills) use ($order) {
+            return !collect($bills)->pluck('order_id')->contains($order->id);
+        });
     }
 
     public function test_pelanggan_baru_with_lunas_installation_gets_bill_in_next_month(): void

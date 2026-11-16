@@ -15,7 +15,7 @@
     <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
         <p class="text-xs font-semibold text-slate-500">Pelanggan Aktif</p>
-        <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">{{ $stats['active_customers'] }} <span class="text-xs font-medium text-slate-400">/ {{ $stats['total_customers'] }}</span></h3>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">{{ $stats['active_customers'] ?? 0 }} <span class="text-xs font-medium text-slate-400">/ {{ $stats['total_customers'] ?? 0 }}</span></h3>
         <a href="{{ route('admin.pelanggan') }}" class="text-[10px] sm:text-[11px] text-brand hover:underline font-bold mt-1 inline-block">
           Kelola Data Pelanggan &rarr;
         </a>
@@ -43,7 +43,7 @@
     <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
         <p class="text-xs font-semibold text-slate-500">Tagihan Dicek</p>
-        <h3 class="text-xl sm:text-2xl font-black text-amber-500 mt-1">{{ $stats['pending_bills_count'] }} <span class="text-xs font-normal text-slate-400">Inv</span></h3>
+        <h3 class="text-xl sm:text-2xl font-black text-amber-500 mt-1">{{ $stats['pending_bills_count'] ?? 0 }} <span class="text-xs font-normal text-slate-400">Inv</span></h3>
         <a href="{{ route('admin.tagihan', ['status' => 'Menunggu Verifikasi']) }}" class="text-[10px] sm:text-[11px] text-brand hover:underline font-bold mt-1 inline-block">
           Verifikasi &rarr;
         </a>
@@ -57,9 +57,9 @@
     <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
         <p class="text-xs font-semibold text-slate-500">Laporan Masalah</p>
-        <h3 class="text-xl sm:text-2xl font-black text-red-600 mt-1">{{ $stats['open_tickets_count'] }} <span class="text-xs font-normal text-slate-400">Tiket</span></h3>
+        <h3 class="text-xl sm:text-2xl font-black text-red-600 mt-1">{{ $stats['open_tickets_count'] ?? 0 }} <span class="text-xs font-normal text-slate-400">Tiket</span></h3>
         <p class="text-[10px] sm:text-[11px] text-red-500 font-bold mt-1 flex items-center gap-1">
-          <i class="fa-solid fa-triangle-exclamation"></i> {{ $stats['critical_tickets_count'] }} kritis
+          <i class="fa-solid fa-triangle-exclamation"></i> {{ $stats['critical_tickets_count'] ?? 0 }} kritis
         </p>
       </div>
       <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-red-50 text-brand flex items-center justify-center text-lg sm:text-xl shrink-0">
@@ -71,10 +71,10 @@
     <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
         <p class="text-xs font-semibold text-slate-500">Trafik Bandwidth</p>
-        <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">{{ $stats['bandwidth_in'] }}</h3>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">{{ $stats['bandwidth_in'] ?? '0 Mbps' }}</h3>
         <p class="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-1">
           <span class="text-emerald-600 font-bold">In</span> &bull; 
-          <span class="text-blue-600 font-bold">{{ $stats['bandwidth_out'] }} Out</span>
+          <span class="text-blue-600 font-bold">{{ $stats['bandwidth_out'] ?? '0 Mbps' }} Out</span>
         </p>
       </div>
       <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center text-lg sm:text-xl shrink-0">
@@ -137,7 +137,7 @@
         </div>
         <h3 class="text-xl font-black text-white leading-snug">Peta Persebaran ODC & ODP Fiber</h3>
         <p class="text-xs text-slate-300 mt-2 leading-relaxed">
-          Pantau {{ $stats['odc_count'] }} Optical Distribution Cabinet (ODC) dan {{ $stats['odp_count'] }} Optical Distribution Point (ODP) di seluruh area jaringan Banterpool.
+          Pantau {{ $stats['odc_count'] ?? 0 }} Optical Distribution Cabinet (ODC) dan {{ $stats['odp_count'] ?? 0 }} Optical Distribution Point (ODP) di seluruh area jaringan Banterpool.
         </p>
 
         <!-- Status Warning Fiber Cut -->

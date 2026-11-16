@@ -186,11 +186,7 @@ class Order extends Model
     public function scopeForCustomerData($query)
     {
         $query->where(function ($q) {
-            $q->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'selesai', 'aktif', 'Non-Aktif', 'non-aktif', 'Isolir', 'isolir'])
-              ->orWhere(function ($sub) {
-                  $sub->where('order_number', 'like', 'PLG-%')
-                      ->whereNotIn('status', ['Menunggu Konfirmasi', 'Jadwal Teknisi', 'Sedang Dipasang', 'Kendala Lapangan', 'Dibatalkan']);
-              });
+            $q->whereNotIn('status', ['Dibatalkan', 'dibatalkan', 'batal', 'Batal']);
         });
 
         // Filter khusus: jika admin yang sedang login adalah akun Banterpool, batasi hanya pelanggan Banterpool

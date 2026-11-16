@@ -472,6 +472,9 @@
           <select name="status" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
             <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status Pelanggan</option>
             <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Aktif (Online)</option>
+            <option value="Menunggu Konfirmasi" {{ $statusFilter === 'Menunggu Konfirmasi' ? 'selected' : '' }}>Menunggu Konfirmasi</option>
+            <option value="Jadwal Teknisi" {{ $statusFilter === 'Jadwal Teknisi' ? 'selected' : '' }}>Jadwal Teknisi</option>
+            <option value="Sedang Dipasang" {{ $statusFilter === 'Sedang Dipasang' ? 'selected' : '' }}>Sedang Dipasang</option>
             <option value="Non-Aktif" {{ $statusFilter === 'Non-Aktif' ? 'selected' : '' }}>Non-Aktif / Isolir</option>
             <option value="Dibatalkan" {{ $statusFilter === 'Dibatalkan' ? 'selected' : '' }}>Dibatalkan</option>
           </select>

@@ -474,7 +474,6 @@ function tagihanManager() {
           <select name="status" onchange="document.getElementById('tagihanFilterForm').submit()"
                   class="h-9 text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer">
             <option value="all" {{ ($statusFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Status Aktif</option>
-            <option value="semua_termasuk_lunas" {{ ($statusFilter ?? '') === 'semua_termasuk_lunas' ? 'selected' : '' }}>Semua Termasuk Lunas</option>
             <option value="Belum Bayar" {{ ($statusFilter ?? '') === 'Belum Bayar' ? 'selected' : '' }}>Belum Bayar</option>
             <option value="Lunas" {{ ($statusFilter ?? '') === 'Lunas' || ($statusFilter ?? '') === 'rekap' ? 'selected' : '' }}>Sudah Terbayar / Lunas</option>
             <option value="Menunggu Verifikasi" {{ ($statusFilter ?? '') === 'Menunggu Verifikasi' ? 'selected' : '' }}>Menunggu Verifikasi</option>
@@ -505,7 +504,7 @@ function tagihanManager() {
 
         <!-- Tombol Export -->
         <a href="{{ route('admin.tagihan.export', request()->query()) }}"
-           class="h-9 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition flex items-center gap-1.5 shadow-2xs">
+            class="h-9 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition flex items-center gap-1.5 shadow-2xs">
           <i class="fa-solid fa-file-excel text-emerald-600"></i>
           <span>Export</span>
         </a>
@@ -631,9 +630,15 @@ function tagihanManager() {
             <th class="px-4 py-3.5 text-left font-bold text-slate-700">Pelanggan</th>
             <th class="px-4 py-3.5 text-center font-bold text-slate-700">Wilayah</th>
             <th class="px-4 py-3.5 text-left font-bold text-slate-700">Paket & PPPoE</th>
-            <th class="px-4 py-3.5 text-center font-bold text-slate-700">Tagihan Nett</th>
-            <th class="px-4 py-3.5 text-center font-bold text-slate-700">Jatuh Tempo</th>
-            <th class="px-4 py-3.5 text-center font-bold text-slate-700">Status</th>
+            @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+              <th class="px-4 py-3.5 text-center font-bold text-slate-700">Waktu Pelunasan / Rekap</th>
+              <th class="px-4 py-3.5 text-center font-bold text-slate-700">Total Dibayar</th>
+              <th class="px-4 py-3.5 text-center font-bold text-slate-700">Metode & Kuitansi</th>
+            @else
+              <th class="px-4 py-3.5 text-center font-bold text-slate-700">Tagihan Nett</th>
+              <th class="px-4 py-3.5 text-center font-bold text-slate-700">Jatuh Tempo</th>
+              <th class="px-4 py-3.5 text-center font-bold text-slate-700">Status</th>
+            @endif
             <th class="px-5 py-3.5 text-center font-bold text-slate-700">Aksi Cepat</th>
           </tr>
         </thead>
@@ -650,7 +655,10 @@ function tagihanManager() {
 
               <!-- Pelanggan: Nama & No WhatsApp -->
               <td class="px-4 py-4 text-left">
-                <p class="font-bold text-slate-900 text-sm leading-tight">{{ $bill['customer_name'] }}</p>
+                <div class="flex items-center gap-2">
+                  <p class="font-bold text-slate-900 text-sm leading-tight">{{ $bill['customer_name'] }}</p>
+                  <span class="text-[10px] font-mono text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">{{ $bill['id'] }}</span>
+                </div>
                 <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-mono">
                   <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i>
                   <span>{{ $bill['customer_phone'] }}</span>
@@ -671,57 +679,78 @@ function tagihanManager() {
                 <p class="text-[11px] font-mono text-slate-400 mt-0.5">{{ $bill['pppoe'] ?? '-' }}</p>
               </td>
 
-              <!-- Tagihan Nett -->
-              <td class="px-4 py-4 text-center">
-                <p class="font-black text-slate-900 text-sm font-mono">Rp {{ $bill['total'] }}</p>
-                <p class="text-[10px] text-slate-400 font-medium mt-0.5">*(Disc/Tax)</p>
-              </td>
+              @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+                <!-- Waktu Pelunasan / Rekap -->
+                <td class="px-4 py-4 text-center whitespace-nowrap">
+                  <span class="font-bold text-slate-800 block">{{ $bill['paid_date'] ?? '-' }}</span>
+                  <span class="text-[10px] text-slate-500 block">{{ $bill['paid_at_formatted'] ?? '' }}</span>
+                </td>
 
-              <!-- Jatuh Tempo -->
-              <td class="px-4 py-4 text-center">
-                <span class="font-bold text-slate-700 text-xs font-mono">
-                  @if(preg_match('/^\d+/', $bill['due_date'], $m))
-                    Tgl {{ $m[0] }}
-                  @else
-                    {{ $bill['due_date'] }}
-                  @endif
-                </span>
-              </td>
+                <!-- Total Dibayar -->
+                <td class="px-4 py-4 text-center whitespace-nowrap">
+                  <span class="font-mono font-black text-emerald-600 text-sm">Rp {{ $bill['total'] }}</span>
+                </td>
 
-              <!-- Status: Dual Badges (Bayar & Jaringan Aktif/Isolir) -->
-              <td class="px-4 py-4 text-center">
-                <div class="flex flex-col items-center justify-center gap-1.5">
-                  <!-- Status Pembayaran (Atas) -->
-                  @if($bill['status'] === 'Lunas')
-                    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-                      LUNAS
-                    </span>
-                  @elseif($bill['status'] === 'Menunggu Verifikasi')
-                    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs animate-pulse">
-                      MENUNGGU
-                    </span>
-                  @elseif($bill['status'] === 'Jatuh Tempo')
-                    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-red-50 text-red-700 border border-red-200 shadow-2xs">
-                      JATUH TEMPO
-                    </span>
-                  @else
-                    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-red-50 text-brand border border-red-200 shadow-2xs">
-                      BELUM BAYAR
-                    </span>
-                  @endif
+                <!-- Metode & Kuitansi -->
+                <td class="px-4 py-4 text-center whitespace-nowrap">
+                  <span class="inline-flex items-center gap-1 font-semibold text-slate-800 text-xs">
+                    <i class="fa-solid fa-receipt text-emerald-600"></i> {{ $bill['receipt_number'] ?? '-' }}
+                  </span>
+                  <span class="text-[10px] text-slate-500 block">{{ $bill['payment_method'] ?? 'Transfer Bank' }}</span>
+                </td>
+              @else
+                <!-- Tagihan Nett -->
+                <td class="px-4 py-4 text-center">
+                  <p class="font-black text-slate-900 text-sm font-mono">Rp {{ $bill['total'] }}</p>
+                  <p class="text-[10px] text-slate-400 font-medium mt-0.5">*(Disc/Tax)</p>
+                </td>
 
-                  <!-- Status Jaringan Pelanggan (Bawah) -->
-                  @if($bill['is_isolir'])
-                    <span class="inline-flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
-                      <i class="fa-solid fa-lock text-[9px]"></i> ISOLIR
-                    </span>
-                  @else
-                    <span class="inline-flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-sky-50 text-sky-700 border border-sky-200 shadow-2xs">
-                      <i class="fa-solid fa-wifi text-[9px]"></i> AKTIF
-                    </span>
-                  @endif
-                </div>
-              </td>
+                <!-- Jatuh Tempo -->
+                <td class="px-4 py-4 text-center">
+                  <span class="font-bold text-slate-700 text-xs font-mono">
+                    @if(preg_match('/^\d+/', $bill['due_date'], $m))
+                      Tgl {{ $m[0] }}
+                    @else
+                      {{ $bill['due_date'] }}
+                    @endif
+                  </span>
+                </td>
+
+                <!-- Status: Dual Badges (Bayar & Jaringan Aktif/Isolir) -->
+                <td class="px-4 py-4 text-center">
+                  <div class="flex flex-col items-center justify-center gap-1.5">
+                    <!-- Status Pembayaran (Atas) -->
+                    @if($bill['status'] === 'Lunas')
+                      <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                        LUNAS
+                      </span>
+                    @elseif($bill['status'] === 'Menunggu Verifikasi')
+                      <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs animate-pulse">
+                        MENUNGGU
+                      </span>
+                    @elseif($bill['status'] === 'Jatuh Tempo')
+                      <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-red-50 text-red-700 border border-red-200 shadow-2xs">
+                        JATUH TEMPO
+                      </span>
+                    @else
+                      <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-red-50 text-brand border border-red-200 shadow-2xs">
+                        BELUM BAYAR
+                      </span>
+                    @endif
+
+                    <!-- Status Jaringan Pelanggan (Bawah) -->
+                    @if($bill['is_isolir'])
+                      <span class="inline-flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                        <i class="fa-solid fa-lock text-[9px]"></i> ISOLIR
+                      </span>
+                    @else
+                      <span class="inline-flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-sky-50 text-sky-700 border border-sky-200 shadow-2xs">
+                        <i class="fa-solid fa-wifi text-[9px]"></i> AKTIF
+                      </span>
+                    @endif
+                  </div>
+                </td>
+              @endif
 
               <!-- Aksi Cepat -->
               <td class="px-5 py-4 text-center">

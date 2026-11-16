@@ -233,11 +233,8 @@ class TechnicianController extends Controller
             );
         }
 
-        if (strcasecmp(trim((string)$order->payment_status), 'Lunas') === 0) {
-            \App\Models\Bill::where('order_id', $order->id)
-                ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
-                ->delete();
-        } elseif ($status === 'Selesai') {
+        // Pada monitoring tagihan, tetap munculkan tagihan untuk bulan ini
+        if ($status === 'Selesai' || in_array(strtolower($status), ['selesai', 'aktif', 'selesai / aktif'])) {
             BillingService::generateBillForOrder($order);
         }
 

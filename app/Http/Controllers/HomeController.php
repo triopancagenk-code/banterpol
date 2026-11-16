@@ -275,16 +275,14 @@ class HomeController extends Controller
             })->whereNotIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif', 'Dibatalkan'])->latest('id')->first();
         }
 
-        // Cek apakah pelanggan baru yang sudah lunas pembayaran pemasangan di bulan ini / jadwal mendatang
+        // Cek apakah pelanggan baru yang memesan di bulan berjalan / jadwal mendatang
         $nowJakarta = now('Asia/Jakarta');
-        $newlyPaidOrder = Order::where(function ($q) use ($user, $targetOrderId, $targetEmail, $targetPhone) {
+        $newlyOrder = Order::where(function ($q) use ($user, $targetOrderId, $targetEmail, $targetPhone) {
             if ($user) $q->where('user_id', $user->id);
             if (!empty($targetOrderId)) $q->orWhere('id', $targetOrderId);
             if (!empty($targetEmail)) $q->orWhere('customer_email', $targetEmail);
             if (!empty($targetPhone)) $q->orWhere('customer_phone', $targetPhone);
         })
-        ->whereIn('status', ['Selesai', 'Selesai / Aktif', 'Aktif'])
-        ->where('payment_status', 'Lunas')
         ->latest('id')
         ->first();
 
@@ -292,17 +290,14 @@ class HomeController extends Controller
         $nextBillMonthName = null;
         $nextBillDateFormatted = null;
 
-        if ($newlyPaidOrder) {
-            $installDate = $newlyPaidOrder->installed_at 
-                ? \Carbon\Carbon::parse($newlyPaidOrder->installed_at) 
-                : ($newlyPaidOrder->installation_date ? \Carbon\Carbon::parse($newlyPaidOrder->installation_date) : ($newlyPaidOrder->created_at ? \Carbon\Carbon::parse($newlyPaidOrder->created_at) : $nowJakarta));
-
-            if ($installDate->format('Y-m') >= $nowJakarta->format('Y-m')) {
-                $isNewlyPaidCustomer = true;
-                $nextMonth = $installDate->copy()->addMonth()->startOfMonth();
-                $nextBillMonthName = $nextMonth->translatedFormat('F Y');
-                $nextBillDateFormatted = '05 ' . $nextMonth->translatedFormat('M Y');
-            }
+        if ($newlyOrder && \App\Services\BillingService::isNewOrderInCurrentOrFutureMonth($newlyOrder, $nowJakarta)) {
+            $isNewlyPaidCustomer = true;
+            $orderDate = $newlyOrder->installed_at 
+                ? \Carbon\Carbon::parse($newlyOrder->installed_at) 
+                : ($newlyOrder->installation_date ? \Carbon\Carbon::parse($newlyOrder->installation_date) : ($newlyOrder->created_at ? \Carbon\Carbon::parse($newlyOrder->created_at) : $nowJakarta));
+            $nextMonth = $orderDate->copy()->addMonth()->startOfMonth();
+            $nextBillMonthName = $nextMonth->translatedFormat('F Y');
+            $nextBillDateFormatted = '05 ' . $nextMonth->translatedFormat('M Y');
         }
 
         // Tagihan belum bayar / jatuh tempo aktif pengguna (tagihan bulan selanjutnya jika sebelumnya sudah lunas)
@@ -651,8 +646,8 @@ class HomeController extends Controller
                     ]
                 );
 
-                // Catatan alur: Tagihan terbit saat status pesanan sudah 'Selesai' dan belum lunas
-                if ($order->status === 'Selesai' && strcasecmp(trim((string)$order->payment_status), 'Lunas') !== 0) {
+                // Pada monitoring tagihan, tetap munculkan tagihan untuk bulan ini jika status pesanan selesai
+                if ($order->status === 'Selesai') {
                     BillingService::generateBillForOrder($order);
                 }
 
