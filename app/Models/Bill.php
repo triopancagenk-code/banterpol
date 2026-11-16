@@ -93,10 +93,25 @@ class Bill extends Model
      */
     public function scopeActiveForMonitoring($query)
     {
+        $now = now('Asia/Jakarta');
+        $nextMonthKey = $now->copy()->addMonth()->format('Ym');
+
         return $query->where(function ($q) {
             $q->whereNull('order_id')
               ->orWhereHas('order', function ($oq) {
                   $oq->forCustomerData();
+              });
+        })->where(function ($q) use ($now, $nextMonthKey) {
+            // Tagihan Lunas selalu masuk ke rekap
+            $q->where('status', 'Lunas')
+              ->orWhere(function ($uq) use ($now, $nextMonthKey) {
+                  // Tagihan belum lunas untuk bulan mendatang hanya terbit mulai tgl 5 bulan tersebut
+                  $currentMonthKey = $now->format('Ym');
+                  if ($now->day < 5) {
+                      $uq->where('bill_number', '<', "INV-{$currentMonthKey}-");
+                  } else {
+                      $uq->where('bill_number', '<', "INV-{$nextMonthKey}-");
+                  }
               });
         });
     }

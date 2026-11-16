@@ -213,6 +213,12 @@ class BillingService
         $currentDue = self::parseDueDate($paidBill->due_date ?: ($paidBill->paid_at ? $paidBill->paid_at->format('d M Y') : now()->format('d M Y')));
         $nextMonth = $currentDue->copy()->addMonth()->startOfMonth();
 
+        $now = now('Asia/Jakarta');
+        // Tagihan bulan berikutnya baru terbit pada tanggal 5 bulan tersebut
+        if ($now->format('Y-m') < $nextMonth->format('Y-m') || ($now->format('Y-m') === $nextMonth->format('Y-m') && $now->day < 5)) {
+            return $paidBill;
+        }
+
         $nextBillDateStr = '05 ' . $nextMonth->translatedFormat('M Y');
         $nextDueDateStr = '20 ' . $nextMonth->translatedFormat('M Y');
 

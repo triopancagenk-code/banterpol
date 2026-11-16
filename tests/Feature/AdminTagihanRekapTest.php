@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Bill;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\BillingService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -142,16 +143,16 @@ class AdminTagihanRekapTest extends TestCase
         ]);
 
         $bill = Bill::create([
-            'bill_number' => 'INV-202609-050',
+            'bill_number' => 'INV-202611-050',
             'order_id' => $order->id,
             'customer_name' => 'Budi Verifikasi',
             'customer_phone' => '081122334455',
             'address' => 'Jl. Mawar No. 10',
             'package_name' => 'Paket 20 Mbps',
             'speed' => '20 Mbps',
-            'period' => '01 Sep 2026 – 01 Okt 2026',
-            'due_date' => '05 Okt 2026',
-            'bill_date' => '01 Sep 2026',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'bill_date' => '05 Nov 2026',
             'amount' => 110000,
             'total' => 110000,
             'status' => 'Menunggu Verifikasi',
@@ -164,29 +165,35 @@ class AdminTagihanRekapTest extends TestCase
         ]);
         $postResponse->assertSessionHas('success');
 
-        // Cek database
+        // Cek database: tagihan telah lunas dan tercatat di rekap
         $bill->refresh();
         $this->assertEquals('Lunas', $bill->status);
         $this->assertNotNull($bill->paid_at);
         $this->assertNotEmpty($bill->receipt_number);
         $this->assertEquals($admin->name, $bill->collected_by);
 
-        // Tagihan bulan berikutnya otomatis dibuat karena sudah bayar
-        $nextBill = Bill::where('order_id', $order->id)->where('bill_number', '!=', $bill->bill_number)->first();
+        // Tagihan bulan berjalan tidak lagi muncul di Monitoring Tagihan (Belum Bayar)
+        $this->flushSession();
+        $responseSemua = $this->actingAs($admin)->get(route('admin.tagihan', ['status' => 'all']));
+        $responseSemua->assertOk();
+        $responseSemua->assertDontSee($bill->bill_number);
+
+        // Tagihan lunas muncul di tab Rekap Pembayaran
+        $responseRekap = $this->actingAs($admin)->get(route('admin.tagihan', ['status' => 'rekap']));
+        $responseRekap->assertOk();
+        $responseRekap->assertSee($bill->bill_number);
+
+        // Tagihan bulan berikutnya baru terbit pada tanggal 5 bulan depan
+        Carbon::setTestNow(Carbon::parse('2026-12-05 10:00:00', 'Asia/Jakarta'));
+        BillingService::syncMonthlyBillsFromDataPelanggan();
+        $nextBill = Bill::where('order_id', $order->id)->where('id', '!=', $bill->id)->first();
         $this->assertNotNull($nextBill);
         $this->assertEquals('Belum Bayar', $nextBill->status);
 
-        // Flush session banner agar tidak mencocokkan pesan flash notification
-        $this->flushSession();
-
-        // Akses tab "Semua": Tagihan lama (Lunas) tidak tampil di daftar tagihan aktif, tagihan baru (Belum Bayar) tampil
-        $responseSemua = $this->actingAs($admin)->get(route('admin.tagihan', ['status' => 'all']));
-        $responseSemua->assertOk();
-        $responseSemua->assertSee($nextBill->bill_number);
-        $responseSemua->assertViewHas('bills', function ($bills) use ($bill, $nextBill) {
-            $ids = collect($bills)->pluck('id')->all();
-            return !in_array($bill->bill_number, $ids) && in_array($nextBill->bill_number, $ids);
-        });
+        $responseSemuaNextMonth = $this->actingAs($admin)->get(route('admin.tagihan', ['status' => 'all']));
+        $responseSemuaNextMonth->assertOk();
+        $responseSemuaNextMonth->assertSee($nextBill->bill_number);
+        Carbon::setTestNow();
 
         // Akses tab "Rekap": Tagihan lama (Lunas) tampil, tagihan baru (Belum Bayar) tidak tampil
         $responseRekap = $this->actingAs($admin)->get(route('admin.tagihan', ['status' => 'rekap']));
@@ -235,7 +242,7 @@ class AdminTagihanRekapTest extends TestCase
 
         // Tagihan pertama
         $firstBill = Bill::create([
-            'bill_number' => 'INV-202609-077',
+            'bill_number' => 'INV-202611-077',
             'order_id' => $order->id,
             'customer_name' => 'Budi Pelanggan',
             'customer_phone' => '081234509876',
@@ -243,9 +250,9 @@ class AdminTagihanRekapTest extends TestCase
             'address' => 'Jl. Pahlawan No. 45, Banyumas',
             'package_name' => 'Paket 30 Mbps',
             'speed' => '30 Mbps',
-            'period' => '01 Sep 2026 – 01 Okt 2026',
-            'due_date' => '05 Okt 2026',
-            'bill_date' => '01 Sep 2026',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'bill_date' => '05 Nov 2026',
             'amount' => 165000,
             'tax' => 0,
             'total' => 165000,
@@ -259,11 +266,13 @@ class AdminTagihanRekapTest extends TestCase
         ]);
         $verifyResponse->assertSessionHas('success');
 
-        // Tagihan pertama kini berstatus Lunas
+        // Tagihan pertama kini berstatus Lunas dan tidak ada tagihan belum lunas di bulan ini
         $firstBill->refresh();
         $this->assertEquals('Lunas', $firstBill->status);
 
-        // Tagihan bulan selanjutnya otomatis dibuat dengan jatuh tempo tanggal 05
+        // Tagihan bulan berikutnya baru terbit pada tanggal 5 bulan depan
+        Carbon::setTestNow(Carbon::parse('2026-12-05 10:00:00', 'Asia/Jakarta'));
+        BillingService::syncMonthlyBillsFromDataPelanggan();
         $nextBill = Bill::where('order_id', $order->id)
             ->where('id', '!=', $firstBill->id)
             ->first();
@@ -271,13 +280,10 @@ class AdminTagihanRekapTest extends TestCase
         $this->assertEquals('Belum Bayar', $nextBill->status);
         $this->assertTrue(str_starts_with($nextBill->due_date, '20') || str_starts_with($nextBill->due_date, '05'));
 
-        // 2. Pada POV Pelanggan (ketika pelanggan login dan buka halaman /tagihan)
+        // 2. Pada POV Pelanggan ketika sudah memasuki bulan penagihan berikutnya
         $customerPov = $this->actingAs($customer)->get(route('tagihan'));
         $customerPov->assertOk();
-
-        // Tagihan bulan selanjutnya harus muncul di POV pelanggan!
         $customerPov->assertSee($nextBill->bill_number);
-        $customerPov->assertSee('Total Tagihan Belum Dibayar');
         $customerPov->assertSee($nextBill->due_date);
         $customerPov->assertSee('Paket 30 Mbps');
         $customerPov->assertSee('165.000');
@@ -291,6 +297,7 @@ class AdminTagihanRekapTest extends TestCase
         $adminPov->assertOk();
         $adminPov->assertSee($nextBill->bill_number);
         $adminPov->assertSee('Mode Pratinjau Admin');
+        Carbon::setTestNow();
     }
 
     public function test_hapus_semua_rekap_clears_paid_bills_and_resets_to_belum_bayar(): void

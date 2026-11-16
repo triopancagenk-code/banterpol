@@ -515,8 +515,18 @@ class HomeController extends Controller
             $bill->payment_method = $paymentMethod;
             $bill->save();
 
-            // Terbitkan otomatis tagihan untuk bulan selanjutnya dengan jatuh tempo tanggal 5
-            BillingService::generateNextBillForPaidBill($bill);
+            // Tagihan bulan selanjutnya akan diterbitkan otomatis pada tanggal 5 bulan depan
+            Bill::where(function ($q) use ($bill) {
+                if ($bill->order_id) {
+                    $q->where('order_id', $bill->order_id);
+                } else {
+                    $q->where('customer_name', $bill->customer_name);
+                }
+            })
+            ->where('status', 'Belum Bayar')
+            ->where('id', '!=', $bill->id)
+            ->where('bill_number', '>', $bill->bill_number)
+            ->delete();
         }
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -527,7 +537,7 @@ class HomeController extends Controller
             ]);
         }
 
-        return redirect()->route('tagihan')->with('success', 'Pembayaran berhasil dikonfirmasi! Tagihan bulan selanjutnya telah diterbitkan.');
+        return redirect()->route('tagihan')->with('success', 'Pembayaran berhasil dikonfirmasi!');
     }
 
     public function checkout(Request $request)

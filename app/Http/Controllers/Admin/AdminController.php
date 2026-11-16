@@ -45,6 +45,18 @@ class AdminController extends Controller
                         return false;
                     }
 
+                    // Monitoring tagihan: Tagihan belum lunas untuk bulan mendatang hanya boleh muncul pada tanggal 5 bulan tersebut
+                    if ($b->status !== 'Lunas') {
+                        $now = now('Asia/Jakarta');
+                        if (preg_match('/INV-(\d{4})(\d{2})-/i', (string)$b->bill_number, $m)) {
+                            $billMonthKey = $m[1] . '-' . $m[2];
+                            $currentMonthKey = $now->format('Y-m');
+                            if ($billMonthKey > $currentMonthKey || ($billMonthKey === $currentMonthKey && $now->day < 5)) {
+                                return false;
+                            }
+                        }
+                    }
+
                     return true;
                 });
 
@@ -2457,8 +2469,19 @@ class AdminController extends Controller
                 // Otomatis masukkan / aktifkan ke Data Pelanggan karena sudah Lunas
                 $this->syncCustomerToDataPelanggan($bill);
 
-                // Terbitkan tagihan bulan selanjutnya untuk pelanggan yang telah lunas
-                BillingService::generateNextBillForPaidBill($bill);
+                // Tagihan untuk bulan berikutnya baru terbit pada tanggal 5 bulan depan.
+                // Bersihkan tagihan prematur bulan mendatang yang belum lunas jika ada.
+                Bill::where(function ($q) use ($bill) {
+                    if ($bill->order_id) {
+                        $q->where('order_id', $bill->order_id);
+                    } else {
+                        $q->where('customer_name', $bill->customer_name);
+                    }
+                })
+                ->where('status', 'Belum Bayar')
+                ->where('id', '!=', $bill->id)
+                ->where('bill_number', '>', $bill->bill_number)
+                ->delete();
 
                 // Pulihkan isolir jika pelanggan terisolir
                 if ($bill->order) {
@@ -2820,8 +2843,19 @@ class AdminController extends Controller
         // Otomatis masukkan / aktifkan ke Data Pelanggan karena sudah Lunas
         $this->syncCustomerToDataPelanggan($bill);
 
-        // Terbitkan tagihan bulan selanjutnya untuk pelanggan yang telah lunas
-        BillingService::generateNextBillForPaidBill($bill);
+        // Tagihan untuk bulan berikutnya baru terbit pada tanggal 5 bulan depan melalui sinkronisasi bulanan.
+        // Bersihkan tagihan prematur bulan mendatang yang belum lunas jika sempat terbuat otomatis sebelumnya.
+        Bill::where(function ($q) use ($bill) {
+            if ($bill->order_id) {
+                $q->where('order_id', $bill->order_id);
+            } else {
+                $q->where('customer_name', $bill->customer_name);
+            }
+        })
+        ->where('status', 'Belum Bayar')
+        ->where('id', '!=', $bill->id)
+        ->where('bill_number', '>', $bill->bill_number)
+        ->delete();
 
         // Jika ada order yang terisolir, otomatis pulihkan / aktifkan kembali
         if ($bill->order) {
