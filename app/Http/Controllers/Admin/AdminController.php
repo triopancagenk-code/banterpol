@@ -3025,6 +3025,75 @@ class AdminController extends Controller
     }
 
     /**
+     * Hapus Massal Tagihan / Data Rekap Terpilih
+     */
+    public function bulkDeleteTagihan(Request $request)
+    {
+        $selectedIds = (array) $request->input('selected_bills', []);
+        if (empty($selectedIds) && $request->has('ids')) {
+            $selectedIds = (array) $request->input('ids', []);
+        }
+
+        if (empty($selectedIds)) {
+            return redirect()->back()->with('error', 'Silakan pilih minimal satu tagihan untuk dihapus.');
+        }
+
+        $actionType = $request->input('action_type', 'delete');
+
+        try {
+            $bills = Bill::whereIn('bill_number', $selectedIds)
+                ->orWhereIn('id', $selectedIds)
+                ->get();
+
+            if ($bills->isEmpty()) {
+                return redirect()->back()->with('error', 'Data tagihan yang dipilih tidak ditemukan.');
+            }
+
+            $count = $bills->count();
+            $orderIds = $bills->pluck('order_id')->filter()->unique()->all();
+            $billIds = $bills->pluck('id')->all();
+
+            if ($actionType === 'reset_rekap') {
+                // 1. Reset tagihan lunas kembali menjadi Belum Bayar
+                Bill::whereIn('id', $billIds)->whereNotNull('order_id')->update([
+                    'status' => 'Belum Bayar',
+                    'paid_at' => null,
+                    'receipt_number' => null,
+                    'collected_by' => null,
+                    'collector_notes' => null,
+                    'payment_method' => null,
+                ]);
+
+                // 2. Hapus tagihan tanpa order_id (orphan)
+                Bill::whereIn('id', $billIds)->whereNull('order_id')->delete();
+
+                // 3. Reset payment_status pada pesanan pelanggan
+                if (!empty($orderIds)) {
+                    Order::whereIn('id', $orderIds)->update([
+                        'payment_status' => 'Menunggu Pembayaran',
+                    ]);
+                }
+
+                return redirect()->back()->with('success', "Sebanyak {$count} data rekap pembayaran berhasil dibersihkan dan dikembalikan ke status Belum Bayar.");
+            } else {
+                // Hapus record tagihan secara permanen
+                Bill::whereIn('id', $billIds)->delete();
+
+                if (!empty($orderIds)) {
+                    Order::whereIn('id', $orderIds)->update([
+                        'payment_status' => 'Menunggu Pembayaran',
+                    ]);
+                }
+
+                return redirect()->back()->with('success', "Sebanyak {$count} data tagihan berhasil dihapus dari sistem.");
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error bulkDeleteTagihan: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memproses penghapusan tagihan: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Halaman Pengintaian & Penanganan Laporan Masalah / Trouble Tickets
      */
     public function laporanMasalah(Request $request)

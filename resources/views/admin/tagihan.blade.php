@@ -13,6 +13,7 @@ function tagihanManager() {
         openBroadcastBuktiModal: false,
         openImportModal: false,
         openWaFormatModal: false,
+        openBulkDeleteModal: false,
         payingBill: null,
         selectedBill: null,
         openProofLightbox: false,
@@ -22,6 +23,14 @@ function tagihanManager() {
         billsList: @js($bills),
         paidBillsList: @js(collect($bills)->where('status', 'Lunas')->values()),
         showDoneModal: true,
+
+        confirmBulkDeleteTagihan() {
+            if (this.selectedBillIds.length === 0) {
+                alert('Silakan centang minimal 1 data tagihan pada tabel terlebih dahulu.');
+                return;
+            }
+            this.openBulkDeleteModal = true;
+        },
 
         isAllSelected() {
             return this.billsList.length > 0 && this.selectedBillIds.length === this.billsList.length;
@@ -516,6 +525,16 @@ function tagihanManager() {
           <span>Broadcast ( <span x-text="selectedBillIds.length"></span> )</span>
         </button>
 
+        <!-- Tombol Hapus Terpilih di Toolbar Atas -->
+        <button type="button"
+                x-show="selectedBillIds.length > 0"
+                style="display: none;"
+                @click="confirmBulkDeleteTagihan()"
+                class="h-9 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
+          <i class="fa-solid fa-trash-can text-xs"></i>
+          <span>Hapus ( <span x-text="selectedBillIds.length"></span> )</span>
+        </button>
+
         <!-- Tombol + Pelanggan Baru / Tambah Tagihan -->
         <button type="button" @click="openCreateModal = true"
                 class="h-9 px-3.5 rounded-xl bg-brand hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
@@ -906,6 +925,14 @@ function tagihanManager() {
                 class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 border border-slate-300">
           <i class="fa-solid fa-paper-plane text-xs text-sky-600"></i>
           <span>Buka di Gateway</span>
+        </button>
+
+        <!-- Tombol Hapus Tagihan Terpilih -->
+        <button type="button" @click="confirmBulkDeleteTagihan()"
+                class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md shadow-rose-600/20"
+                title="Hapus Tagihan Terpilih">
+          <i class="fa-solid fa-trash-can text-xs"></i>
+          <span>Hapus (<span x-text="selectedBillIds.length"></span>)</span>
         </button>
 
         <!-- Tombol Batal Pilih -->
@@ -1859,6 +1886,114 @@ Admin BANTERPOOL</pre>
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL KONFIRMASI HAPUS MASSAL TAGIHAN / REKAP -->
+  <!-- ============================================== -->
+  <div x-show="openBulkDeleteModal" style="display: none;"
+       class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+    <!-- Backdrop -->
+    <div x-show="openBulkDeleteModal"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+         @click="openBulkDeleteModal = false"></div>
+
+    <!-- Modal Box -->
+    <div x-show="openBulkDeleteModal"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="bg-white rounded-3xl max-w-md w-full p-6 relative shadow-2xl z-10 space-y-4"
+         @click.stop>
+
+      <div class="text-center space-y-3">
+        <div class="w-14 h-14 mx-auto rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-2xl">
+          <i class="fa-solid fa-trash-can"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-slate-900">
+            Hapus <span class="text-rose-600" x-text="selectedBillIds.length"></span> Tagihan Terpilih?
+          </h3>
+          <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+            @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+              Pilih tindakan penghapusan untuk riwayat pembayaran terpilih di bawah ini:
+            @else
+              Apakah Anda yakin ingin menghapus data tagihan terpilih secara permanen dari sistem?
+            @endif
+          </p>
+        </div>
+
+        <!-- Preview Daftar Pelanggan Terpilih -->
+        <div class="max-h-32 overflow-y-auto bg-slate-50 rounded-xl p-3 border border-slate-200 text-left text-xs space-y-1.5 divide-y divide-slate-100">
+          <template x-for="b in getSelectedCustomers()" :key="b.id">
+            <div class="pt-1.5 first:pt-0 flex items-center justify-between text-slate-700">
+              <div class="truncate pr-2">
+                <span class="font-bold text-slate-900" x-text="b.customer_name"></span>
+                <span class="text-[10px] text-slate-400 font-mono block" x-text="b.id"></span>
+              </div>
+              <span class="text-[11px] font-bold text-slate-900 shrink-0" x-text="'Rp ' + b.total"></span>
+            </div>
+          </template>
+        </div>
+
+        <!-- Form Eksekusi Hapus Tagihan -->
+        <form action="{{ route('admin.tagihan.bulk-delete') }}" method="POST" class="pt-2 space-y-3">
+          @csrf
+          <template x-for="id in selectedBillIds" :key="id">
+            <input type="hidden" name="selected_bills[]" :value="id">
+          </template>
+
+          @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
+            <div class="text-left space-y-2 text-xs">
+              <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                <input type="radio" name="action_type" value="reset_rekap" checked
+                       class="mt-0.5 text-brand focus:ring-brand">
+                <div>
+                  <p class="font-bold text-slate-800">Hapus dari Rekap (Kembalikan ke Belum Bayar)</p>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Riwayat pelunasan dihapus dan status tagihan dikembalikan ke Monitoring Tagihan agar dapat ditagihkan kembali.</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-rose-200 hover:bg-rose-50/50 cursor-pointer">
+                <input type="radio" name="action_type" value="delete"
+                       class="mt-0.5 text-rose-600 focus:ring-rose-500">
+                <div>
+                  <p class="font-bold text-rose-700">Hapus Tagihan Permanen</p>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Menghapus data record tagihan ini sepenuhnya dari database sistem.</p>
+                </div>
+              </label>
+            </div>
+          @else
+            <input type="hidden" name="action_type" value="delete">
+            <p class="text-[11px] text-slate-400">
+              Tagihan yang dihapus akan dibersihkan dari daftar monitoring. Tindakan ini <strong class="text-rose-600">tidak dapat dibatalkan</strong>.
+            </p>
+          @endif
+
+          <div class="flex items-center justify-center gap-2 pt-2">
+            <button type="button" @click="openBulkDeleteModal = false"
+                    class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl transition">
+              Batal
+            </button>
+            <button type="submit"
+                    class="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1.5">
+              <i class="fa-solid fa-trash-can text-xs"></i>
+              <span>Ya, Hapus Sekarang</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
     </div>
   </div>
 

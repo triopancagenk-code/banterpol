@@ -81,6 +81,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/tagihan/{id}/toggle-isolir', [AdminController::class, 'toggleIsolirTagihan'])->name('tagihan.toggle-isolir');
     Route::post('/tagihan/broadcast-wa', [AdminController::class, 'broadcastWaTagihan'])->name('tagihan.broadcast-wa');
     Route::post('/tagihan/hapus-semua-rekap', [AdminController::class, 'hapusSemuaRekap'])->name('tagihan.hapus-semua-rekap');
+    Route::post('/tagihan/bulk-delete', [AdminController::class, 'bulkDeleteTagihan'])->name('tagihan.bulk-delete');
     Route::post('/tagihan/import', [AdminController::class, 'importPelanggan'])->name('tagihan.import');
     Route::get('/laporan-masalah', [AdminController::class, 'laporanMasalah'])->name('laporan');
     Route::post('/laporan-masalah/bulk-delete', [AdminController::class, 'bulkDeleteLaporan'])->name('laporan.bulk-delete');

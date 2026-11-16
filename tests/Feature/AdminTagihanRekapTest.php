@@ -317,6 +317,7 @@ class AdminTagihanRekapTest extends TestCase
             'customer_name' => 'Pelanggan Hapus Rekap',
             'customer_phone' => '081234567899',
             'customer_email' => 'rekap@example.com',
+            'address' => 'Jl. Jenderal Sudirman',
             'package_name' => 'Paket 20 Mbps',
             'speed' => '20 Mbps',
             'period' => '01 Nov 2026 – 30 Nov 2026',
@@ -334,7 +335,9 @@ class AdminTagihanRekapTest extends TestCase
             'customer_name' => 'Orphan Rekap',
             'customer_phone' => '081234567898',
             'customer_email' => 'orphan@example.com',
+            'address' => 'Jl. Jenderal Sudirman',
             'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
             'period' => '01 Nov 2026 – 30 Nov 2026',
             'due_date' => '20 Nov 2026',
             'amount' => 110000,
@@ -369,6 +372,11 @@ class AdminTagihanRekapTest extends TestCase
             'customer_name' => 'Cust Unpaid',
             'customer_phone' => '081234567801',
             'customer_email' => 'unpaid@example.com',
+            'address' => 'Jl. Mawar',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
             'status' => 'Selesai',
         ]);
 
@@ -377,6 +385,11 @@ class AdminTagihanRekapTest extends TestCase
             'customer_name' => 'Cust Paid',
             'customer_phone' => '081234567802',
             'customer_email' => 'paid@example.com',
+            'address' => 'Jl. Melati',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
             'status' => 'Selesai',
         ]);
 
@@ -385,7 +398,12 @@ class AdminTagihanRekapTest extends TestCase
             'order_id' => $order1->id,
             'customer_name' => 'Cust Unpaid',
             'customer_phone' => '081234567801',
+            'address' => 'Jl. Mawar',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
             'due_date' => '20 Nov 2026',
+            'amount' => 110000,
             'total' => 110000,
             'status' => 'Belum Bayar',
         ]);
@@ -395,7 +413,12 @@ class AdminTagihanRekapTest extends TestCase
             'order_id' => $order2->id,
             'customer_name' => 'Cust Paid',
             'customer_phone' => '081234567802',
+            'address' => 'Jl. Melati',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
             'due_date' => '20 Nov 2026',
+            'amount' => 110000,
             'total' => 110000,
             'status' => 'Lunas',
             'paid_at' => now(),
@@ -408,5 +431,110 @@ class AdminTagihanRekapTest extends TestCase
         // Pada rekap: badge tagihan di sidebar harus TETAP 1 (konsisten, tidak melonjak jadi 2)
         $respRekap = $this->actingAs($admin)->get(route('admin.tagihan', ['status' => 'rekap']));
         $respRekap->assertOk();
+    }
+
+    public function test_bulk_delete_tagihan_reset_rekap(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $order = Order::create([
+            'order_number' => 'PLG-2026-0088',
+            'customer_name' => 'Pelanggan Bulk Reset',
+            'customer_phone' => '081234567888',
+            'customer_email' => 'bulkreset@example.com',
+            'address' => 'Jl. Anggrek',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
+            'status' => 'Selesai',
+            'payment_status' => 'Lunas',
+        ]);
+
+        $bill = Bill::create([
+            'bill_number' => 'INV-202611-088',
+            'order_id' => $order->id,
+            'customer_name' => 'Pelanggan Bulk Reset',
+            'customer_phone' => '081234567888',
+            'customer_email' => 'bulkreset@example.com',
+            'address' => 'Jl. Anggrek',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Lunas',
+            'paid_at' => now(),
+            'receipt_number' => 'KWT-202611-088',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.tagihan.bulk-delete'), [
+            'selected_bills' => [$bill->bill_number],
+            'action_type' => 'reset_rekap',
+        ]);
+
+        $response->assertSessionHas('success');
+        $bill->refresh();
+        $this->assertEquals('Belum Bayar', $bill->status);
+        $this->assertNull($bill->paid_at);
+        $this->assertNull($bill->receipt_number);
+
+        $order->refresh();
+        $this->assertEquals('Menunggu Pembayaran', $order->payment_status);
+    }
+
+    public function test_bulk_delete_tagihan_permanent_delete(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $order = Order::create([
+            'order_number' => 'PLG-2026-0077',
+            'customer_name' => 'Pelanggan Bulk Delete',
+            'customer_phone' => '081234567877',
+            'customer_email' => 'bulkdelete@example.com',
+            'address' => 'Jl. Dahlia',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'price' => 110000,
+            'total' => 110000,
+            'status' => 'Selesai',
+            'payment_status' => 'Lunas',
+        ]);
+
+        $bill = Bill::create([
+            'bill_number' => 'INV-202611-077',
+            'order_id' => $order->id,
+            'customer_name' => 'Pelanggan Bulk Delete',
+            'customer_phone' => '081234567877',
+            'customer_email' => 'bulkdelete@example.com',
+            'address' => 'Jl. Dahlia',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Belum Bayar',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.tagihan.bulk-delete'), [
+            'selected_bills' => [$bill->id],
+            'action_type' => 'delete',
+        ]);
+
+        $response->assertSessionHas('success');
+        $this->assertNull(Bill::find($bill->id));
+    }
+
+    public function test_bulk_delete_tagihan_empty_selection_fails(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $response = $this->actingAs($admin)->post(route('admin.tagihan.bulk-delete'), [
+            'selected_bills' => [],
+        ]);
+
+        $response->assertSessionHas('error');
     }
 }
