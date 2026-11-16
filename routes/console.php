@@ -72,3 +72,27 @@ Artisan::command('billing:hapus-semua-rekap {--delete : Hapus permanen record ta
 Artisan::command('tagihan:hapus-rekap', function () {
     $this->call('billing:hapus-semua-rekap');
 })->purpose('Alias untuk command billing:hapus-semua-rekap');
+
+Artisan::command('billing:generate-semua-pelanggan {--force : Terbitkan tagihan bulan ini untuk seluruh pelanggan di Data Pelanggan}', function () {
+    $now = now('Asia/Jakarta');
+    $this->info("Memulai sinkronisasi / penerbitan tagihan bulan ini (" . $now->translatedFormat('F Y') . ") untuk semua pelanggan di Data Pelanggan...");
+
+    $createdCount = \App\Services\BillingService::syncMonthlyBillsFromDataPelanggan($now, true);
+    $totalPelanggan = \App\Models\Order::forCustomerData()->count();
+    $monthKey = $now->translatedFormat('M Y');
+    $totalTagihanAktif = \App\Models\Bill::where('due_date', 'like', "%{$monthKey}%")
+        ->orWhere('period', 'like', "%{$monthKey}%")
+        ->count();
+
+    $this->info("Sinkronisasi selesai!");
+    $this->line("Bulan Tagihan    : " . $now->translatedFormat('F Y'));
+    $this->line("Total Pelanggan  : {$totalPelanggan} pelanggan (Data Pelanggan)");
+    $this->line("Tagihan Baru     : {$createdCount} tagihan dibuat");
+    $this->line("Total Tagihan    : {$totalTagihanAktif} tagihan terdaftar untuk periode ini");
+
+    return 0;
+})->purpose('Terbitkan data tagihan bulan ini untuk semua pelanggan yang ada di Data Pelanggan');
+
+Artisan::command('tagihan:generate-bulan-ini', function () {
+    $this->call('billing:generate-semua-pelanggan', ['--force' => true]);
+})->purpose('Alias untuk command billing:generate-semua-pelanggan');

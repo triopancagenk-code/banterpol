@@ -544,4 +544,102 @@ class AdminTagihanRekapTest extends TestCase
 
         $response->assertSessionHas('error');
     }
+
+    public function test_bulk_delete_tagihan_with_selected_bills_json_fallback(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $bill = Bill::create([
+            'bill_number' => 'INV-202611-998',
+            'customer_name' => 'Pelanggan Json Test',
+            'customer_phone' => '081234567899',
+            'address' => 'Jl. Test Json No. 1',
+            'package_name' => 'Paket 20 Mbps',
+            'speed' => '20 Mbps',
+            'period' => '01 Nov 2026 – 30 Nov 2026',
+            'due_date' => '20 Nov 2026',
+            'amount' => 110000,
+            'total' => 110000,
+            'status' => 'Belum Bayar',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.tagihan.bulk-delete'), [
+            'selected_bills_json' => json_encode([$bill->id]),
+            'action_type' => 'delete',
+        ]);
+
+        $response->assertSessionHas('success');
+        $this->assertNull(Bill::find($bill->id));
+    }
+
+    public function test_generate_semua_tagihan_creates_bills_for_all_data_pelanggan(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 11, 16, 12, 0, 0, 'Asia/Jakarta'));
+        $admin = $this->createAdminUser();
+
+        $c1 = Order::create([
+            'order_number' => 'PLG-001',
+            'customer_name' => 'Pelanggan Master 1',
+            'customer_phone' => '0811111111',
+            'customer_email' => 'p1@test.com',
+            'address' => 'Alamat 1',
+            'package_name' => 'Paket 20 Mbps',
+            'price' => 110000,
+            'status' => 'Aktif',
+        ]);
+
+        $c2 = Order::create([
+            'order_number' => 'ORD-202611-002',
+            'customer_name' => 'Pelanggan Baru ORD Bulan Ini',
+            'customer_phone' => '0822222222',
+            'customer_email' => 'p2@test.com',
+            'address' => 'Alamat 2',
+            'package_name' => 'Paket 30 Mbps',
+            'price' => 165000,
+            'status' => 'Aktif',
+            'installed_at' => Carbon::create(2026, 11, 10, 10, 0, 0, 'Asia/Jakarta'),
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.tagihan.generate-semua'));
+        $response->assertRedirect(route('admin.tagihan'));
+        $response->assertSessionHas('success');
+
+        $dueDate = '20 Nov 2026';
+        $this->assertTrue(Bill::where('order_id', $c1->id)->where('due_date', $dueDate)->exists());
+        $this->assertTrue(Bill::where('order_id', $c2->id)->where('due_date', $dueDate)->exists());
+    }
+
+    public function test_artisan_command_billing_generate_semua_pelanggan(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 11, 16, 12, 0, 0, 'Asia/Jakarta'));
+
+        $c = Order::create([
+            'order_number' => 'PLG-099',
+            'customer_name' => 'Pelanggan Artisan Test',
+            'customer_phone' => '0899999999',
+            'customer_email' => 'artisan@test.com',
+            'address' => 'Alamat Artisan',
+            'package_name' => 'Paket 20 Mbps',
+            'price' => 110000,
+            'status' => 'Aktif',
+        ]);
+
+        $this->artisan('billing:generate-semua-pelanggan')
+            ->assertExitCode(0);
+
+        $this->assertTrue(Bill::where('order_id', $c->id)->where('due_date', '20 Nov 2026')->exists());
+    }
+
+    public function test_tagihan_view_contains_visible_delete_buttons_and_sync_button(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $response = $this->actingAs($admin)->get(route('admin.tagihan', ['status' => 'rekap']));
+        $response->assertStatus(200);
+
+        $response->assertSee('Sinkronkan Tagihan');
+        $response->assertSee('Hapus Semua Rekap');
+        $response->assertSee('background-color: #dc2626 !important;', false);
+        $response->assertDontSee('bg-rose-600', false);
+    }
 }

@@ -411,7 +411,7 @@ function tagihanManager() {
     <!-- Card 3: BELUM TERBAYAR -->
     <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
-        <p class="text-[11px] font-black tracking-wider text-rose-700 uppercase">BELUM TERBAYAR</p>
+        <p class="text-[11px] font-black tracking-wider text-red-700 uppercase">BELUM TERBAYAR</p>
         <h3 class="text-2xl font-black text-brand mt-1 font-mono">
           Rp {{ number_format($belumTerbayarNominal ?? 0, 0, ',', '.') }}
         </h3>
@@ -518,6 +518,15 @@ function tagihanManager() {
           <span>Export</span>
         </a>
 
+        <!-- Tombol Sinkronkan Tagihan Bulan Ini -->
+        <button type="submit"
+                form="syncTagihanForm"
+                title="Terbitkan tagihan bulan ini untuk seluruh pelanggan di Data Pelanggan"
+                class="h-9 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition flex items-center gap-1.5 shadow-2xs cursor-pointer">
+          <i class="fa-solid fa-arrows-rotate text-blue-600"></i>
+          <span>Sinkronkan Tagihan</span>
+        </button>
+
         <!-- Tombol Broadcast ( X ) -->
         <button type="button" @click="handleToolbarBroadcast()"
                 class="h-9 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
@@ -528,11 +537,12 @@ function tagihanManager() {
         <!-- Tombol Hapus Terpilih di Toolbar Atas -->
         <button type="button"
                 x-show="selectedBillIds.length > 0"
-                style="display: none;"
+                style="display: none; background-color: #dc2626 !important; color: #ffffff !important;"
                 @click="confirmBulkDeleteTagihan()"
-                class="h-9 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
-          <i class="fa-solid fa-trash-can text-xs"></i>
-          <span>Hapus ( <span x-text="selectedBillIds.length"></span> )</span>
+                class="h-9 px-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Hapus Tagihan / Rekap Terpilih">
+          <i class="fa-solid fa-trash-can text-xs text-white" style="color: #ffffff !important;"></i>
+          <span class="text-white font-bold" style="color: #ffffff !important;">Hapus ( <span x-text="selectedBillIds.length"></span> )</span>
         </button>
 
         <!-- Tombol + Pelanggan Baru / Tambah Tagihan -->
@@ -542,6 +552,12 @@ function tagihanManager() {
           <span>+ Pelanggan Baru</span>
         </button>
       </div>
+    </form>
+
+    <!-- Hidden Form Sinkronkan Tagihan Bulan Ini -->
+    <form id="syncTagihanForm" action="{{ route('admin.tagihan.generate-semua') }}" method="POST" class="hidden"
+          onsubmit="return confirm('PENTING: Terbitkan data tagihan bulan ini untuk SEMUA pelanggan yang ada pada Data Pelanggan?')">
+      @csrf
     </form>
   </div>
 
@@ -636,9 +652,11 @@ function tagihanManager() {
               onsubmit="return confirm('PENTING: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA REKAP PEMBAYARAN?\n\nSeluruh riwayat tagihan yang telah lunas akan dibersihkan dari rekap dan dikembalikan ke status Belum Bayar di Monitoring Tagihan.')">
           @csrf
           <button type="submit"
-                  class="h-9 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
-            <i class="fa-solid fa-trash-can text-xs"></i>
-            <span>Hapus Semua Rekap</span>
+                  class="h-9 px-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  style="background-color: #dc2626 !important; color: #ffffff !important;"
+                  title="Hapus Seluruh Data Rekap Pembayaran">
+            <i class="fa-solid fa-trash-can text-xs text-white" style="color: #ffffff !important;"></i>
+            <span class="text-white font-bold" style="color: #ffffff !important;">Hapus Semua Rekap</span>
           </button>
         </form>
       </div>
@@ -929,10 +947,11 @@ function tagihanManager() {
 
         <!-- Tombol Hapus Tagihan Terpilih -->
         <button type="button" @click="confirmBulkDeleteTagihan()"
-                class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md shadow-rose-600/20"
-                title="Hapus Tagihan Terpilih">
-          <i class="fa-solid fa-trash-can text-xs"></i>
-          <span>Hapus (<span x-text="selectedBillIds.length"></span>)</span>
+                class="h-9 px-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-red-600/30 cursor-pointer"
+                style="background-color: #dc2626 !important; color: #ffffff !important;"
+                title="Hapus Tagihan / Rekap Terpilih">
+          <i class="fa-solid fa-trash-can text-xs text-white" style="color: #ffffff !important;"></i>
+          <span class="text-white font-bold" style="color: #ffffff !important;">Hapus (<span x-text="selectedBillIds.length"></span>)</span>
         </button>
 
         <!-- Tombol Batal Pilih -->
@@ -1917,12 +1936,13 @@ Admin BANTERPOOL</pre>
          @click.stop>
 
       <div class="text-center space-y-3">
-        <div class="w-14 h-14 mx-auto rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-2xl">
-          <i class="fa-solid fa-trash-can"></i>
+        <div class="w-14 h-14 mx-auto rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl"
+             style="background-color: #fee2e2 !important; color: #dc2626 !important;">
+          <i class="fa-solid fa-trash-can" style="color: #dc2626 !important;"></i>
         </div>
         <div>
           <h3 class="text-lg font-black text-slate-900">
-            Hapus <span class="text-rose-600" x-text="selectedBillIds.length"></span> Tagihan Terpilih?
+            Hapus <span class="text-red-600 font-black" style="color: #dc2626 !important;" x-text="selectedBillIds.length"></span> Tagihan Terpilih?
           </h3>
           <p class="text-xs text-slate-500 mt-1 leading-relaxed">
             @if($statusFilter === 'rekap' || $statusFilter === 'Lunas')
@@ -1949,6 +1969,7 @@ Admin BANTERPOOL</pre>
         <!-- Form Eksekusi Hapus Tagihan -->
         <form action="{{ route('admin.tagihan.bulk-delete') }}" method="POST" class="pt-2 space-y-3">
           @csrf
+          <input type="hidden" name="selected_bills_json" :value="JSON.stringify(selectedBillIds)">
           <template x-for="id in selectedBillIds" :key="id">
             <input type="hidden" name="selected_bills[]" :value="id">
           </template>
@@ -1964,11 +1985,11 @@ Admin BANTERPOOL</pre>
                 </div>
               </label>
 
-              <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-rose-200 hover:bg-rose-50/50 cursor-pointer">
+              <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-red-200 hover:bg-red-50/50 cursor-pointer">
                 <input type="radio" name="action_type" value="delete"
-                       class="mt-0.5 text-rose-600 focus:ring-rose-500">
+                       class="mt-0.5 text-red-600 focus:ring-red-500">
                 <div>
-                  <p class="font-bold text-rose-700">Hapus Tagihan Permanen</p>
+                  <p class="font-bold text-red-700" style="color: #b91c1c !important;">Hapus Tagihan Permanen</p>
                   <p class="text-[11px] text-slate-500 mt-0.5">Menghapus data record tagihan ini sepenuhnya dari database sistem.</p>
                 </div>
               </label>
@@ -1976,19 +1997,21 @@ Admin BANTERPOOL</pre>
           @else
             <input type="hidden" name="action_type" value="delete">
             <p class="text-[11px] text-slate-400">
-              Tagihan yang dihapus akan dibersihkan dari daftar monitoring. Tindakan ini <strong class="text-rose-600">tidak dapat dibatalkan</strong>.
+              Tagihan yang dihapus akan dibersihkan dari daftar monitoring. Tindakan ini <strong class="text-red-600" style="color: #dc2626 !important;">tidak dapat dibatalkan</strong>.
             </p>
           @endif
 
           <div class="flex items-center justify-center gap-2 pt-2">
             <button type="button" @click="openBulkDeleteModal = false"
-                    class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl transition">
+                    class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer">
               Batal
             </button>
             <button type="submit"
-                    class="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1.5">
-              <i class="fa-solid fa-trash-can text-xs"></i>
-              <span>Ya, Hapus Sekarang</span>
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    style="background-color: #dc2626 !important; color: #ffffff !important;"
+                    title="Konfirmasi Penghapusan">
+              <i class="fa-solid fa-trash-can text-xs text-white" style="color: #ffffff !important;"></i>
+              <span class="text-white font-bold" style="color: #ffffff !important;">Ya, Hapus Sekarang</span>
             </button>
           </div>
         </form>

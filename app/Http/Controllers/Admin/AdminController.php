@@ -3067,6 +3067,12 @@ class AdminController extends Controller
         if (empty($selectedIds) && $request->has('ids')) {
             $selectedIds = (array) $request->input('ids', []);
         }
+        if (empty($selectedIds) && $request->filled('selected_bills_json')) {
+            $decoded = json_decode((string) $request->input('selected_bills_json'), true);
+            if (is_array($decoded)) {
+                $selectedIds = $decoded;
+            }
+        }
 
         if (empty($selectedIds)) {
             return redirect()->back()->with('error', 'Silakan pilih minimal satu tagihan untuk dihapus.');
@@ -3124,6 +3130,23 @@ class AdminController extends Controller
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Error bulkDeleteTagihan: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Gagal memproses penghapusan tagihan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Terbitkan data tagihan bulan ini untuk SEMUA pelanggan yang ada pada Data Pelanggan.
+     */
+    public function generateSemuaTagihan(Request $request)
+    {
+        try {
+            $createdCount = BillingService::syncMonthlyBillsFromDataPelanggan(null, true);
+            $totalPelanggan = Order::forCustomerData()->count();
+
+            return redirect()->route('admin.tagihan')
+                ->with('success', "Sinkronisasi tagihan berhasil. Seluruh pelanggan ({$totalPelanggan} pelanggan) telah memiliki data tagihan bulan ini ({$createdCount} tagihan baru berhasil diterbitkan).");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error generateSemuaTagihan: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menerbitkan tagihan: ' . $e->getMessage());
         }
     }
 

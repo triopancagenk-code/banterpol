@@ -61,7 +61,17 @@ class BillingService
             return false;
         }
 
-        // 4. Periksa tanggal dari order_number jika ada format ORD-YYYYMM
+        // 4. Jika pelanggan sudah memiliki tagihan untuk bulan target, berarti tagihan sudah aktif diterbitkan
+        $dueDateStr = '20 ' . $targetMonth->translatedFormat('M Y');
+        if (Bill::where('order_id', $customer->id)
+                ->where(function ($q) use ($dueDateStr, $targetMonth) {
+                    $q->where('due_date', $dueDateStr)
+                      ->orWhere('period', 'like', '%' . $targetMonth->translatedFormat('M Y') . '%');
+                })->exists()) {
+            return false;
+        }
+
+        // 5. Periksa tanggal dari order_number jika ada format ORD-YYYYMM
         if (preg_match('/ORD-(\d{4})(\d{2})/', (string)$customer->order_number, $matches)) {
             $orderNumMonthKey = $matches[1] . '-' . $matches[2];
             if ($orderNumMonthKey < $targetMonth->format('Y-m')) {
@@ -299,7 +309,7 @@ class BillingService
      *   * Jika hari ini > 20: 'Jatuh Tempo'
      *   * Jika sudah bayar / diverifikasi: 'Lunas' (otomatis masuk ke Rekap Pembayaran)
      */
-    public static function syncMonthlyBillsFromDataPelanggan($now = null): int
+    public static function syncMonthlyBillsFromDataPelanggan($now = null, bool $forceAll = false): int
     {
         if ($now instanceof \DateTimeInterface) {
             $now = Carbon::parse($now->format('Y-m-d H:i:s'))->setTimezone('Asia/Jakarta');
@@ -323,7 +333,8 @@ class BillingService
             // Yang muncul pada monitoring tagihan itu mengikuti Data Pelanggan (kode PLG- dsb),
             // sedangkan pelanggan yang baru memesan (kode ORD-) hanya muncul di Data Pelanggan
             // dan tagihannya untuk data pelanggan baru, baru muncul bulan depan.
-            if (self::isNewOrderInCurrentOrFutureMonth($customer, $month)) {
+            // Namun jika $forceAll bernilai true, terbitkan tagihan bulan ini untuk seluruh pelanggan di Data Pelanggan.
+            if (!$forceAll && self::isNewOrderInCurrentOrFutureMonth($customer, $month)) {
                 Bill::where('order_id', $customer->id)
                     ->whereIn('status', ['Belum Bayar', 'Jatuh Tempo'])
                     ->where(function ($q) use ($dueDateStr, $month) {
