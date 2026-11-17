@@ -449,16 +449,16 @@ function tagihanManager() {
   <!-- ============================================== -->
   <!-- 3. TOOLBAR PENCARIAN, FILTER WILAYAH & AKSI   -->
   <!-- ============================================== -->
-  <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs">
-    <form method="GET" action="{{ route('admin.tagihan') }}" id="tagihanFilterForm" class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+  <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs max-w-full">
+    <form method="GET" action="{{ route('admin.tagihan') }}" id="tagihanFilterForm" class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full max-w-full">
       @if(!empty($monthFilter) && $monthFilter !== 'all')
         <input type="hidden" name="month" value="{{ $monthFilter }}">
       @endif
 
       <!-- Kiri: Input Search & Filter Dropdowns -->
-      <div class="flex flex-1 flex-wrap items-center gap-2.5 min-w-0">
+      <div class="flex flex-1 flex-wrap items-center gap-2.5 min-w-0 w-full max-w-full">
         <!-- Input Search -->
-        <div class="relative flex-1 min-w-[220px]">
+        <div class="relative w-full sm:flex-1 sm:min-w-[200px] max-w-full">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
           <input type="text" name="q" value="{{ $search }}"
                  placeholder="Cari nama, user PPPoE, No. WA, wilayah..."
@@ -466,22 +466,22 @@ function tagihanManager() {
         </div>
 
         <!-- Dropdown: Semua Wilayah -->
-        <div class="shrink-0">
+        <div class="w-full sm:w-auto min-w-0 max-w-full">
           <select name="wilayah" onchange="document.getElementById('tagihanFilterForm').submit()"
-                  class="h-9 text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer">
+                  class="h-9 w-full sm:w-auto max-w-full sm:max-w-[220px] truncate text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer">
             <option value="all">Semua Wilayah</option>
             @foreach($availableWilayah ?? [] as $w)
-              <option value="{{ $w }}" {{ ($wilayahFilter ?? 'all') === $w ? 'selected' : '' }}>
-                {{ $w }}
+              <option value="{{ $w }}" {{ ($wilayahFilter ?? 'all') === $w ? 'selected' : '' }} title="{{ $w }}">
+                {{ \Illuminate\Support\Str::limit($w, 45) }}
               </option>
             @endforeach
           </select>
         </div>
 
         <!-- Dropdown: Semua Status -->
-        <div class="shrink-0">
+        <div class="w-auto min-w-0 max-w-full">
           <select name="status" onchange="document.getElementById('tagihanFilterForm').submit()"
-                  class="h-9 text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer">
+                  class="h-9 w-auto max-w-full sm:max-w-[200px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer">
             <option value="all" {{ ($statusFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Status Aktif</option>
             <option value="Belum Bayar" {{ ($statusFilter ?? '') === 'Belum Bayar' ? 'selected' : '' }}>Belum Bayar</option>
             <option value="Lunas" {{ ($statusFilter ?? '') === 'Lunas' || ($statusFilter ?? '') === 'rekap' ? 'selected' : '' }}>Sudah Terbayar / Lunas</option>
@@ -623,6 +623,9 @@ function tagihanManager() {
         <!-- Dropdown Pilih Bulan Rekap -->
         <form method="GET" action="{{ route('admin.tagihan') }}" class="flex items-center gap-2 shrink-0">
           <input type="hidden" name="status" value="rekap">
+          @if(!empty($wilayahFilter) && $wilayahFilter !== 'all')
+            <input type="hidden" name="wilayah" value="{{ $wilayahFilter }}">
+          @endif
           @if(!empty($search))
             <input type="hidden" name="q" value="{{ $search }}">
           @endif
