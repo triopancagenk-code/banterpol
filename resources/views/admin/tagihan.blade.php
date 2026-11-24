@@ -293,9 +293,6 @@ function tagihanManager() {
           <h2 class="text-xl font-black text-slate-900 tracking-tight">
             BANTERPOOL Billing
           </h2>
-          <span class="bg-brand text-white text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
-            NOC Panel
-          </span>
         </div>
         <p class="text-xs text-slate-500 font-medium mt-0.5">
           RT/RW NET & ROUTEROS API &bull; Monitoring Tagihan & Keuangan Pelanggan
