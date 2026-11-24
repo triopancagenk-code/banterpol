@@ -161,7 +161,7 @@ class AdminLaporanMasalahTest extends TestCase
         // 1. Cek view HTML admin laporan masalah
         $response = $this->actingAs($admin)->get('/admin/laporan-masalah');
         $response->assertStatus(200);
-        $response->assertSee('Waktu Real-Time:');
+        $response->assertDontSee('Waktu Real-Time:');
 
         // 2. Cek JSON polling admin mengembalikan system_date dan system_time bahasa Indonesia
         $jsonResponse = $this->actingAs($admin)
