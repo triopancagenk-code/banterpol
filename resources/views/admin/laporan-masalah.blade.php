@@ -228,11 +228,11 @@
                  const rest = name.substring(prefix.length);
                  return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
                }
-               const idx = lowerName.indexOf(lowerPrefix);
-               if (idx !== -1) {
-                 const before = name.substring(0, idx);
-                 const matched = name.substring(idx, idx + prefix.length);
-                 const rest = name.substring(idx + prefix.length);
+               const wordIdx = lowerName.indexOf(' ' + lowerPrefix);
+               if (wordIdx !== -1) {
+                 const before = name.substring(0, wordIdx + 1);
+                 const matched = name.substring(wordIdx + 1, wordIdx + 1 + prefix.length);
+                 const rest = name.substring(wordIdx + 1 + prefix.length);
                  return `${before}<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
                }
                return name;

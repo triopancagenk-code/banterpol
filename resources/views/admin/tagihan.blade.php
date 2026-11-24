@@ -508,7 +508,7 @@ function tagihanManager() {
                  }
                },
 
-               highlightMatch(name, prefix) {
+               highlightPrefix(name, prefix) {
                  if (!name) return '';
                  if (!prefix) return name;
                  const lowerName = String(name).toLowerCase();
@@ -518,11 +518,11 @@ function tagihanManager() {
                    const rest = String(name).substring(prefix.length);
                    return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
                  }
-                 const idx = lowerName.indexOf(lowerPrefix);
-                 if (idx !== -1) {
-                   const before = String(name).substring(0, idx);
-                   const matched = String(name).substring(idx, idx + prefix.length);
-                   const rest = String(name).substring(idx + prefix.length);
+                 const wordIdx = lowerName.indexOf(' ' + lowerPrefix);
+                 if (wordIdx !== -1) {
+                   const before = String(name).substring(0, wordIdx + 1);
+                   const matched = String(name).substring(wordIdx + 1, wordIdx + 1 + prefix.length);
+                   const rest = String(name).substring(wordIdx + 1 + prefix.length);
                    return `${before}<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
                  }
                  return name;
@@ -556,8 +556,8 @@ function tagihanManager() {
                class="absolute left-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto w-full min-w-[320px] sm:min-w-[380px]">
             
             <div class="px-3.5 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-400 flex items-center justify-between">
-              <span>Saran Tagihan "<span class="text-slate-700 font-extrabold" x-text="searchVal"></span>"</span>
-              <span class="text-[9px] text-slate-400">Pilih atau tekan Enter</span>
+              <span>Hasil Pencarian Awalan "<span class="text-slate-700 font-extrabold" x-text="searchVal"></span>"</span>
+              <span class="text-[9px] text-slate-400">Pilih nama atau tekan Enter</span>
             </div>
 
             <template x-for="(item, idx) in suggestions" :key="item.id">
@@ -565,17 +565,17 @@ function tagihanManager() {
                    :class="selectedIndex === idx ? 'bg-red-50 text-brand' : 'hover:bg-slate-50 text-slate-700'"
                    class="px-3.5 py-2.5 cursor-pointer flex items-center justify-between text-xs transition">
                 <div class="flex items-center gap-2.5 min-w-0">
-                  <div class="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 text-[10px]">
-                    <i class="fa-solid fa-receipt"></i>
+                  <div class="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 text-[10px]">
+                    <i class="fa-solid fa-user"></i>
                   </div>
                   <div class="truncate">
-                    <span class="text-xs font-semibold" x-html="highlightMatch(item.customer_name, searchVal)"></span>
-                    <span class="text-[10px] text-slate-400 ml-1.5" x-text="item.wilayah ? '• ' + item.wilayah : ''"></span>
+                    <span class="text-xs" x-html="highlightPrefix(item.customer_name, searchVal)"></span>
+                    <span class="text-[10px] text-slate-400 ml-1.5" x-text="item.wilayah ? '• ' + item.wilayah : (item.address ? '• ' + item.address : '')"></span>
                   </div>
                 </div>
                 <div class="text-right shrink-0 ml-2">
-                  <span class="text-[10px] text-brand font-mono font-bold block" x-html="highlightMatch(item.id, searchVal)"></span>
-                  <span class="text-[10px] text-slate-400 font-mono block" x-text="item.customer_phone || (item.total ? 'Rp ' + Number(item.total).toLocaleString('id-ID') : '')"></span>
+                  <span class="text-[10px] text-brand font-mono font-bold block" x-text="item.pppoe ? 'PPOE: ' + item.pppoe : (item.id ? item.id : '')"></span>
+                  <span class="text-[10px] text-slate-400 font-mono block" x-text="item.customer_phone || ''"></span>
                 </div>
               </div>
             </template>

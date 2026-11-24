@@ -1433,19 +1433,17 @@ class AdminController extends Controller
                 $sub->where('customer_name', 'like', "{$q}%")
                     ->orWhere('customer_name', 'like', "{$lowerQ}%")
                     ->orWhere('customer_name', 'like', "{$upperQ}%")
-                    ->orWhere('customer_name', 'like', "%{$q}%")
+                    ->orWhere('customer_name', 'like', " {$q}%")
+                    ->orWhere('customer_name', 'like', " {$lowerQ}%")
+                    ->orWhere('customer_name', 'like', " {$upperQ}%")
                     ->orWhere('order_number', 'like', "{$q}%")
+                    ->orWhere('order_number', 'like', "{$upperQ}%")
                     ->orWhere('customer_phone', 'like', "{$q}%")
-                    ->orWhere('package_name', 'like', "%{$q}%")
-                    ->orWhere('address', 'like', "%{$q}%");
+                    ->orWhere('pppoe', 'like', "{$lowerQ}%");
             })
-            ->orderByRaw("CASE 
-                WHEN customer_name LIKE '{$q}%' THEN 1 
-                WHEN order_number LIKE '{$q}%' THEN 2 
-                ELSE 3 
-            END")
-            ->take(10)
-            ->get();
+            ->orderBy('customer_name', 'asc')
+            ->limit(10)
+            ->get(['id', 'order_number', 'customer_name', 'customer_phone', 'village', 'address', 'package_name', 'status', 'pppoe']);
 
             return response()->json($results);
         }
@@ -2475,21 +2473,15 @@ class AdminController extends Controller
                        str_starts_with($id, $lowerQ) ||
                        str_starts_with($phone, $lowerQ) ||
                        str_starts_with($pppoe, $lowerQ) ||
-                       stripos($name, $lowerQ) !== false ||
-                       stripos($id, $lowerQ) !== false ||
-                       stripos($phone, $lowerQ) !== false ||
-                       stripos($pppoe, $lowerQ) !== false ||
-                       stripos($address, $lowerQ) !== false ||
-                       stripos($wilayah, $lowerQ) !== false ||
-                       stripos($receipt, $lowerQ) !== false ||
-                       stripos($package, $lowerQ) !== false;
+                       stripos($name, ' ' . $lowerQ) !== false ||
+                       stripos($pppoe, ' ' . $lowerQ) !== false ||
+                       stripos($id, $lowerQ) !== false;
             })
             ->sortBy(function ($item) use ($lowerQ) {
                 $name = strtolower($item['customer_name'] ?? '');
-                if (str_starts_with($name, $lowerQ)) return 1;
-                $id = strtolower($item['id'] ?? '');
-                if (str_starts_with($id, $lowerQ)) return 2;
-                return 3;
+                if (str_starts_with($name, $lowerQ)) return '1_' . $name;
+                if (stripos($name, ' ' . $lowerQ) !== false) return '2_' . $name;
+                return '3_' . $name;
             })
             ->values()
             ->take(10);
@@ -3504,18 +3496,17 @@ class AdminController extends Controller
                        str_starts_with($id, $lowerQ) ||
                        str_starts_with($phone, $lowerQ) ||
                        str_starts_with($odp, $lowerQ) ||
-                       stripos($name, $query) !== false ||
-                       stripos($id, $query) !== false ||
-                       stripos($phone, $query) !== false ||
-                       stripos($odp, $query) !== false ||
-                       stripos($cat, $query) !== false;
+                       stripos($name, ' ' . $lowerQ) !== false ||
+                       stripos($id, ' ' . $lowerQ) !== false ||
+                       stripos($name, $query) !== false;
             })
             ->sortBy(function ($item) use ($lowerQ) {
                 $name = strtolower($item['customer_name'] ?? '');
+                if (str_starts_with($name, $lowerQ)) return '1_' . $name;
+                if (stripos($name, ' ' . $lowerQ) !== false) return '2_' . $name;
                 $id = strtolower($item['id'] ?? '');
-                if (str_starts_with($name, $lowerQ)) return 1;
-                if (str_starts_with($id, $lowerQ)) return 2;
-                return 3;
+                if (str_starts_with($id, $lowerQ)) return '3_' . $id;
+                return '4_' . $name;
             })
             ->take(8)
             ->values()
