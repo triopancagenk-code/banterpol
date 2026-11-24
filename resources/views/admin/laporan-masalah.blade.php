@@ -286,7 +286,7 @@
                   </div>
                 </div>
                 <div class="text-right shrink-0 ml-2">
-                  <span class="text-[10px] text-brand font-mono font-bold block" x-text="item.id ? (item.id.startsWith('TCK') ? 'TIKET: ' + item.id : item.id) : ''"></span>
+                  <span class="text-[10px] text-brand font-mono font-bold block" x-html="item.id ? (item.id.startsWith('TCK') ? 'TIKET: ' + highlightPrefix(item.id, searchVal) : highlightPrefix(item.id, searchVal)) : ''"></span>
                   <span class="text-[10px] text-slate-400 font-mono block" x-text="item.customer_phone || ''"></span>
                 </div>
               </div>

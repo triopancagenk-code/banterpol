@@ -193,14 +193,130 @@
 
     </div>
 
-    <!-- Search Box -->
+    <!-- Search Box with Live Autocomplete Suggestions -->
     <form method="GET" action="{{ route('admin.pesanan') }}" class="flex items-center gap-2">
       <input type="hidden" name="status" value="{{ $statusFilter }}">
-      <div class="relative w-full sm:w-72">
-        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-        <input type="text" name="q" value="{{ $search }}"
+      <div class="relative w-full sm:w-80"
+           x-data="{
+             searchVal: '{{ addslashes($search) }}',
+             suggestions: [],
+             showDropdown: false,
+             loading: false,
+             selectedIndex: -1,
+
+             async onInput() {
+               const val = this.searchVal.trim();
+               if (!val) {
+                 this.suggestions = [];
+                 this.showDropdown = false;
+                 this.selectedIndex = -1;
+                 return;
+               }
+               this.loading = true;
+               try {
+                 const res = await fetch(`{{ route('admin.pesanan') }}?ajax=1&status={{ urlencode($statusFilter) }}&q=${encodeURIComponent(val)}`, {
+                   headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                 });
+                 if (res.ok) {
+                   this.suggestions = await res.json();
+                   this.showDropdown = this.suggestions.length > 0;
+                   this.selectedIndex = -1;
+                 }
+               } catch (err) {
+                 this.suggestions = [];
+               } finally {
+                 this.loading = false;
+               }
+             },
+
+             selectItem(item) {
+               this.searchVal = item.customer_name || item.order_number;
+               this.showDropdown = false;
+               $nextTick(() => {
+                 $el.closest('form').submit();
+               });
+             },
+
+             onKeyDown(e) {
+               if (!this.showDropdown || this.suggestions.length === 0) return;
+               if (e.key === 'ArrowDown') {
+                 e.preventDefault();
+                 this.selectedIndex = (this.selectedIndex + 1) % this.suggestions.length;
+               } else if (e.key === 'ArrowUp') {
+                 e.preventDefault();
+                 this.selectedIndex = (this.selectedIndex - 1 + this.suggestions.length) % this.suggestions.length;
+               } else if (e.key === 'Enter' && this.selectedIndex >= 0) {
+                 e.preventDefault();
+                 this.selectItem(this.suggestions[this.selectedIndex]);
+               } else if (e.key === 'Escape') {
+                 this.showDropdown = false;
+               }
+             },
+
+             highlightMatch(text, query) {
+               if (!text) return '';
+               if (!query) return text;
+               const escaped = query.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+               try {
+                 const regex = new RegExp(`(${escaped})`, 'gi');
+                 return text.replace(regex, '<strong class=\"font-black text-slate-900\">$1</strong>');
+               } catch(e) {
+                 return text;
+               }
+             }
+           }"
+           @click.outside="showDropdown = false">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs pointer-events-none"></i>
+        <input type="text" name="q"
+               x-model="searchVal"
+               @input.debounce.150ms="onInput()"
+               @keydown="onKeyDown($event)"
+               @focus="if (suggestions.length > 0) showDropdown = true"
+               autocomplete="off"
                placeholder="Cari no. order, nama, hp, paket..."
-               class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand">
+               class="w-full pl-9 pr-8 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-medium text-slate-800">
+
+        <!-- Spinner Loading -->
+        <div x-show="loading" style="display: none;" class="absolute right-3 top-2.5 text-slate-400 text-xs">
+          <i class="fa-solid fa-spinner fa-spin text-brand"></i>
+        </div>
+
+        <!-- Dropdown Autocomplete Awalan -->
+        <div x-show="showDropdown && suggestions.length > 0"
+             style="display: none;"
+             x-transition:enter="transition ease-out duration-100"
+             x-transition:enter-start="transform opacity-0 scale-98"
+             x-transition:enter-end="transform opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-75"
+             x-transition:leave-start="transform opacity-100 scale-100"
+             x-transition:leave-end="transform opacity-0 scale-98"
+             class="absolute left-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto w-full min-w-[320px] sm:min-w-[360px]">
+          
+          <div class="px-3.5 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-400 flex items-center justify-between">
+            <span>Saran Pesanan "<span class="text-slate-700 font-extrabold" x-text="searchVal"></span>"</span>
+            <span class="text-[9px] text-slate-400">Pilih atau tekan Enter</span>
+          </div>
+
+          <template x-for="(item, idx) in suggestions" :key="item.id">
+            <div @click="selectItem(item)"
+                 :class="selectedIndex === idx ? 'bg-red-50 text-brand' : 'hover:bg-slate-50 text-slate-700'"
+                 class="px-3.5 py-2.5 cursor-pointer flex items-center justify-between text-xs transition">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 text-[10px]">
+                  <i class="fa-solid fa-cart-shopping"></i>
+                </div>
+                <div class="truncate">
+                  <span class="text-xs font-semibold" x-html="highlightMatch(item.customer_name, searchVal)"></span>
+                  <span class="text-[10px] text-slate-400 ml-1.5" x-text="item.package_name ? '• ' + item.package_name : ''"></span>
+                </div>
+              </div>
+              <div class="text-right shrink-0 ml-2">
+                <span class="text-[10px] text-brand font-mono font-bold block" x-html="highlightMatch(item.order_number, searchVal)"></span>
+                <span class="text-[10px] text-slate-400 font-mono block" x-text="item.customer_phone || (item.status ? 'Status: ' + item.status : '')"></span>
+              </div>
+            </div>
+          </template>
+        </div>
       </div>
       <button type="submit" class="bg-brand text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-brand-700 transition">
         Cari

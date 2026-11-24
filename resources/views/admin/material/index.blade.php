@@ -513,7 +513,7 @@
                       </div>
                     </div>
                     <div class="text-right shrink-0 ml-3">
-                      <span class="text-[10px] text-brand font-mono font-bold block" x-text="item.code ? 'KODE: ' + item.code : ''"></span>
+                      <span class="text-[10px] text-brand font-mono font-bold block" x-html="item.code ? 'KODE: ' + highlightPrefix(item.code, searchVal) : ''"></span>
                       <span class="text-[10px] text-slate-400 font-mono block" x-text="'Stok: ' + (item.stock !== undefined && item.stock !== null ? formatQty(item.stock) : 0) + ' ' + (item.unit || 'Unit')"></span>
                     </div>
                   </div>

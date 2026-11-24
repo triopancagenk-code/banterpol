@@ -1410,6 +1410,46 @@ class AdminController extends Controller
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('q', '');
 
+        // Dukungan AJAX Live Autocomplete Suggestion untuk Monitoring Pesanan
+        if ($request->ajax() || $request->wantsJson() || $request->has('autocomplete') || $request->has('ajax')) {
+            $q = trim($request->input('q', ''));
+            if (empty($q)) {
+                return response()->json([]);
+            }
+            $lowerQ = strtolower($q);
+            $upperQ = strtoupper($q);
+
+            $orderQuery = Order::where('order_number', 'not like', 'PLG-%')
+                ->where(function ($n) {
+                    $n->whereNull('admin_notes')
+                      ->orWhere('admin_notes', 'not like', '%input manual Admin%');
+                });
+
+            if ($statusFilter !== 'all') {
+                $orderQuery->where('status', $statusFilter);
+            }
+
+            $results = $orderQuery->where(function ($sub) use ($q, $lowerQ, $upperQ) {
+                $sub->where('customer_name', 'like', "{$q}%")
+                    ->orWhere('customer_name', 'like', "{$lowerQ}%")
+                    ->orWhere('customer_name', 'like', "{$upperQ}%")
+                    ->orWhere('customer_name', 'like', "%{$q}%")
+                    ->orWhere('order_number', 'like', "{$q}%")
+                    ->orWhere('customer_phone', 'like', "{$q}%")
+                    ->orWhere('package_name', 'like', "%{$q}%")
+                    ->orWhere('address', 'like', "%{$q}%");
+            })
+            ->orderByRaw("CASE 
+                WHEN customer_name LIKE '{$q}%' THEN 1 
+                WHEN order_number LIKE '{$q}%' THEN 2 
+                ELSE 3 
+            END")
+            ->take(10)
+            ->get();
+
+            return response()->json($results);
+        }
+
         try {
             $query = Order::where('order_number', 'not like', 'PLG-%')
                 ->where('admin_notes', 'not like', '%input manual Admin%')
@@ -2383,6 +2423,79 @@ class AdminController extends Controller
         $monthFilter = $request->input('month', 'all');
         $wilayahFilter = $request->input('wilayah', 'all');
         $search = $request->input('q', '');
+
+        // Dukungan AJAX Live Autocomplete Suggestion untuk Monitoring Tagihan & Rekap Pembayaran
+        if ($request->ajax() || $request->wantsJson() || $request->has('autocomplete') || $request->has('ajax')) {
+            $q = trim($request->input('q', ''));
+            if (empty($q)) {
+                return response()->json([]);
+            }
+            $lowerQ = strtolower($q);
+
+            $matchedBills = collect($allBills)->filter(function ($item) use ($statusFilter, $monthFilter, $lowerQ, $q, $wilayahFilter) {
+                $matchStatus = false;
+                if ($statusFilter === 'all') {
+                    $matchStatus = ($item['status'] !== 'Lunas');
+                } elseif ($statusFilter === 'semua_termasuk_lunas' || $statusFilter === 'Semua') {
+                    $matchStatus = true;
+                } elseif ($statusFilter === 'rekap' || $statusFilter === 'Lunas') {
+                    $matchStatus = ($item['status'] === 'Lunas');
+                } elseif ($statusFilter === 'isolir') {
+                    $matchStatus = !empty($item['is_isolir']);
+                } else {
+                    $matchStatus = ($item['status'] === $statusFilter);
+                }
+
+                if (!$matchStatus) {
+                    return false;
+                }
+
+                if ($wilayahFilter !== 'all' && !empty($wilayahFilter)) {
+                    if (!isset($item['wilayah']) || (stripos($item['wilayah'], $wilayahFilter) === false && $item['wilayah'] !== $wilayahFilter)) {
+                        return false;
+                    }
+                }
+
+                if (($statusFilter === 'rekap' || $statusFilter === 'Lunas') && $monthFilter !== 'all') {
+                    if (!isset($item['month_key']) || $item['month_key'] !== $monthFilter) {
+                        return false;
+                    }
+                }
+
+                $name = strtolower($item['customer_name'] ?? '');
+                $id = strtolower($item['id'] ?? '');
+                $phone = strtolower($item['customer_phone'] ?? '');
+                $pppoe = strtolower($item['pppoe'] ?? '');
+                $address = strtolower($item['address'] ?? '');
+                $wilayah = strtolower($item['wilayah'] ?? '');
+                $receipt = strtolower($item['receipt_number'] ?? '');
+                $package = strtolower($item['package_name'] ?? '');
+
+                return str_starts_with($name, $lowerQ) ||
+                       str_starts_with($id, $lowerQ) ||
+                       str_starts_with($phone, $lowerQ) ||
+                       str_starts_with($pppoe, $lowerQ) ||
+                       stripos($name, $lowerQ) !== false ||
+                       stripos($id, $lowerQ) !== false ||
+                       stripos($phone, $lowerQ) !== false ||
+                       stripos($pppoe, $lowerQ) !== false ||
+                       stripos($address, $lowerQ) !== false ||
+                       stripos($wilayah, $lowerQ) !== false ||
+                       stripos($receipt, $lowerQ) !== false ||
+                       stripos($package, $lowerQ) !== false;
+            })
+            ->sortBy(function ($item) use ($lowerQ) {
+                $name = strtolower($item['customer_name'] ?? '');
+                if (str_starts_with($name, $lowerQ)) return 1;
+                $id = strtolower($item['id'] ?? '');
+                if (str_starts_with($id, $lowerQ)) return 2;
+                return 3;
+            })
+            ->values()
+            ->take(10);
+
+            return response()->json($matchedBills);
+        }
 
         // Pisahkan tagihan aktif yang perlu dimonitor dan riwayat tagihan yang sudah lunas/terverifikasi
         $activeBills = collect($allBills)->where('status', '!=', 'Lunas');
@@ -3360,7 +3473,7 @@ class AdminController extends Controller
         $search = $request->input('q', '');
 
         // Dukungan AJAX Live Autocomplete Suggestion (HANYA muncul jika memang ada data laporan masalah yang cocok)
-        if ($request->has('autocomplete') || $request->has('suggest')) {
+        if ($request->ajax() || $request->wantsJson() || $request->has('ajax') || $request->has('autocomplete') || $request->has('suggest')) {
             $query = trim($request->input('q', ''));
             if (empty($query)) {
                 return response()->json([]);

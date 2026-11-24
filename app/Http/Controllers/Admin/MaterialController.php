@@ -46,7 +46,7 @@ class MaterialController extends Controller
         $sort = $request->input('sort', !empty($search) ? 'name_asc' : 'code_asc');
 
         // Dukungan AJAX Live Autocomplete Suggestion (Pencarian Berdasarkan Awalan / Inisial Abjad a-z)
-        if ($request->ajax() || $request->wantsJson() || $request->has('ajax')) {
+        if ($request->ajax() || $request->wantsJson() || $request->has('ajax') || $request->has('autocomplete')) {
             $search = trim($request->input('q', ''));
             if (empty($search)) {
                 return response()->json([]);
