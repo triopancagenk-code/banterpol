@@ -1155,8 +1155,34 @@ class AdminController extends Controller
     /**
      * Halaman Dashboard Utama Admin (NOC Overview)
      */
-    public function dashboard()
+    public function dashboard(Request $request)
     {
+        // Dukungan AJAX Live Autocomplete Search Suggestion untuk Dashboard
+        if ($request->ajax() || $request->wantsJson() || $request->has('autocomplete') || $request->has('ajax')) {
+            $q = trim($request->input('q', ''));
+            $category = trim($request->input('type', 'all'));
+            if (empty($q)) {
+                return response()->json([]);
+            }
+            return response()->json($this->getDashboardSearchSuggestions($q, $category));
+        }
+
+        // Jika form pencarian di-submit secara langsung (GET dengan parameter q)
+        if ($request->filled('q')) {
+            $q = trim($request->input('q'));
+            $upperQ = strtoupper($q);
+            if (str_starts_with($upperQ, 'INV-')) {
+                return redirect()->route('admin.tagihan', ['q' => $q]);
+            }
+            if (str_starts_with($upperQ, 'TCK-') || str_starts_with($upperQ, 'TKT-')) {
+                return redirect()->route('admin.laporan', ['q' => $q]);
+            }
+            if (str_starts_with($upperQ, 'ORD-') || str_starts_with($upperQ, 'PSN-')) {
+                return redirect()->route('admin.pesanan', ['q' => $q]);
+            }
+            return redirect()->route('admin.pelanggan', ['q' => $q]);
+        }
+
         $bills = $this->getBillsData();
         $tickets = $this->getTicketsData();
         $mrtg = $this->getMrtgData();
@@ -1198,6 +1224,181 @@ class AdminController extends Controller
         ];
 
         return view('admin.dashboard', compact('stats', 'bills', 'tickets', 'mrtg', 'recentOrders'));
+    }
+
+    /**
+     * Pencarian Multi-Entitas untuk Dashboard dengan Autocomplete Suggestions
+     */
+    public function getDashboardSearchSuggestions(string $query, string $category = 'all'): array
+    {
+        $q = trim($query);
+        if (empty($q)) {
+            return [];
+        }
+
+        $lowerQ = strtolower($q);
+        $upperQ = strtoupper($q);
+        $suggestions = [];
+
+        $searchAll = ($category === 'all' || empty($category));
+        $customerLimit = $searchAll ? 5 : 10;
+        $orderLimit = $searchAll ? 3 : 10;
+        $billLimit = $searchAll ? 3 : 10;
+        $ticketLimit = $searchAll ? 3 : 10;
+
+        // Deteksi prefix spesifik
+        $isInvoiceQuery = str_starts_with($upperQ, 'INV-');
+        $isTicketQuery = str_starts_with($upperQ, 'TCK-') || str_starts_with($upperQ, 'TKT-');
+        $isOrderQuery = str_starts_with($upperQ, 'ORD-') || str_starts_with($upperQ, 'PSN-');
+
+        // 1. Cari di Data Pelanggan (Order::forCustomerData)
+        if (($searchAll && !$isInvoiceQuery && !$isTicketQuery && !$isOrderQuery) || $category === 'pelanggan') {
+            try {
+                $customers = Order::forCustomerData()
+                    ->where(function ($sub) use ($q, $lowerQ, $upperQ) {
+                        $sub->where('customer_name', 'like', "{$q}%")
+                            ->orWhere('customer_name', 'like', "{$lowerQ}%")
+                            ->orWhere('customer_name', 'like', "{$upperQ}%")
+                            ->orWhere('customer_name', 'like', "%{$q}%")
+                            ->orWhere('order_number', 'like', "{$q}%")
+                            ->orWhere('customer_phone', 'like', "{$q}%")
+                            ->orWhere('pppoe', 'like', "{$lowerQ}%")
+                            ->orWhere('id_card_number', 'like', "{$q}%")
+                            ->orWhere('village', 'like', "{$q}%")
+                            ->orWhere('address', 'like', "%{$q}%");
+                    })
+                    ->orderByRaw("CASE 
+                        WHEN customer_name LIKE '{$q}%' THEN 1 
+                        WHEN order_number LIKE '{$q}%' THEN 2 
+                        ELSE 3 
+                    END")
+                    ->take($customerLimit)
+                    ->get();
+
+                foreach ($customers as $c) {
+                    $suggestions[] = [
+                        'id' => 'PLG-' . $c->id,
+                        'type' => 'pelanggan',
+                        'badge' => 'Pelanggan',
+                        'badge_class' => 'bg-blue-50 text-blue-700 border-blue-200',
+                        'icon' => 'fa-solid fa-user',
+                        'icon_bg' => 'bg-blue-100 text-blue-700',
+                        'title' => $c->customer_name,
+                        'subtitle' => ($c->village ? $c->village . ' • ' : ($c->address ? $c->address . ' • ' : '')) . ($c->customer_phone ?: $c->order_number),
+                        'meta' => $c->package_name ?: ($c->pppoe ? 'PPOE: ' . $c->pppoe : 'Pelanggan'),
+                        'url' => route('admin.pelanggan', ['q' => $c->customer_name]),
+                    ];
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Search customer error: ' . $e->getMessage());
+            }
+        }
+
+        // 2. Cari di Pesanan Masuk (Order non-PLG)
+        if (($searchAll && !$isInvoiceQuery && !$isTicketQuery) || $category === 'pesanan' || $isOrderQuery) {
+            try {
+                $orders = Order::where('order_number', 'not like', 'PLG-%')
+                    ->where(function ($n) {
+                        $n->whereNull('admin_notes')
+                          ->orWhere('admin_notes', 'not like', '%input manual Admin%');
+                    })
+                    ->where(function ($sub) use ($q, $lowerQ, $upperQ) {
+                        $sub->where('order_number', 'like', "%{$q}%")
+                            ->orWhere('customer_name', 'like', "%{$q}%")
+                            ->orWhere('customer_phone', 'like', "{$q}%")
+                            ->orWhere('package_name', 'like', "%{$q}%");
+                    })
+                    ->latest()
+                    ->take($orderLimit)
+                    ->get();
+
+                foreach ($orders as $o) {
+                    $suggestions[] = [
+                        'id' => 'ORD-' . $o->id,
+                        'type' => 'pesanan',
+                        'badge' => 'Pesanan',
+                        'badge_class' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        'icon' => 'fa-solid fa-cart-shopping',
+                        'icon_bg' => 'bg-emerald-100 text-emerald-700',
+                        'title' => $o->customer_name . ' (' . $o->order_number . ')',
+                        'subtitle' => ($o->package_name ?: 'Paket Internet') . ' • Status: ' . ($o->status ?: 'Pesanan Baru'),
+                        'meta' => 'Rp ' . number_format((float)$o->total, 0, ',', '.'),
+                        'url' => route('admin.pesanan', ['q' => $o->order_number]),
+                    ];
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Search order error: ' . $e->getMessage());
+            }
+        }
+
+        // 3. Cari di Data Tagihan (Bill)
+        if (($searchAll && !$isTicketQuery && !$isOrderQuery) || $category === 'tagihan' || $isInvoiceQuery) {
+            try {
+                $bills = Bill::where('bill_number', 'like', "%{$q}%")
+                    ->orWhere('customer_name', 'like', "%{$q}%")
+                    ->orWhere('customer_phone', 'like', "{$q}%")
+                    ->latest()
+                    ->take($billLimit)
+                    ->get();
+
+                foreach ($bills as $b) {
+                    $suggestions[] = [
+                        'id' => 'BILL-' . $b->id,
+                        'type' => 'tagihan',
+                        'badge' => 'Tagihan',
+                        'badge_class' => 'bg-amber-50 text-amber-700 border-amber-200',
+                        'icon' => 'fa-solid fa-receipt',
+                        'icon_bg' => 'bg-amber-100 text-amber-700',
+                        'title' => $b->customer_name . ' (' . $b->bill_number . ')',
+                        'subtitle' => ($b->package_name ?: 'Tagihan Internet') . ' • Status: ' . $b->status,
+                        'meta' => 'Rp ' . number_format((float)$b->total, 0, ',', '.'),
+                        'url' => route('admin.tagihan', ['q' => $b->bill_number]),
+                    ];
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Search bill error: ' . $e->getMessage());
+            }
+        }
+
+        // 4. Cari di Tiket Laporan Masalah (getTicketsData)
+        if (($searchAll && !$isInvoiceQuery && !$isOrderQuery) || $category === 'laporan' || $isTicketQuery) {
+            try {
+                $allTickets = $this->getTicketsData();
+                $matchedTickets = collect($allTickets)->filter(function ($t) use ($q, $lowerQ) {
+                    $name = strtolower($t['customer_name'] ?? '');
+                    $id = strtolower($t['id'] ?? '');
+                    $phone = strtolower($t['customer_phone'] ?? '');
+                    $type = strtolower($t['type'] ?? '');
+                    $odp = strtolower($t['odp'] ?? '');
+                    return str_starts_with($name, $lowerQ) ||
+                           str_starts_with($id, $lowerQ) ||
+                           stripos($name, $q) !== false ||
+                           stripos($id, $q) !== false ||
+                           stripos($phone, $q) !== false ||
+                           stripos($type, $q) !== false ||
+                           stripos($odp, $q) !== false;
+                })->take($ticketLimit);
+
+                foreach ($matchedTickets as $t) {
+                    $suggestions[] = [
+                        'id' => 'TCK-' . ($t['id'] ?? uniqid()),
+                        'type' => 'laporan',
+                        'badge' => 'Tiket Masalah',
+                        'badge_class' => 'bg-red-50 text-red-700 border-red-200',
+                        'icon' => 'fa-solid fa-headset',
+                        'icon_bg' => 'bg-red-100 text-red-700',
+                        'title' => ($t['customer_name'] ?? 'Pelanggan') . ' (' . $t['id'] . ')',
+                        'subtitle' => ($t['type'] ?? 'Kendala') . ' • Prioritas: ' . ($t['priority'] ?? 'Normal'),
+                        'meta' => 'Status: ' . ($t['status'] ?? 'Aktif'),
+                        'url' => route('admin.laporan', ['q' => $t['id']]),
+                    ];
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Search ticket error: ' . $e->getMessage());
+            }
+        }
+
+        return $suggestions;
     }
 
     /**
