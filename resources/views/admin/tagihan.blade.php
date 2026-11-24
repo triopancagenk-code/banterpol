@@ -303,16 +303,8 @@ function tagihanManager() {
       </div>
     </div>
 
-    <!-- Right: Router Indicator & Quick Navigation Buttons -->
+    <!-- Right: Quick Navigation Buttons -->
     <div class="flex flex-wrap items-center gap-2">
-      <!-- Router Status Pill -->
-      <a href="{{ Route::has('admin.odc-map') ? route('admin.odc-map') : url('/admin/odc-map') }}" title="Lihat Peta MikroTik Live & Status Winbox"
-         class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition shadow-2xs">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span>{{ $routerInfo['model'] ?? 'RB750Gr3' }} ({{ $routerInfo['host'] ?? '172.14.10.3' }})</span>
-        <i class="fa-solid fa-gear text-slate-400 hover:text-slate-600 text-xs"></i>
-      </a>
-
       <!-- Tombol Pelanggan -->
       <a href="{{ route('admin.pelanggan') }}"
          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs">
