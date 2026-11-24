@@ -343,16 +343,8 @@
           </div>
         </div>
 
-        <!-- Sisi Kanan: NOC Indicator + Clock + Notification + Profile -->
+        <!-- Sisi Kanan: Clock + Notification + Profile -->
         <div class="flex items-center gap-3 sm:gap-5 text-xs">
-
-          <!-- NOC Status Live Pill -->
-          @if(!request()->routeIs('admin.pelanggan*'))
-          <div class="hidden md:flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-full font-bold">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>NOC Online: 99.98%</span>
-          </div>
-          @endif
 
           <!-- Digital Clock & Real-Time Date Widget -->
           <div class="hidden sm:flex flex-col text-right font-mono"

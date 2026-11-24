@@ -612,10 +612,10 @@ XML;
         $responseDirektur->assertDontSee('NOC Online: 99.98%');
         $responseDirektur->assertDontSee('bg-brand/10 text-brand text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-brand/20', false);
 
-        // 3. Pastikan pada halaman non-pelanggan (Dashboard), NOC Online tetap tampil
+        // 3. Pastikan NOC Online tidak tampil
         $responseDashboard = $this->actingAs($this->admin)->get(route('admin.dashboard'));
         $responseDashboard->assertStatus(200);
-        $responseDashboard->assertSee('NOC Online: 99.98%');
+        $responseDashboard->assertDontSee('NOC Online: 99.98%');
     }
 
     public function test_search_matches_customer_by_prefix_and_supports_autocomplete_suggestions(): void
