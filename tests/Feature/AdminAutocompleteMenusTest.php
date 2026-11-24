@@ -52,11 +52,13 @@ class AdminAutocompleteMenusTest extends TestCase
         $this->assertEquals('Fajar Pratama', $data[0]['customer_name']);
         $this->assertEquals('ORD-112233', $data[0]['order_number']);
 
-        // Check view contains autocomplete elements
+        // Check view contains autocomplete elements and no leaked text
         $viewRes = $this->actingAs($this->admin)->get(route('admin.pesanan'));
         $viewRes->assertStatus(200);
-        $viewRes->assertSee('x-data="{', false);
+        $viewRes->assertSee('searchVal:', false);
         $viewRes->assertSee('@input.debounce.150ms="onInput()"', false);
+        $viewRes->assertDontSee('$1); }', false);
+        $viewRes->assertDontSee('return text; } } }', false);
     }
 
     public function test_tagihan_and_rekap_autocomplete(): void
@@ -115,11 +117,18 @@ class AdminAutocompleteMenusTest extends TestCase
         $this->assertNotEmpty($dataRekap);
         $this->assertEquals('Hendra Setiawan', $dataRekap[0]['customer_name']);
 
-        // Check view contains autocomplete elements
+        // Check view contains autocomplete elements and no leaked text
         $viewRes = $this->actingAs($this->admin)->get(route('admin.tagihan'));
         $viewRes->assertStatus(200);
         $viewRes->assertSee('searchVal:', false);
         $viewRes->assertSee('@input.debounce.150ms="onInput()"', false);
+        $viewRes->assertDontSee('$1); }', false);
+        $viewRes->assertDontSee('return text; } } }', false);
+
+        $viewRekapRes = $this->actingAs($this->admin)->get(route('admin.tagihan', ['status' => 'rekap']));
+        $viewRekapRes->assertStatus(200);
+        $viewRekapRes->assertDontSee('$1); }', false);
+        $viewRekapRes->assertDontSee('return text; } } }', false);
     }
 
     public function test_stok_material_autocomplete(): void

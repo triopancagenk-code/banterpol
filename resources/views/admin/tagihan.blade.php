@@ -508,16 +508,24 @@ function tagihanManager() {
                  }
                },
 
-               highlightMatch(text, query) {
-                 if (!text) return '';
-                 if (!query) return text;
-                 const escaped = query.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
-                 try {
-                   const regex = new RegExp(`(${escaped})`, 'gi');
-                   return text.replace(regex, '<strong class=\"font-black text-slate-900\">$1</strong>');
-                 } catch(e) {
-                   return text;
+               highlightMatch(name, prefix) {
+                 if (!name) return '';
+                 if (!prefix) return name;
+                 const lowerName = String(name).toLowerCase();
+                 const lowerPrefix = String(prefix).toLowerCase();
+                 if (lowerName.startsWith(lowerPrefix)) {
+                   const matched = String(name).substring(0, prefix.length);
+                   const rest = String(name).substring(prefix.length);
+                   return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
                  }
+                 const idx = lowerName.indexOf(lowerPrefix);
+                 if (idx !== -1) {
+                   const before = String(name).substring(0, idx);
+                   const matched = String(name).substring(idx, idx + prefix.length);
+                   const rest = String(name).substring(idx + prefix.length);
+                   return `${before}<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+                 }
+                 return name;
                }
              }"
              @click.outside="showDropdown = false">
