@@ -295,38 +295,181 @@
           </div>
         </div>
 
-        <!-- 2. Filter Status Tiket -->
-        <div class="w-auto min-w-0 max-w-full">
-          <select name="status" onchange="document.getElementById('laporanFilterForm').submit()"
-                  class="h-9 w-auto max-w-full sm:max-w-[210px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer shadow-2xs">
-            <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status ({{ $counts['all'] }} Tiket)</option>
-            <option value="Menunggu Respon" {{ $statusFilter === 'Menunggu Respon' ? 'selected' : '' }}>Menunggu Respon ({{ $counts['menunggu'] }})</option>
-            <option value="Sedang Ditangani" {{ $statusFilter === 'Sedang Ditangani' ? 'selected' : '' }}>Sedang Ditangani ({{ $counts['proses'] }})</option>
-            <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Pulih ({{ $counts['selesai'] }})</option>
-          </select>
+        @php
+          $laporanStatusLabels = [
+            'all' => 'Semua Status (' . $counts['all'] . ' Tiket)',
+            'Menunggu Respon' => 'Menunggu Respon (' . $counts['menunggu'] . ')',
+            'Sedang Ditangani' => 'Sedang Ditangani (' . $counts['proses'] . ')',
+            'Selesai' => 'Selesai / Pulih (' . $counts['selesai'] . ')',
+          ];
+          $currentLaporanStatusLabel = $laporanStatusLabels[$statusFilter] ?? 'Semua Status';
+
+          $laporanPriorityLabels = [
+            'all' => 'Semua Prioritas',
+            'Kritis' => 'Kritis (' . $counts['kritis'] . ')',
+            'Tinggi' => 'Tinggi',
+            'Normal' => 'Normal',
+          ];
+          $currentLaporanPriorityLabel = $laporanPriorityLabels[$priorityFilter] ?? 'Semua Prioritas';
+
+          $laporanCategoryLabels = [
+            'all' => 'Semua Kendala',
+            'LOS' => 'LOS / Lampu Merah',
+            'Lambat' => 'Koneksi Lambat',
+            'WiFi' => 'WiFi Lemah / Putus',
+            'Kabel' => 'Kabel Putus / Fisik',
+          ];
+          $currentLaporanCategoryLabel = $laporanCategoryLabels[$categoryFilter ?? 'all'] ?? 'Semua Kendala';
+        @endphp
+
+        <!-- 2. Filter Status Tiket (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah & Scrollable Standar) -->
+        <input type="hidden" name="status" id="selectedStatusLaporanInput" value="{{ $statusFilter ?? 'all' }}">
+        <div class="relative w-full sm:w-auto min-w-0 max-w-full"
+             x-data="{
+               openStatus: false,
+               selectedStatus: {{ Js::from($statusFilter ?? 'all') }},
+               selectedLabel: {{ Js::from($currentLaporanStatusLabel) }},
+               selectStatus(val, label) {
+                 this.selectedStatus = val;
+                 this.selectedLabel = label;
+                 this.openStatus = false;
+                 document.getElementById('selectedStatusLaporanInput').value = val;
+                 document.getElementById('laporanFilterForm').submit();
+               }
+             }"
+             @click.outside="openStatus = false">
+          
+          <button type="button"
+                  @click="openStatus = !openStatus"
+                  class="h-9 w-full sm:w-auto max-w-full sm:max-w-[240px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+            <span class="truncate min-w-0" x-text="selectedLabel"></span>
+            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openStatus }"></i>
+          </button>
+
+          <!-- Dropdown Menu Status: Selalu Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+          <div x-show="openStatus"
+               x-cloak
+               x-transition:enter="transition ease-out duration-150"
+               x-transition:enter-start="opacity-0 translate-y-1"
+               x-transition:enter-end="opacity-100 translate-y-0"
+               x-transition:leave="transition ease-in duration-100"
+               x-transition:leave-start="opacity-100 translate-y-0"
+               x-transition:leave-end="opacity-0 translate-y-1"
+               class="absolute left-0 top-full mt-1.5 z-50 w-64 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+            
+            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+              @foreach($laporanStatusLabels as $sVal => $sText)
+                <button type="button"
+                        @click="selectStatus({{ Js::from($sVal) }}, {{ Js::from($sText) }})"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                        :class="selectedStatus === {{ Js::from($sVal) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                        title="{{ $sText }}">
+                  <span class="truncate">{{ $sText }}</span>
+                  <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedStatus === {{ Js::from($sVal) }}"></i>
+                </button>
+              @endforeach
+            </div>
+          </div>
         </div>
 
-        <!-- 3. Tingkat Prioritas -->
-        <div class="w-auto min-w-0 max-w-full">
-          <select name="priority" onchange="document.getElementById('laporanFilterForm').submit()"
-                  class="h-9 w-auto max-w-full sm:max-w-[190px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer shadow-2xs">
-            <option value="all" {{ $priorityFilter === 'all' ? 'selected' : '' }}>Semua Prioritas</option>
-            <option value="Kritis" {{ $priorityFilter === 'Kritis' ? 'selected' : '' }}>Kritis ({{ $counts['kritis'] }})</option>
-            <option value="Tinggi" {{ $priorityFilter === 'Tinggi' ? 'selected' : '' }}>Tinggi</option>
-            <option value="Normal" {{ $priorityFilter === 'Normal' ? 'selected' : '' }}>Normal</option>
-          </select>
+        <!-- 3. Tingkat Prioritas (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah & Scrollable Standar) -->
+        <input type="hidden" name="priority" id="selectedPriorityLaporanInput" value="{{ $priorityFilter ?? 'all' }}">
+        <div class="relative w-full sm:w-auto min-w-0 max-w-full"
+             x-data="{
+               openPriority: false,
+               selectedPriority: {{ Js::from($priorityFilter ?? 'all') }},
+               selectedLabel: {{ Js::from($currentLaporanPriorityLabel) }},
+               selectPriority(val, label) {
+                 this.selectedPriority = val;
+                 this.selectedLabel = label;
+                 this.openPriority = false;
+                 document.getElementById('selectedPriorityLaporanInput').value = val;
+                 document.getElementById('laporanFilterForm').submit();
+               }
+             }"
+             @click.outside="openPriority = false">
+          
+          <button type="button"
+                  @click="openPriority = !openPriority"
+                  class="h-9 w-full sm:w-auto max-w-full sm:max-w-[210px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+            <span class="truncate min-w-0" x-text="selectedLabel"></span>
+            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openPriority }"></i>
+          </button>
+
+          <!-- Dropdown Menu Prioritas: Selalu Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+          <div x-show="openPriority"
+               x-cloak
+               x-transition:enter="transition ease-out duration-150"
+               x-transition:enter-start="opacity-0 translate-y-1"
+               x-transition:enter-end="opacity-100 translate-y-0"
+               x-transition:leave="transition ease-in duration-100"
+               x-transition:leave-start="opacity-100 translate-y-0"
+               x-transition:leave-end="opacity-0 translate-y-1"
+               class="absolute left-0 top-full mt-1.5 z-50 w-56 sm:w-60 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+            
+            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+              @foreach($laporanPriorityLabels as $pVal => $pText)
+                <button type="button"
+                        @click="selectPriority({{ Js::from($pVal) }}, {{ Js::from($pText) }})"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                        :class="selectedPriority === {{ Js::from($pVal) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                        title="{{ $pText }}">
+                  <span class="truncate">{{ $pText }}</span>
+                  <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedPriority === {{ Js::from($pVal) }}"></i>
+                </button>
+              @endforeach
+            </div>
+          </div>
         </div>
 
-        <!-- 4. Kategori Kendala -->
-        <div class="w-auto min-w-0 max-w-full">
-          <select name="category" onchange="document.getElementById('laporanFilterForm').submit()"
-                  class="h-9 w-auto max-w-full sm:max-w-[190px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer shadow-2xs">
-            <option value="all" {{ ($categoryFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Kendala</option>
-            <option value="LOS" {{ ($categoryFilter ?? '') === 'LOS' ? 'selected' : '' }}>LOS / Lampu Merah</option>
-            <option value="Lambat" {{ ($categoryFilter ?? '') === 'Lambat' ? 'selected' : '' }}>Koneksi Lambat</option>
-            <option value="WiFi" {{ ($categoryFilter ?? '') === 'WiFi' ? 'selected' : '' }}>WiFi Lemah / Putus</option>
-            <option value="Kabel" {{ ($categoryFilter ?? '') === 'Kabel' ? 'selected' : '' }}>Kabel Putus / Fisik</option>
-          </select>
+        <!-- 4. Kategori Kendala (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah & Scrollable Standar) -->
+        <input type="hidden" name="category" id="selectedCategoryLaporanInput" value="{{ $categoryFilter ?? 'all' }}">
+        <div class="relative w-full sm:w-auto min-w-0 max-w-full"
+             x-data="{
+               openCategory: false,
+               selectedCategory: {{ Js::from($categoryFilter ?? 'all') }},
+               selectedLabel: {{ Js::from($currentLaporanCategoryLabel) }},
+               selectCategory(val, label) {
+                 this.selectedCategory = val;
+                 this.selectedLabel = label;
+                 this.openCategory = false;
+                 document.getElementById('selectedCategoryLaporanInput').value = val;
+                 document.getElementById('laporanFilterForm').submit();
+               }
+             }"
+             @click.outside="openCategory = false">
+          
+          <button type="button"
+                  @click="openCategory = !openCategory"
+                  class="h-9 w-full sm:w-auto max-w-full sm:max-w-[210px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+            <span class="truncate min-w-0" x-text="selectedLabel"></span>
+            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openCategory }"></i>
+          </button>
+
+          <!-- Dropdown Menu Kategori: Selalu Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+          <div x-show="openCategory"
+               x-cloak
+               x-transition:enter="transition ease-out duration-150"
+               x-transition:enter-start="opacity-0 translate-y-1"
+               x-transition:enter-end="opacity-100 translate-y-0"
+               x-transition:leave="transition ease-in duration-100"
+               x-transition:leave-start="opacity-100 translate-y-0"
+               x-transition:leave-end="opacity-0 translate-y-1"
+               class="absolute left-0 top-full mt-1.5 z-50 w-56 sm:w-60 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+            
+            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+              @foreach($laporanCategoryLabels as $cVal => $cText)
+                <button type="button"
+                        @click="selectCategory({{ Js::from($cVal) }}, {{ Js::from($cText) }})"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                        :class="selectedCategory === {{ Js::from($cVal) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                        title="{{ $cText }}">
+                  <span class="truncate">{{ $cText }}</span>
+                  <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedCategory === {{ Js::from($cVal) }}"></i>
+                </button>
+              @endforeach
+            </div>
+          </div>
         </div>
 
         <button type="submit" class="h-9 bg-slate-800 hover:bg-slate-700 text-white px-3.5 rounded-xl text-xs font-bold transition shrink-0 shadow-2xs">

@@ -635,7 +635,7 @@ function tagihanManager() {
             </div>
 
             <!-- List Pilihan Wilayah -->
-            <div class="py-1 max-h-56 overflow-y-auto custom-scrollbar space-y-0.5">
+            <div class="py-1 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
               <!-- Opsi Semua Wilayah -->
               <button type="button"
                       x-show="!searchWilayah || 'semua wilayah'.includes(searchWilayah.toLowerCase())"
@@ -667,17 +667,72 @@ function tagihanManager() {
           </div>
         </div>
 
-        <!-- Dropdown: Semua Status -->
-        <div class="w-auto min-w-0 max-w-full">
-          <select name="status" onchange="document.getElementById('tagihanFilterForm').submit()"
-                  class="h-9 w-auto max-w-full sm:max-w-[200px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer">
-            <option value="all" {{ ($statusFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Status Aktif</option>
-            <option value="Belum Bayar" {{ ($statusFilter ?? '') === 'Belum Bayar' ? 'selected' : '' }}>Belum Bayar</option>
-            <option value="Lunas" {{ ($statusFilter ?? '') === 'Lunas' || ($statusFilter ?? '') === 'rekap' ? 'selected' : '' }}>Sudah Terbayar / Lunas</option>
-            <option value="Menunggu Verifikasi" {{ ($statusFilter ?? '') === 'Menunggu Verifikasi' ? 'selected' : '' }}>Menunggu Verifikasi</option>
-            <option value="Jatuh Tempo" {{ ($statusFilter ?? '') === 'Jatuh Tempo' ? 'selected' : '' }}>Jatuh Tempo</option>
-            <option value="isolir" {{ ($statusFilter ?? '') === 'isolir' ? 'selected' : '' }}>Terisolir</option>
-          </select>
+        @php
+          $tagihanStatusLabels = [
+            'all' => 'Semua Status Aktif',
+            'Belum Bayar' => 'Belum Bayar',
+            'Lunas' => 'Sudah Terbayar / Lunas',
+            'Menunggu Verifikasi' => 'Menunggu Verifikasi',
+            'Jatuh Tempo' => 'Jatuh Tempo',
+            'isolir' => 'Terisolir',
+          ];
+          $currentTagihanStatusLabel = 'Semua Status Aktif';
+          if (($statusFilter ?? 'all') === 'Lunas' || ($statusFilter ?? 'all') === 'rekap') {
+            $currentTagihanStatusLabel = 'Sudah Terbayar / Lunas';
+          } elseif (!empty($statusFilter) && isset($tagihanStatusLabels[$statusFilter])) {
+            $currentTagihanStatusLabel = $tagihanStatusLabels[$statusFilter];
+          }
+        @endphp
+
+        <!-- Dropdown: Semua Status (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah & Scrollable Standar) -->
+        <input type="hidden" name="status" id="selectedStatusTagihanInput" value="{{ $statusFilter ?? 'all' }}">
+        <div class="relative w-full sm:w-auto min-w-0 max-w-full"
+             x-data="{
+               openStatus: false,
+               selectedStatus: {{ Js::from($statusFilter ?? 'all') }},
+               selectedLabel: {{ Js::from($currentTagihanStatusLabel) }},
+               selectStatus(val, label) {
+                 this.selectedStatus = val;
+                 this.selectedLabel = label;
+                 this.openStatus = false;
+                 document.getElementById('selectedStatusTagihanInput').value = val;
+                 document.getElementById('tagihanFilterForm').submit();
+               }
+             }"
+             @click.outside="openStatus = false">
+          
+          <button type="button"
+                  @click="openStatus = !openStatus"
+                  class="h-9 w-full sm:w-auto max-w-full sm:max-w-[240px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+            <span class="truncate min-w-0" x-text="selectedLabel"></span>
+            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openStatus }"></i>
+          </button>
+
+          <!-- Dropdown Menu Status: Selalu Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+          <div x-show="openStatus"
+               x-cloak
+               x-transition:enter="transition ease-out duration-150"
+               x-transition:enter-start="opacity-0 translate-y-1"
+               x-transition:enter-end="opacity-100 translate-y-0"
+               x-transition:leave="transition ease-in duration-100"
+               x-transition:leave-start="opacity-100 translate-y-0"
+               x-transition:leave-end="opacity-0 translate-y-1"
+               class="absolute left-0 top-full mt-1.5 z-50 w-64 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+            
+            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+              @foreach($tagihanStatusLabels as $sVal => $sText)
+                @php $isSelected = ($statusFilter ?? 'all') === $sVal || (($sVal === 'Lunas') && (($statusFilter ?? '') === 'rekap')); @endphp
+                <button type="button"
+                        @click="selectStatus({{ Js::from($sVal) }}, {{ Js::from($sText) }})"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                        :class="selectedStatus === {{ Js::from($sVal) }} || (selectedStatus === 'rekap' && {{ Js::from($sVal) }} === 'Lunas') ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                        title="{{ $sText }}">
+                  <span class="truncate">{{ $sText }}</span>
+                  <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedStatus === {{ Js::from($sVal) }} || (selectedStatus === 'rekap' && {{ Js::from($sVal) }} === 'Lunas')"></i>
+                </button>
+              @endforeach
+            </div>
+          </div>
         </div>
 
         <button type="submit" class="h-9 bg-slate-800 hover:bg-slate-700 text-white px-3.5 rounded-xl text-xs font-bold transition shrink-0">
