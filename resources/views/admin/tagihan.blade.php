@@ -582,17 +582,89 @@ function tagihanManager() {
           </div>
         </div>
 
-        <!-- Dropdown: Semua Wilayah -->
-        <div class="w-full sm:w-auto min-w-0 max-w-full">
-          <select name="wilayah" onchange="document.getElementById('tagihanFilterForm').submit()"
-                  class="h-9 w-full sm:w-auto max-w-full sm:max-w-[220px] truncate text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer">
-            <option value="all">Semua Wilayah</option>
-            @foreach($availableWilayah ?? [] as $w)
-              <option value="{{ $w }}" {{ ($wilayahFilter ?? 'all') === $w ? 'selected' : '' }} title="{{ $w }}">
-                {{ \Illuminate\Support\Str::limit($w, 45) }}
-              </option>
-            @endforeach
-          </select>
+        <!-- Dropdown: Semua Wilayah (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah) -->
+        <input type="hidden" name="wilayah" id="selectedWilayahFilterInput" value="{{ $wilayahFilter ?? 'all' }}">
+        <div class="relative w-full sm:w-auto min-w-0 max-w-full"
+             x-data="{
+               openWilayah: false,
+               searchWilayah: '',
+               selectedWilayah: {{ Js::from($wilayahFilter ?? 'all') }},
+               selectedLabel: {{ Js::from(($wilayahFilter ?? 'all') === 'all' ? 'Semua Wilayah' : $wilayahFilter) }},
+               selectWilayah(val, label) {
+                 this.selectedWilayah = val;
+                 this.selectedLabel = label;
+                 this.openWilayah = false;
+                 document.getElementById('selectedWilayahFilterInput').value = val;
+                 document.getElementById('tagihanFilterForm').submit();
+               }
+             }"
+             @click.outside="openWilayah = false">
+          
+          <button type="button"
+                  @click="openWilayah = !openWilayah; if(openWilayah) { $nextTick(() => $refs.searchWilayahInput?.focus()); }"
+                  class="h-9 w-full sm:w-auto max-w-full sm:max-w-[240px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+            <div class="flex items-center gap-1.5 min-w-0 truncate">
+              <i class="fa-solid fa-location-dot text-slate-400 text-xs shrink-0"></i>
+              <span class="truncate" x-text="selectedLabel"></span>
+            </div>
+            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openWilayah }"></i>
+          </button>
+
+          <!-- Dropdown Menu Wilayah: Selalu Buka Ke Bawah (top-full mt-1.5) -->
+          <div x-show="openWilayah"
+               x-cloak
+               x-transition:enter="transition ease-out duration-150"
+               x-transition:enter-start="opacity-0 translate-y-1"
+               x-transition:enter-end="opacity-100 translate-y-0"
+               x-transition:leave="transition ease-in duration-100"
+               x-transition:leave-start="opacity-100 translate-y-0"
+               x-transition:leave-end="opacity-0 translate-y-1"
+               class="absolute left-0 top-full mt-1.5 z-50 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-2 text-xs divide-y divide-slate-100">
+            
+            <!-- Pencarian Cepat Nama Wilayah di dalam Dropdown -->
+            <div class="p-1 pb-2">
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-[11px]"></i>
+                <input type="text"
+                       x-ref="searchWilayahInput"
+                       x-model="searchWilayah"
+                       placeholder="Cari nama wilayah / desa..."
+                       @keydown.escape="openWilayah = false"
+                       class="h-8 w-full pl-8 pr-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:ring-brand focus:border-brand font-medium text-slate-800 placeholder-slate-400">
+              </div>
+            </div>
+
+            <!-- List Pilihan Wilayah -->
+            <div class="py-1 max-h-56 overflow-y-auto custom-scrollbar space-y-0.5">
+              <!-- Opsi Semua Wilayah -->
+              <button type="button"
+                      x-show="!searchWilayah || 'semua wilayah'.includes(searchWilayah.toLowerCase())"
+                      @click="selectWilayah('all', 'Semua Wilayah')"
+                      class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                      :class="selectedWilayah === 'all' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                <span class="flex items-center gap-2 truncate">
+                  <i class="fa-solid fa-globe text-[11px]" :class="selectedWilayah === 'all' ? 'text-brand' : 'text-slate-400'"></i>
+                  <span class="truncate">Semua Wilayah</span>
+                </span>
+                <i class="fa-solid fa-check text-brand text-xs" x-show="selectedWilayah === 'all'"></i>
+              </button>
+
+              @foreach($availableWilayah ?? [] as $w)
+                <button type="button"
+                        x-show="!searchWilayah || {{ Js::from(strtolower($w)) }}.includes(searchWilayah.toLowerCase())"
+                        @click="selectWilayah({{ Js::from($w) }}, {{ Js::from($w) }})"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                        :class="selectedWilayah === {{ Js::from($w) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                        title="{{ $w }}">
+                  <span class="flex items-center gap-2 truncate">
+                    <i class="fa-solid fa-location-dot text-[11px]" :class="selectedWilayah === {{ Js::from($w) }} ? 'text-brand' : 'text-slate-400'"></i>
+                    <span class="truncate">{{ $w }}</span>
+                  </span>
+                  <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedWilayah === {{ Js::from($w) }}"></i>
+                </button>
+              @endforeach
+            </div>
+          </div>
         </div>
 
         <!-- Dropdown: Semua Status -->
@@ -737,8 +809,8 @@ function tagihanManager() {
 
       <!-- Actions Rekap: Filter Bulan & Tombol Hapus Semua Data Rekap -->
       <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
-        <!-- Dropdown Pilih Bulan Rekap -->
-        <form method="GET" action="{{ route('admin.tagihan') }}" class="flex items-center gap-2 shrink-0">
+        <!-- Dropdown Pilih Bulan Rekap (Custom Alpine.js Dropdown Menarik, Pasti Buka Ke Bawah) -->
+        <form method="GET" action="{{ route('admin.tagihan') }}" id="monthFilterForm" class="flex items-center gap-2 shrink-0">
           <input type="hidden" name="status" value="rekap">
           @if(!empty($wilayahFilter) && $wilayahFilter !== 'all')
             <input type="hidden" name="wilayah" value="{{ $wilayahFilter }}">
@@ -746,23 +818,79 @@ function tagihanManager() {
           @if(!empty($search))
             <input type="hidden" name="q" value="{{ $search }}">
           @endif
-          <div class="flex items-center gap-1.5 bg-white border border-emerald-300 rounded-xl px-3 py-1.5 shadow-2xs">
-            <i class="fa-regular fa-calendar text-emerald-600 text-xs"></i>
-            <span class="text-xs font-bold text-slate-600">Bulan:</span>
-            <select name="month" onchange="this.form.submit()"
-                    class="text-xs font-bold bg-transparent border-0 p-0 text-slate-800 focus:ring-0 cursor-pointer">
-              <option value="all">Semua Bulan</option>
-              @foreach($availableMonths ?? [] as $m)
-                <option value="{{ $m['key'] }}" {{ ($monthFilter ?? 'all') === $m['key'] ? 'selected' : '' }}>
-                  {{ $m['label'] }}
-                </option>
-              @endforeach
-            </select>
+          <input type="hidden" name="month" id="selectedMonthInput" value="{{ $monthFilter ?? 'all' }}">
+
+          @php
+            $currentMonthLabel = 'Semua Bulan';
+            foreach($availableMonths ?? [] as $m) {
+              if(($monthFilter ?? 'all') === $m['key']) {
+                $currentMonthLabel = $m['label'];
+                break;
+              }
+            }
+          @endphp
+
+          <div class="relative" x-data="{ openMonth: false }" @click.outside="openMonth = false">
+            <button type="button" 
+                    @click="openMonth = !openMonth"
+                    class="h-9 px-3.5 rounded-xl bg-white hover:bg-emerald-50/70 border border-emerald-300 text-slate-800 text-xs font-bold transition flex items-center gap-2 shadow-2xs hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-400/40">
+              <div class="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-[11px]">
+                <i class="fa-regular fa-calendar"></i>
+              </div>
+              <span class="text-slate-500 font-semibold text-[11px]">Bulan:</span>
+              <span class="text-emerald-950 font-bold truncate max-w-[140px]">{{ $currentMonthLabel }}</span>
+              <i class="fa-solid fa-chevron-down text-[10px] text-emerald-600 transition-transform duration-200" :class="{ 'rotate-180': openMonth }"></i>
+            </button>
+
+            <!-- Dropdown Menu Bulan: Selalu Buka Ke Bawah (top-full mt-1.5) -->
+            <div x-show="openMonth" 
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1"
+                 class="absolute right-0 top-full mt-1.5 z-50 w-56 bg-white rounded-2xl border border-emerald-100 shadow-xl p-1.5 text-xs divide-y divide-slate-100 max-h-64 overflow-y-auto custom-scrollbar">
+              <div class="py-1">
+                <button type="button"
+                        @click="document.getElementById('selectedMonthInput').value = 'all'; document.getElementById('monthFilterForm').submit()"
+                        class="w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition {{ ($monthFilter ?? 'all') === 'all' ? 'bg-emerald-50 text-emerald-800 font-extrabold' : 'text-slate-700 hover:bg-slate-50 font-medium' }}">
+                  <span class="flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-days text-[11px] {{ ($monthFilter ?? 'all') === 'all' ? 'text-emerald-600' : 'text-slate-400' }}"></i>
+                    <span>Semua Bulan</span>
+                  </span>
+                  @if(($monthFilter ?? 'all') === 'all')
+                    <i class="fa-solid fa-check text-emerald-600 text-xs"></i>
+                  @endif
+                </button>
+              </div>
+
+              <div class="py-1 space-y-0.5">
+                @foreach($availableMonths ?? [] as $m)
+                  @php $isSelected = ($monthFilter ?? 'all') === $m['key']; @endphp
+                  <button type="button"
+                          @click="document.getElementById('selectedMonthInput').value = '{{ $m['key'] }}'; document.getElementById('monthFilterForm').submit()"
+                          class="w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition {{ $isSelected ? 'bg-emerald-50 text-emerald-800 font-extrabold' : 'text-slate-700 hover:bg-slate-50 font-medium' }}">
+                    <span class="flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full {{ $isSelected ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
+                      <span>{{ $m['label'] }}</span>
+                    </span>
+                    @if($isSelected)
+                      <i class="fa-solid fa-check text-emerald-600 text-xs"></i>
+                    @endif
+                  </button>
+                @endforeach
+              </div>
+            </div>
           </div>
+
           @if(($monthFilter ?? 'all') !== 'all')
-            <a href="{{ route('admin.tagihan', ['status' => 'rekap', 'q' => $search]) }}"
-               class="text-xs text-slate-500 hover:text-red-600 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition" title="Tampilkan Semua Bulan">
-              <i class="fa-solid fa-xmark"></i>
+            <a href="{{ route('admin.tagihan', ['status' => 'rekap', 'q' => $search, 'wilayah' => $wilayahFilter ?? 'all']) }}"
+               class="h-9 px-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition flex items-center gap-1 shadow-2xs" 
+               title="Tampilkan Semua Bulan">
+              <i class="fa-solid fa-xmark text-xs"></i>
+              <span class="hidden sm:inline text-[11px]">Reset</span>
             </a>
           @endif
         </form>
