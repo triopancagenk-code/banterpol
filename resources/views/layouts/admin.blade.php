@@ -45,13 +45,13 @@
          x-transition:leave="transition-opacity ease-linear duration-300"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 lg:hidden"
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[100000] lg:hidden"
          style="display: none;"></div>
 
     <!-- ============================================== -->
     <!-- SIDEBAR ADMIN                                 -->
     <!-- ============================================== -->
-    <aside class="fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white flex flex-col transition-transform duration-300 transform lg:translate-x-0"
+    <aside class="fixed inset-y-0 left-0 z-[100001] w-72 bg-slate-900 text-white flex flex-col transition-transform duration-300 transform lg:translate-x-0"
            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
 
       <!-- Sidebar Header / Logo -->
@@ -465,7 +465,7 @@
 
 
       <!-- MAIN PAGE CONTENT -->
-      <main class="flex-1 p-4 sm:p-8">
+      <main class="flex-1 p-4 sm:p-8 min-w-0 max-w-full overflow-x-hidden">
         @yield('content')
       </main>
 

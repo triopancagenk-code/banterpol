@@ -13,6 +13,8 @@
         border-radius: 1rem;
         overflow: hidden;
         position: relative;
+        z-index: 1;
+        isolation: isolate;
         background: #0b0e14;
     }
     #odcGisMap {

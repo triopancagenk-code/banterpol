@@ -4,16 +4,16 @@
 @section('page-title', 'MikroTik Monitoring (Grafana)')
 
 @section('content')
-<div class="space-y-6" x-data="grafanaApp()">
+<div class="space-y-6 max-w-full overflow-x-hidden" x-data="grafanaApp()">
 
   <!-- ============================================== -->
   <!-- 1. GRAFANA HEADER & DASHBOARD CONTROL BAR       -->
   <!-- ============================================== -->
-  <div class="bg-[#111217] text-[#d8d9da] rounded-2xl p-4 sm:p-5 border border-[#22252b] shadow-xl space-y-4">
+  <div class="bg-[#111217] text-[#d8d9da] rounded-2xl p-4 sm:p-5 border border-[#22252b] shadow-xl space-y-4 max-w-full overflow-hidden">
     
     <!-- Top Row: Breadcrumb, Title & Live Actions -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#22252b]">
-      <div class="flex items-center gap-3">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#22252b] max-w-full min-w-0">
+      <div class="flex items-center gap-3 min-w-0">
         <!-- Grafana Logo Icon -->
         <div class="w-9 h-9 rounded-xl bg-[#F05A28]/15 border border-[#F05A28]/30 flex items-center justify-center shrink-0">
           <svg class="w-5 h-5 text-[#F05A28]" viewBox="0 0 24 24" fill="currentColor">
@@ -21,11 +21,11 @@
           </svg>
         </div>
 
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] font-mono font-medium text-slate-400">Dashboards /</span>
-            <h2 class="text-base sm:text-lg font-black text-white tracking-tight">Mikrotik monitoring</h2>
-            <span class="text-amber-400 text-xs" title="Favorite"><i class="fa-solid fa-star"></i></span>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-[11px] font-mono font-medium text-slate-400 shrink-0">Dashboards /</span>
+            <h2 class="text-base sm:text-lg font-black text-white tracking-tight truncate">Mikrotik monitoring</h2>
+            <span class="text-amber-400 text-xs shrink-0" title="Favorite"><i class="fa-solid fa-star"></i></span>
           </div>
           <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-0.5">
             <span class="font-mono text-emerald-400">uid: nR3NRDGaz</span>
@@ -38,7 +38,7 @@
       </div>
 
       <!-- Right Action Controls -->
-      <div class="flex flex-wrap items-center gap-2.5 text-xs font-semibold">
+      <div class="flex flex-wrap items-center gap-2.5 text-xs font-semibold max-w-full">
         <!-- Live Countdown & Refresh -->
         <div class="flex items-center gap-2 bg-[#181b1f] border border-[#2c323d] px-3 py-1.5 rounded-xl text-slate-300">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -64,25 +64,25 @@
     </div>
 
     <!-- Bottom Row: Template Variables Bar (Exact match with link parameters) -->
-    <div class="flex flex-wrap items-center gap-2.5 pt-1 text-xs">
+    <div class="flex flex-wrap items-center gap-2 pt-1 text-xs max-w-full">
       
       <!-- Datasource Variable -->
-      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2">
-        <span class="text-[11px] font-bold text-slate-400 uppercase">DS_PROMETHEUS</span>
-        <span class="font-mono text-xs text-cyan-400 font-semibold">{{ $grafanaParams['datasource'] }}</span>
+      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2 max-w-full min-w-0">
+        <span class="text-[11px] font-bold text-slate-400 uppercase shrink-0">DS_PROMETHEUS</span>
+        <span class="font-mono text-xs text-cyan-400 font-semibold truncate max-w-[180px] sm:max-w-none">{{ $grafanaParams['datasource'] }}</span>
       </div>
 
       <!-- Job Variable -->
-      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2">
-        <span class="text-[11px] font-bold text-slate-400 uppercase">Job</span>
-        <span class="font-mono text-xs text-emerald-400 font-bold">Mikrotik</span>
+      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2 max-w-full min-w-0">
+        <span class="text-[11px] font-bold text-slate-400 uppercase shrink-0">Job</span>
+        <span class="font-mono text-xs text-emerald-400 font-bold truncate">Mikrotik</span>
       </div>
 
       <!-- Instance Selector Variable -->
-      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2">
-        <span class="text-[11px] font-bold text-slate-400 uppercase">instance</span>
+      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2 max-w-full min-w-0">
+        <span class="text-[11px] font-bold text-slate-400 uppercase shrink-0">instance</span>
         <select x-model="selectedInstance" @change="onFilterChange()"
-                class="bg-transparent border-none text-white font-mono text-xs font-bold focus:ring-0 p-0 cursor-pointer">
+                class="bg-transparent border-none text-white font-mono text-xs font-bold focus:ring-0 p-0 cursor-pointer min-w-0 max-w-[180px] xs:max-w-[220px] sm:max-w-xs truncate">
           @foreach($mrtgData['instances'] as $ip => $desc)
             <option value="{{ $ip }}" class="bg-[#181b1f] text-white" {{ $grafanaParams['instance'] === $ip ? 'selected' : '' }}>{{ $desc }}</option>
           @endforeach
@@ -90,10 +90,10 @@
       </div>
 
       <!-- Interface Variable -->
-      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2">
-        <span class="text-[11px] font-bold text-slate-400 uppercase">Interface</span>
+      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2 max-w-full min-w-0">
+        <span class="text-[11px] font-bold text-slate-400 uppercase shrink-0">Interface</span>
         <select x-model="selectedInterface" @change="onFilterChange()"
-                class="bg-transparent border-none text-amber-300 font-mono text-xs font-bold focus:ring-0 p-0 cursor-pointer">
+                class="bg-transparent border-none text-amber-300 font-mono text-xs font-bold focus:ring-0 p-0 cursor-pointer min-w-0 max-w-[180px] xs:max-w-[220px] sm:max-w-xs truncate">
           <option value="$__all" class="bg-[#181b1f] text-white">$__all (Semua Port)</option>
           @foreach($mrtgData['interfaces'] as $iface)
             <option value="{{ $iface['id'] }}" class="bg-[#181b1f] text-white" {{ $activeInterface['id'] === $iface['id'] ? 'selected' : '' }}>{{ $iface['name'] }}</option>
@@ -102,10 +102,10 @@
       </div>
 
       <!-- Simple Queue Variable -->
-      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2">
-        <span class="text-[11px] font-bold text-slate-400 uppercase">queuesimple_name</span>
+      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2 max-w-full min-w-0">
+        <span class="text-[11px] font-bold text-slate-400 uppercase shrink-0">queuesimple_name</span>
         <select x-model="selectedSimpleQueue" @change="onFilterChange()"
-                class="bg-transparent border-none text-purple-300 font-mono text-xs font-bold focus:ring-0 p-0 cursor-pointer">
+                class="bg-transparent border-none text-purple-300 font-mono text-xs font-bold focus:ring-0 p-0 cursor-pointer min-w-0 max-w-[150px] xs:max-w-[200px] sm:max-w-xs truncate">
           <option value="$__all" class="bg-[#181b1f] text-white">$__all (Semua Simple Queue)</option>
           @foreach($mrtgData['simple_queues'] as $q)
             <option value="{{ $q['name'] }}" class="bg-[#181b1f] text-white">{{ $q['name'] }}</option>
@@ -114,10 +114,10 @@
       </div>
 
       <!-- Tree Queue Variable -->
-      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2">
-        <span class="text-[11px] font-bold text-slate-400 uppercase">queuetree_name</span>
+      <div class="flex items-center bg-[#181b1f] border border-[#262a33] rounded-xl px-2.5 py-1.5 gap-2 max-w-full min-w-0">
+        <span class="text-[11px] font-bold text-slate-400 uppercase shrink-0">queuetree_name</span>
         <select x-model="selectedTreeQueue" @change="onFilterChange()"
-                class="bg-transparent border-none text-blue-300 font-mono text-xs font-bold focus:ring-0 p-0 cursor-pointer">
+                class="bg-transparent border-none text-blue-300 font-mono text-xs font-bold focus:ring-0 p-0 cursor-pointer min-w-0 max-w-[150px] xs:max-w-[200px] sm:max-w-xs truncate">
           <option value="$__all" class="bg-[#181b1f] text-white">$__all (Semua Tree Queue)</option>
           @foreach($mrtgData['tree_queues'] as $tq)
             <option value="{{ $tq['name'] }}" class="bg-[#181b1f] text-white">{{ $tq['name'] }}</option>
@@ -132,91 +132,91 @@
   <!-- ============================================== -->
   <!-- 2. SECTION: SYSTEM OVERVIEW (Grafana Stat Grid) -->
   <!-- ============================================== -->
-  <div class="bg-[#111217] rounded-2xl p-4 sm:p-5 border border-[#22252b] shadow-xl space-y-3">
+  <div class="bg-[#111217] rounded-2xl p-4 sm:p-5 border border-[#22252b] shadow-xl space-y-3 max-w-full overflow-hidden">
     
     <!-- Section Header Accordion -->
-    <div class="flex items-center justify-between cursor-pointer" @click="toggleSection('system')">
-      <div class="flex items-center gap-2">
-        <i class="fa-solid text-xs text-slate-400" :class="sections.system ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+    <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer" @click="toggleSection('system')">
+      <div class="flex items-center gap-2 min-w-0 flex-wrap">
+        <i class="fa-solid text-xs text-slate-400 shrink-0" :class="sections.system ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
         <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">System Overview & Router Specs</h3>
-        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold">ONLINE</span>
+        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold shrink-0">ONLINE</span>
       </div>
-      <span class="text-[11px] text-slate-400 font-mono" x-text="currentTime"></span>
+      <span class="text-[10px] sm:text-[11px] text-slate-400 font-mono shrink-0 ml-auto sm:ml-0" x-text="currentTime"></span>
     </div>
 
     <!-- Stat Panels Grid -->
-    <div x-show="sections.system" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 pt-2">
+    <div x-show="sections.system" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 pt-2 max-w-full">
       
       <!-- Uptime -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-emerald-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-emerald-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Uptime</p>
-        <p class="text-sm font-black text-emerald-400 font-mono mt-1">{{ $mrtgData['summary']['uptime'] }}</p>
+        <p class="text-sm font-black text-emerald-400 font-mono mt-1 truncate">{{ $mrtgData['summary']['uptime'] }}</p>
       </div>
 
       <!-- Status Device -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-emerald-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-emerald-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Device</p>
-        <p class="text-sm font-black text-emerald-400 mt-1">{{ $mrtgData['router_info']['status'] }}</p>
+        <p class="text-sm font-black text-emerald-400 mt-1 truncate">{{ $mrtgData['router_info']['status'] }}</p>
       </div>
 
       <!-- Device Errors -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-cyan-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-cyan-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Device Errors</p>
-        <p class="text-sm font-black text-cyan-300 font-mono mt-1">{{ $mrtgData['router_info']['device_errors'] }}</p>
+        <p class="text-sm font-black text-cyan-300 font-mono mt-1 truncate">{{ $mrtgData['router_info']['device_errors'] }}</p>
       </div>
 
       <!-- System Identity -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-purple-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-purple-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">System Identity</p>
         <p class="text-sm font-black text-purple-300 truncate mt-1">{{ $mrtgData['router_info']['identity'] }}</p>
       </div>
 
       <!-- Model -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-amber-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-amber-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Model</p>
         <p class="text-sm font-black text-amber-300 truncate mt-1">{{ $mrtgData['router_info']['model'] }}</p>
       </div>
 
       <!-- Serial Number -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-slate-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-slate-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Serial Number</p>
         <p class="text-sm font-black text-slate-200 font-mono truncate mt-1">{{ $mrtgData['router_info']['serial_number'] }}</p>
       </div>
 
       <!-- Board Ver -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-blue-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-blue-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Board Ver</p>
-        <p class="text-xs font-bold text-blue-300 font-mono mt-1">{{ $mrtgData['router_info']['board_ver'] }}</p>
+        <p class="text-xs font-bold text-blue-300 font-mono mt-1 truncate">{{ $mrtgData['router_info']['board_ver'] }}</p>
       </div>
 
       <!-- CPU Frequency -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-indigo-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-indigo-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CPU Frequency</p>
         <p class="text-xs font-bold text-indigo-300 truncate mt-1">{{ $mrtgData['router_info']['cpu_freq'] }}</p>
       </div>
 
       <!-- Active Fan -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-emerald-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-emerald-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Fan</p>
         <p class="text-xs font-bold text-emerald-300 truncate mt-1">{{ $mrtgData['router_info']['active_fan'] }}</p>
       </div>
 
       <!-- License Level -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-yellow-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-yellow-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">License Level</p>
-        <p class="text-xs font-bold text-yellow-300 font-mono mt-1">{{ $mrtgData['router_info']['license_level'] }}</p>
+        <p class="text-xs font-bold text-yellow-300 font-mono mt-1 truncate">{{ $mrtgData['router_info']['license_level'] }}</p>
       </div>
 
       <!-- Wi-Fi Client Count -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-pink-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-pink-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Wi-Fi Client Count</p>
-        <p class="text-sm font-black text-pink-300 font-mono mt-1">{{ $mrtgData['system_gauges']['wifi_clients'] }} Online</p>
+        <p class="text-sm font-black text-pink-300 font-mono mt-1 truncate">{{ $mrtgData['system_gauges']['wifi_clients'] }} Online</p>
       </div>
 
       <!-- Gateway Ping -->
-      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-teal-500">
+      <div class="bg-[#181b1f] border border-[#262a33] p-3 rounded-xl border-l-4 border-l-teal-500 min-w-0 overflow-hidden">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Latency Gateway</p>
-        <p class="text-sm font-black text-teal-300 font-mono mt-1">{{ $mrtgData['summary']['gateway_ping'] }}</p>
+        <p class="text-sm font-black text-teal-300 font-mono mt-1 truncate">{{ $mrtgData['summary']['gateway_ping'] }}</p>
       </div>
 
     </div>
@@ -329,13 +329,13 @@
   <!-- ============================================== -->
   <!-- 4. SECTION: NETWORK TRAFFIC BASIC & REALTIME    -->
   <!-- ============================================== -->
-  <div class="bg-[#111217] rounded-2xl p-5 border border-[#22252b] shadow-xl space-y-4">
+  <div class="bg-[#111217] rounded-2xl p-4 sm:p-5 border border-[#22252b] shadow-xl space-y-4 max-w-full overflow-hidden">
     
     <!-- Graph Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#22252b]">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#22252b] max-w-full min-w-0">
       <div>
         <div class="flex items-center gap-2">
-          <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+          <span class="w-3 h-3 rounded-full bg-emerald-500 shrink-0"></span>
           <h3 class="text-sm sm:text-base font-extrabold text-white">Network Traffic Basic: {{ $activeInterface['name'] }}</h3>
           <span class="text-xs font-mono text-slate-400">({{ $activeInterface['mac'] }})</span>
         </div>
@@ -345,7 +345,7 @@
       </div>
 
       <!-- Quick Port Switcher Pills -->
-      <div class="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+      <div class="flex flex-wrap items-center gap-1.5 text-xs font-mono max-w-full">
         @foreach($mrtgData['interfaces'] as $iface)
           <button type="button" @click="changeInterface('{{ $iface['id'] }}')"
                   class="px-2.5 py-1 rounded-lg transition text-[11px] font-bold {{ $activeInterface['id'] === $iface['id'] ? 'bg-emerald-500 text-black font-black' : 'bg-[#181b1f] text-slate-400 hover:text-white border border-[#262a33]' }}">
@@ -356,7 +356,7 @@
     </div>
 
     <!-- Chart Canvas Container -->
-    <div class="h-80 sm:h-96 relative w-full">
+    <div class="h-80 sm:h-96 relative w-full max-w-full overflow-hidden">
       <canvas id="grafanaTrafficChart"></canvas>
     </div>
 
@@ -478,10 +478,10 @@
   <!-- ============================================== -->
   <!-- 6. SECTION: SIMPLE QUEUE & TREE QUEUE          -->
   <!-- ============================================== -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-full">
     
     <!-- Simple Queue Panel -->
-    <div class="bg-[#111217] rounded-2xl border border-[#22252b] shadow-xl p-5 space-y-4">
+    <div class="bg-[#111217] rounded-2xl border border-[#22252b] shadow-xl p-4 sm:p-5 space-y-4 max-w-full overflow-hidden">
       <div class="flex items-center justify-between pb-3 border-b border-[#22252b]">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-layer-group text-purple-400 text-sm"></i>
@@ -519,7 +519,7 @@
     </div>
 
     <!-- Tree Queue Panel -->
-    <div class="bg-[#111217] rounded-2xl border border-[#22252b] shadow-xl p-5 space-y-4">
+    <div class="bg-[#111217] rounded-2xl border border-[#22252b] shadow-xl p-4 sm:p-5 space-y-4 max-w-full overflow-hidden">
       <div class="flex items-center justify-between pb-3 border-b border-[#22252b]">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-sitemap text-blue-400 text-sm"></i>
@@ -564,7 +564,7 @@
   <!-- ============================================== -->
   <!-- 7. SECTION: NEIGHBORS (MNDP / LLDP DISCOVERY)  -->
   <!-- ============================================== -->
-  <div class="bg-[#111217] rounded-2xl border border-[#22252b] shadow-xl p-5 space-y-4">
+  <div class="bg-[#111217] rounded-2xl border border-[#22252b] shadow-xl p-4 sm:p-5 space-y-4 max-w-full overflow-hidden">
     <div class="flex items-center justify-between pb-3 border-b border-[#22252b]">
       <div class="flex items-center gap-2">
         <i class="fa-solid fa-diagram-project text-amber-400 text-sm"></i>
