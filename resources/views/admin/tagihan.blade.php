@@ -634,8 +634,8 @@ function tagihanManager() {
               </div>
             </div>
 
-            <!-- List Pilihan Wilayah -->
-            <div class="py-1 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+            <!-- List Pilihan Wilayah (Batas Scroll 5 Data) -->
+            <div class="py-1 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
               <!-- Opsi Semua Wilayah -->
               <button type="button"
                       x-show="!searchWilayah || 'semua wilayah'.includes(searchWilayah.toLowerCase())"
@@ -719,7 +719,7 @@ function tagihanManager() {
                x-transition:leave-end="opacity-0 translate-y-1"
                class="absolute left-0 top-full mt-1.5 z-50 w-64 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
             
-            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+            <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
               @foreach($tagihanStatusLabels as $sVal => $sText)
                 @php $isSelected = ($statusFilter ?? 'all') === $sVal || (($sVal === 'Lunas') && (($statusFilter ?? '') === 'rekap')); @endphp
                 <button type="button"
@@ -921,7 +921,7 @@ function tagihanManager() {
                 </button>
               </div>
 
-              <div class="py-1 space-y-0.5">
+              <div class="py-1 space-y-0.5 dropdown-scroll-5 custom-scrollbar" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
                 @foreach($availableMonths ?? [] as $m)
                   @php $isSelected = ($monthFilter ?? 'all') === $m['key']; @endphp
                   <button type="button"

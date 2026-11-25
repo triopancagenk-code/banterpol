@@ -357,7 +357,7 @@
                x-transition:leave-end="opacity-0 translate-y-1"
                class="absolute left-0 top-full mt-1.5 z-50 w-64 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
             
-            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+            <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
               @foreach($laporanStatusLabels as $sVal => $sText)
                 <button type="button"
                         @click="selectStatus({{ Js::from($sVal) }}, {{ Js::from($sText) }})"
@@ -407,7 +407,7 @@
                x-transition:leave-end="opacity-0 translate-y-1"
                class="absolute left-0 top-full mt-1.5 z-50 w-56 sm:w-60 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
             
-            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+            <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
               @foreach($laporanPriorityLabels as $pVal => $pText)
                 <button type="button"
                         @click="selectPriority({{ Js::from($pVal) }}, {{ Js::from($pText) }})"
@@ -457,7 +457,7 @@
                x-transition:leave-end="opacity-0 translate-y-1"
                class="absolute left-0 top-full mt-1.5 z-50 w-56 sm:w-60 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
             
-            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+            <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
               @foreach($laporanCategoryLabels as $cVal => $cText)
                 <button type="button"
                         @click="selectCategory({{ Js::from($cVal) }}, {{ Js::from($cText) }})"

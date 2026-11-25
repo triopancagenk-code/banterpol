@@ -30,6 +30,13 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     
+    /* Batas Scroll 5 Item Standar Dropdown */
+    .dropdown-scroll-5 {
+      max-height: 175px !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    
     /* Pastikan Sidebar Admin & Backdrop selalu berada di layer paling atas (di atas peta Leaflet z-index 1000) */
     #admin-sidebar-backdrop {
       z-index: 99998 !important;

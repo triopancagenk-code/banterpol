@@ -499,8 +499,8 @@
               </div>
             </div>
 
-            <!-- List Pilihan Wilayah -->
-            <div class="py-1 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+            <!-- List Pilihan Wilayah (Batas Scroll 5 Data) -->
+            <div class="py-1 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
               <!-- Opsi Semua Wilayah -->
               <button type="button"
                       x-show="!searchWilayah || 'semua wilayah'.includes(searchWilayah.toLowerCase())"
@@ -578,7 +578,7 @@
                x-transition:leave-end="opacity-0 translate-y-1"
                class="absolute left-0 top-full mt-1.5 z-50 w-56 sm:w-60 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
             
-            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+            <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
               <button type="button"
                       @click="selectLayanan('all', 'Semua Layanan')"
                       class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
@@ -649,7 +649,7 @@
                x-transition:leave-end="opacity-0 translate-y-1"
                class="absolute left-0 top-full mt-1.5 z-50 w-64 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
             
-            <div class="py-0.5 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
+            <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
               @foreach($statusLabels as $sVal => $sText)
                 <button type="button"
                         @click="selectStatus({{ Js::from($sVal) }}, {{ Js::from($sText) }})"
