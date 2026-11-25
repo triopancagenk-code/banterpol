@@ -310,83 +310,84 @@
   <!-- ============================================== -->
   <!-- 4. SEARCH & FILTER BAR                         -->
   <!-- ============================================== -->
-  <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
-    <form method="GET" action="{{ route('admin.pelanggan') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+  <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs max-w-full">
+    <form method="GET" action="{{ route('admin.pelanggan') }}" id="pelangganFilterForm" class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 w-full max-w-full">
       
-      <!-- Search Input with Live Autocomplete Suggestions -->
-      <div class="sm:col-span-2 lg:col-span-4"
-           x-data="{
-             searchVal: '{{ addslashes($search) }}',
-             suggestions: [],
-             showDropdown: false,
-             loading: false,
-             selectedIndex: -1,
+      <!-- Kiri: Input Search & Filter Dropdowns -->
+      <div class="flex flex-1 flex-wrap items-center gap-2.5 min-w-0 w-full max-w-full">
 
-             async onInput() {
-               const val = this.searchVal.trim();
-               if (!val) {
-                 this.suggestions = [];
-                 this.showDropdown = false;
-                 this.selectedIndex = -1;
-                 return;
-               }
-               this.loading = true;
-               try {
-                 const res = await fetch(`{{ route('admin.pelanggan') }}?ajax=1&q=${encodeURIComponent(val)}`, {
-                   headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                 });
-                 if (res.ok) {
-                   this.suggestions = await res.json();
-                   this.showDropdown = this.suggestions.length > 0;
+        <!-- Search Input with Live Autocomplete Suggestions -->
+        <div class="relative w-full sm:flex-1 sm:min-w-[220px] max-w-full"
+             x-data="{
+               searchVal: '{{ addslashes($search) }}',
+               suggestions: [],
+               showDropdown: false,
+               loading: false,
+               selectedIndex: -1,
+
+               async onInput() {
+                 const val = this.searchVal.trim();
+                 if (!val) {
+                   this.suggestions = [];
+                   this.showDropdown = false;
                    this.selectedIndex = -1;
+                   return;
                  }
-               } catch (err) {
-                 this.suggestions = [];
-               } finally {
-                 this.loading = false;
-               }
-             },
+                 this.loading = true;
+                 try {
+                   const res = await fetch(`{{ route('admin.pelanggan') }}?ajax=1&q=${encodeURIComponent(val)}`, {
+                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                   });
+                   if (res.ok) {
+                     this.suggestions = await res.json();
+                     this.showDropdown = this.suggestions.length > 0;
+                     this.selectedIndex = -1;
+                   }
+                 } catch (err) {
+                   this.suggestions = [];
+                 } finally {
+                   this.loading = false;
+                 }
+               },
 
-             selectItem(item) {
-               this.searchVal = item.customer_name;
-               this.showDropdown = false;
-               $nextTick(() => {
-                 $el.closest('form').submit();
-               });
-             },
-
-             onKeyDown(e) {
-               if (!this.showDropdown || this.suggestions.length === 0) return;
-               if (e.key === 'ArrowDown') {
-                 e.preventDefault();
-                 this.selectedIndex = (this.selectedIndex + 1) % this.suggestions.length;
-               } else if (e.key === 'ArrowUp') {
-                 e.preventDefault();
-                 this.selectedIndex = (this.selectedIndex - 1 + this.suggestions.length) % this.suggestions.length;
-               } else if (e.key === 'Enter' && this.selectedIndex >= 0) {
-                 e.preventDefault();
-                 this.selectItem(this.suggestions[this.selectedIndex]);
-               } else if (e.key === 'Escape') {
+               selectItem(item) {
+                 this.searchVal = item.customer_name;
                  this.showDropdown = false;
-               }
-             },
+                 $nextTick(() => {
+                   document.getElementById('pelangganFilterForm').submit();
+                 });
+               },
 
-             highlightPrefix(name, prefix) {
-               if (!prefix) return name;
-               const lowerName = name.toLowerCase();
-               const lowerPrefix = prefix.toLowerCase();
-               if (lowerName.startsWith(lowerPrefix)) {
-                 const matched = name.substring(0, prefix.length);
-                 const rest = name.substring(prefix.length);
-                 return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+               onKeyDown(e) {
+                 if (!this.showDropdown || this.suggestions.length === 0) return;
+                 if (e.key === 'ArrowDown') {
+                   e.preventDefault();
+                   this.selectedIndex = (this.selectedIndex + 1) % this.suggestions.length;
+                 } else if (e.key === 'ArrowUp') {
+                   e.preventDefault();
+                   this.selectedIndex = (this.selectedIndex - 1 + this.suggestions.length) % this.suggestions.length;
+                 } else if (e.key === 'Enter' && this.selectedIndex >= 0) {
+                   e.preventDefault();
+                   this.selectItem(this.suggestions[this.selectedIndex]);
+                 } else if (e.key === 'Escape') {
+                   this.showDropdown = false;
+                 }
+               },
+
+               highlightPrefix(name, prefix) {
+                 if (!prefix) return name;
+                 const lowerName = name.toLowerCase();
+                 const lowerPrefix = prefix.toLowerCase();
+                 if (lowerName.startsWith(lowerPrefix)) {
+                   const matched = name.substring(0, prefix.length);
+                   const rest = name.substring(prefix.length);
+                   return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+                 }
+                 return name;
                }
-               return name;
-             }
-           }"
-           @click.outside="showDropdown = false">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1">Pencarian Data Pelanggan</label>
-        <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+             }"
+             @click.outside="showDropdown = false">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs pointer-events-none"></i>
           <input type="text" name="q"
                  x-model="searchVal"
                  @input.debounce.150ms="onInput()"
@@ -394,11 +395,11 @@
                  @focus="if (suggestions.length > 0) showDropdown = true"
                  autocomplete="off"
                  placeholder="Cari NIK, PPOE, Nama, No. HP, No. VA, Email, Alamat..."
-                 class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand transition">
+                 class="h-9 w-full pl-9 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-medium text-slate-800">
 
           <!-- Spinner Loading -->
           <div x-show="loading" style="display: none;" class="absolute right-3 top-2.5 text-slate-400 text-xs">
-            <i class="fa-solid fa-spinner fa-spin"></i>
+            <i class="fa-solid fa-spinner fa-spin text-brand"></i>
           </div>
 
           <!-- Dropdown Autocomplete Awalan -->
@@ -410,7 +411,7 @@
                x-transition:leave="transition ease-in duration-75"
                x-transition:leave-start="transform opacity-100 scale-100"
                x-transition:leave-end="transform opacity-0 scale-98"
-               class="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto">
+               class="absolute left-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto w-full min-w-[320px] sm:min-w-[380px]">
             
             <div class="px-3.5 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-400 flex items-center justify-between">
               <span>Hasil Pencarian Awalan "<span class="text-slate-700 font-extrabold" x-text="searchVal"></span>"</span>
@@ -438,38 +439,118 @@
             </template>
           </div>
         </div>
-      </div>
 
-      <!-- Filter Wilayah / Desa -->
-      <div class="sm:col-span-1 lg:col-span-3">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1">Filter Wilayah / Desa</label>
-        <select name="wilayah" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
-          <option value="all">Semua Wilayah ({{ $stats['total'] }} Pelanggan)</option>
-          @foreach($wilayahList as $key => $name)
-            @php $cW = $wilayahCounts[$key] ?? 0; @endphp
-            <option value="{{ $key }}" {{ $wilayahFilter === $key ? 'selected' : '' }}>
-              {{ $name }} ({{ $cW }} Pelanggan)
-            </option>
-          @endforeach
-        </select>
-      </div>
+        @php
+          $currentWilayahLabel = 'Semua Wilayah';
+          if(!empty($wilayahFilter) && $wilayahFilter !== 'all') {
+            $currentWilayahLabel = $wilayahList[$wilayahFilter] ?? $wilayahFilter;
+          }
+        @endphp
 
-      <!-- Filter Layanan -->
-      <div class="sm:col-span-1 lg:col-span-2">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1">Jenis Layanan</label>
-        <select name="layanan" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
-          <option value="all">Semua Layanan</option>
-          @foreach($layananList as $key => $label)
-            <option value="{{ $key }}" {{ $layananFilter === $key ? 'selected' : '' }}>{{ $label }}</option>
-          @endforeach
-        </select>
-      </div>
+        <!-- Dropdown: Semua Wilayah (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah) -->
+        <input type="hidden" name="wilayah" id="selectedWilayahPelangganInput" value="{{ $wilayahFilter ?? 'all' }}">
+        <div class="relative w-full sm:w-auto min-w-0 max-w-full"
+             x-data="{
+               openWilayah: false,
+               searchWilayah: '',
+               selectedWilayah: {{ Js::from($wilayahFilter ?? 'all') }},
+               selectedLabel: {{ Js::from($currentWilayahLabel) }},
+               selectWilayah(val, label) {
+                 this.selectedWilayah = val;
+                 this.selectedLabel = label;
+                 this.openWilayah = false;
+                 document.getElementById('selectedWilayahPelangganInput').value = val;
+                 document.getElementById('pelangganFilterForm').submit();
+               }
+             }"
+             @click.outside="openWilayah = false">
+          
+          <button type="button"
+                  @click="openWilayah = !openWilayah; if(openWilayah) { $nextTick(() => $refs.searchWilayahInput?.focus()); }"
+                  class="h-9 w-full sm:w-auto max-w-full sm:max-w-[240px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+            <div class="flex items-center gap-1.5 min-w-0 truncate">
+              <i class="fa-solid fa-location-dot text-slate-400 text-xs shrink-0"></i>
+              <span class="truncate" x-text="selectedLabel"></span>
+            </div>
+            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openWilayah }"></i>
+          </button>
 
-      <!-- Filter Status & Reset -->
-      <div class="sm:col-span-2 lg:col-span-3 flex items-end gap-2">
-        <div class="flex-1 min-w-0">
-          <label class="block text-[11px] font-bold text-slate-700 mb-1">Status</label>
-          <select name="status" onchange="this.form.submit()" class="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer">
+          <!-- Dropdown Menu Wilayah: Selalu Buka Ke Bawah (top-full mt-1.5) -->
+          <div x-show="openWilayah"
+               x-cloak
+               x-transition:enter="transition ease-out duration-150"
+               x-transition:enter-start="opacity-0 translate-y-1"
+               x-transition:enter-end="opacity-100 translate-y-0"
+               x-transition:leave="transition ease-in duration-100"
+               x-transition:leave-start="opacity-100 translate-y-0"
+               x-transition:leave-end="opacity-0 translate-y-1"
+               class="absolute left-0 top-full mt-1.5 z-50 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-2 text-xs divide-y divide-slate-100">
+            
+            <!-- Pencarian Cepat Nama Wilayah di dalam Dropdown -->
+            <div class="p-1 pb-2">
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-[11px]"></i>
+                <input type="text"
+                       x-ref="searchWilayahInput"
+                       x-model="searchWilayah"
+                       placeholder="Cari nama wilayah / desa..."
+                       @keydown.escape="openWilayah = false"
+                       class="h-8 w-full pl-8 pr-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:ring-brand focus:border-brand font-medium text-slate-800 placeholder-slate-400">
+              </div>
+            </div>
+
+            <!-- List Pilihan Wilayah -->
+            <div class="py-1 max-h-56 overflow-y-auto custom-scrollbar space-y-0.5">
+              <!-- Opsi Semua Wilayah -->
+              <button type="button"
+                      x-show="!searchWilayah || 'semua wilayah'.includes(searchWilayah.toLowerCase())"
+                      @click="selectWilayah('all', 'Semua Wilayah')"
+                      class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                      :class="selectedWilayah === 'all' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                <span class="flex items-center gap-2 truncate">
+                  <i class="fa-solid fa-globe text-[11px]" :class="selectedWilayah === 'all' ? 'text-brand' : 'text-slate-400'"></i>
+                  <span class="truncate">Semua Wilayah ({{ $stats['total'] }} Pelanggan)</span>
+                </span>
+                <i class="fa-solid fa-check text-brand text-xs" x-show="selectedWilayah === 'all'"></i>
+              </button>
+
+              @foreach($wilayahList as $key => $name)
+                @php
+                  $cW = $wilayahCounts[$key] ?? 0;
+                  $fullLabel = $name . ' (' . $cW . ' Pelanggan)';
+                @endphp
+                <button type="button"
+                        x-show="!searchWilayah || {{ Js::from(strtolower($name)) }}.includes(searchWilayah.toLowerCase())"
+                        @click="selectWilayah({{ Js::from($key) }}, {{ Js::from($name) }})"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                        :class="selectedWilayah === {{ Js::from($key) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                        title="{{ $fullLabel }}">
+                  <span class="flex items-center gap-2 truncate">
+                    <i class="fa-solid fa-location-dot text-[11px]" :class="selectedWilayah === {{ Js::from($key) }} ? 'text-brand' : 'text-slate-400'"></i>
+                    <span class="truncate">{{ $fullLabel }}</span>
+                  </span>
+                  <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedWilayah === {{ Js::from($key) }}"></i>
+                </button>
+              @endforeach
+            </div>
+          </div>
+        </div>
+
+        <!-- Dropdown: Semua Layanan -->
+        <div class="w-auto min-w-0 max-w-full">
+          <select name="layanan" onchange="document.getElementById('pelangganFilterForm').submit()"
+                  class="h-9 w-auto max-w-full sm:max-w-[190px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer shadow-2xs">
+            <option value="all">Semua Layanan</option>
+            @foreach($layananList as $key => $label)
+              <option value="{{ $key }}" {{ $layananFilter === $key ? 'selected' : '' }}>{{ $label }}</option>
+            @endforeach
+          </select>
+        </div>
+
+        <!-- Dropdown: Semua Status -->
+        <div class="w-auto min-w-0 max-w-full">
+          <select name="status" onchange="document.getElementById('pelangganFilterForm').submit()"
+                  class="h-9 w-auto max-w-full sm:max-w-[210px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer shadow-2xs">
             <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status Pelanggan</option>
             <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Aktif (Online)</option>
             <option value="Menunggu Konfirmasi" {{ $statusFilter === 'Menunggu Konfirmasi' ? 'selected' : '' }}>Menunggu Konfirmasi</option>
@@ -479,17 +560,20 @@
             <option value="Dibatalkan" {{ $statusFilter === 'Dibatalkan' ? 'selected' : '' }}>Dibatalkan</option>
           </select>
         </div>
+
+        <button type="submit" class="h-9 bg-slate-800 hover:bg-slate-700 text-white px-3.5 rounded-xl text-xs font-bold transition shrink-0 shadow-2xs">
+          Filter
+        </button>
+
         @if($search || $wilayahFilter !== 'all' || $layananFilter !== 'all' || $statusFilter !== 'all')
-          <a href="{{ route('admin.pelanggan') }}" class="py-2 px-3 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 border border-slate-200" title="Reset Semua Filter">
-            <i class="fa-solid fa-arrow-rotate-left text-[11px]"></i>
-            <span>Reset</span>
+          <a href="{{ route('admin.pelanggan') }}" class="text-xs text-slate-400 hover:text-red-500 font-bold shrink-0 ml-1" title="Reset Semua Filter">
+            <i class="fa-solid fa-rotate-left mr-0.5"></i> Reset
           </a>
         @endif
       </div>
 
     </form>
   </div>
-
   <!-- Selection Status Bar -->
   <div x-show="selectedIds.length > 0"
        style="display: none;"
