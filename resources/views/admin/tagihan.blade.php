@@ -369,7 +369,7 @@ function tagihanManager() {
     <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
         <p class="text-[11px] font-black tracking-wider text-slate-400 uppercase">POTENSI OMSET</p>
-        <h3 class="text-2xl font-black text-slate-900 mt-1 font-mono">
+        <h3 class="text-2xl font-black text-slate-900 mt-1">
           Rp {{ number_format($potensiOmset ?? 0, 0, ',', '.') }}
         </h3>
         <p class="text-xs text-slate-500 font-medium mt-1">
@@ -385,7 +385,7 @@ function tagihanManager() {
     <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
         <p class="text-[11px] font-black tracking-wider text-emerald-700 uppercase">SUDAH TERBAYAR</p>
-        <h3 class="text-2xl font-black text-emerald-600 mt-1 font-mono">
+        <h3 class="text-2xl font-black text-emerald-600 mt-1">
           Rp {{ number_format($sudahTerbayarNominal ?? 0, 0, ',', '.') }}
         </h3>
         <p class="text-xs text-slate-500 font-medium mt-1">
@@ -401,7 +401,7 @@ function tagihanManager() {
     <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
       <div>
         <p class="text-[11px] font-black tracking-wider text-red-700 uppercase">BELUM TERBAYAR</p>
-        <h3 class="text-2xl font-black text-brand mt-1 font-mono">
+        <h3 class="text-2xl font-black text-brand mt-1">
           Rp {{ number_format($belumTerbayarNominal ?? 0, 0, ',', '.') }}
         </h3>
         <p class="text-xs text-slate-500 font-medium mt-1">
@@ -830,7 +830,7 @@ function tagihanManager() {
                   <p class="font-bold text-slate-900 text-sm leading-tight">{{ $bill['customer_name'] }}</p>
                   <span class="text-[10px] font-mono text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">{{ $bill['id'] }}</span>
                 </div>
-                <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-mono">
+                <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
                   <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i>
                   <span>{{ $bill['customer_phone'] }}</span>
                 </div>
@@ -859,7 +859,7 @@ function tagihanManager() {
 
                 <!-- Total Dibayar -->
                 <td class="px-4 py-4 text-center whitespace-nowrap">
-                  <span class="font-mono font-black text-emerald-600 text-sm">Rp {{ $bill['total'] }}</span>
+                  <span class="font-black text-emerald-600 text-sm">Rp {{ $bill['total'] }}</span>
                 </td>
 
                 <!-- Metode & Kuitansi -->
@@ -872,13 +872,13 @@ function tagihanManager() {
               @else
                 <!-- Tagihan Nett -->
                 <td class="px-4 py-4 text-center">
-                  <p class="font-black text-slate-900 text-sm font-mono">Rp {{ $bill['total'] }}</p>
+                  <p class="font-black text-slate-900 text-sm">Rp {{ $bill['total'] }}</p>
                   <p class="text-[10px] text-slate-400 font-medium mt-0.5">*(Disc/Tax)</p>
                 </td>
 
                 <!-- Jatuh Tempo -->
                 <td class="px-4 py-4 text-center">
-                  <span class="font-bold text-slate-700 text-xs font-mono">
+                  <span class="font-bold text-slate-700 text-xs">
                     @if(preg_match('/^\d+/', $bill['due_date'], $m))
                       Tgl {{ $m[0] }}
                     @else
@@ -1122,7 +1122,7 @@ function tagihanManager() {
         </div>
         <div class="flex justify-between items-center pt-2 border-t border-red-100 font-semibold">
           <span class="text-slate-600">Total Tagihan Final:</span>
-          <span class="font-black text-brand text-base font-mono" x-text="'Rp ' + payingBill?.total"></span>
+          <span class="font-black text-brand text-base" x-text="'Rp ' + payingBill?.total"></span>
         </div>
       </div>
 
@@ -1265,7 +1265,7 @@ function tagihanManager() {
                         {{ $lb['status'] }}
                       </span>
                     </div>
-                    <p class="text-[11px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                    <p class="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
                       <i class="fa-brands fa-whatsapp text-emerald-600 text-xs"></i>
                       <span>{{ $lb['customer_phone'] }}</span>
                       <span class="text-slate-300">&bull;</span>
@@ -1274,7 +1274,7 @@ function tagihanManager() {
                   </div>
                 </div>
                 <div class="text-right">
-                  <p class="font-black text-slate-900 text-xs font-mono">Rp {{ $lb['total'] }}</p>
+                  <p class="font-black text-slate-900 text-xs">Rp {{ $lb['total'] }}</p>
                   <span class="text-[10px] font-mono text-slate-400">{{ $lb['receipt_number'] ?? $lb['id'] }}</span>
                 </div>
               </label>
@@ -1421,7 +1421,7 @@ Admin BANTERPOOL
       <!-- Header Modal -->
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <div>
-          <span class="text-[10px] font-mono font-bold text-slate-400 uppercase">Rincian Tagihan</span>
+          <span class="text-[10px] font-bold text-slate-400 uppercase">Rincian Tagihan</span>
           <h3 class="text-base font-black text-slate-900" x-text="selectedBill?.id"></h3>
         </div>
         <button type="button" @click="openModal = false" class="text-slate-400 hover:text-black text-xl">
