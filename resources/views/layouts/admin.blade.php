@@ -29,6 +29,14 @@
     .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    /* Pastikan Sidebar Admin & Backdrop selalu berada di layer paling atas (di atas peta Leaflet z-index 1000) */
+    #admin-sidebar-backdrop {
+      z-index: 99998 !important;
+    }
+    #admin-sidebar {
+      z-index: 99999 !important;
+    }
   </style>
   @stack('styles')
 </head>
@@ -37,7 +45,8 @@
   <div class="min-h-full flex">
 
     <!-- BACKDROP MOBILE -->
-    <div x-show="sidebarOpen"
+    <div id="admin-sidebar-backdrop"
+         x-show="sidebarOpen"
          @click="sidebarOpen = false"
          x-transition:enter="transition-opacity ease-linear duration-300"
          x-transition:enter-start="opacity-0"
@@ -45,13 +54,15 @@
          x-transition:leave="transition-opacity ease-linear duration-300"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[100000] lg:hidden"
-         style="display: none;"></div>
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 lg:hidden"
+         style="z-index: 99998 !important; display: none;"></div>
 
     <!-- ============================================== -->
     <!-- SIDEBAR ADMIN                                 -->
     <!-- ============================================== -->
-    <aside class="fixed inset-y-0 left-0 z-[100001] w-72 bg-slate-900 text-white flex flex-col transition-transform duration-300 transform lg:translate-x-0"
+    <aside id="admin-sidebar"
+           class="fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white flex flex-col transition-transform duration-300 transform lg:translate-x-0"
+           style="z-index: 99999 !important;"
            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
 
       <!-- Sidebar Header / Logo -->

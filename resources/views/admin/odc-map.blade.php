@@ -13,8 +13,8 @@
         border-radius: 1rem;
         overflow: hidden;
         position: relative;
-        z-index: 1;
-        isolation: isolate;
+        z-index: 1 !important;
+        isolation: isolate !important;
         background: #0b0e14;
     }
     #odcGisMap {
@@ -353,7 +353,7 @@
 @endpush
 
 @section('content')
-<div class="card bg-dark border-0">
+<div class="card bg-dark border-0" style="position: relative; z-index: 1 !important;">
     <div class="card-body p-0">
         <div class="map-container">
             <!-- Banner Mode Penarikan Kabel Interaktif -->
