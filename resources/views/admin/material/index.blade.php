@@ -166,7 +166,7 @@
   <!-- ============================================== -->
   <!-- 2. HEADER & ACTION BUTTONS                     -->
   <!-- ============================================== -->
-  <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+  <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 relative z-40">
     <div>
       <h2 class="text-xl font-black text-slate-900 tracking-tight">Laporan & Manajemen Stok Barang</h2>
       <p class="text-xs text-slate-500 mt-1">
@@ -207,20 +207,21 @@
       </button>
 
       <!-- 5. Export Dropdown Menu (Excel & CSV) -->
-      <div class="relative" x-data="{ openExport: false }">
-        <button type="button" @click="openExport = !openExport" @click.away="openExport = false"
+      <div class="relative" :class="{ 'z-50': openExport }" x-data="{ openExport: false }" @click.outside="openExport = false">
+        <button type="button" @click="openExport = !openExport"
                 class="h-9 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-slate-200 whitespace-nowrap">
           <i class="fa-solid fa-file-export text-xs text-slate-500"></i>
           <span>Export ({{ $monthName }})</span>
-          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-0.5"></i>
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-0.5 transition-transform duration-200" :class="{ 'rotate-180': openExport }"></i>
         </button>
 
         <div x-show="openExport"
+             x-cloak
              style="display: none;"
              x-transition:enter="transition ease-out duration-100"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
-             class="absolute right-0 mt-1 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 p-1.5 z-30 text-xs">
+             class="absolute right-0 mt-1.5 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-1.5 z-50 text-xs">
           <a href="{{ route('admin.material.export', array_merge(request()->query(), ['month' => $selectedMonth, 'year' => $selectedYear])) }}"
              class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 font-bold transition">
             <i class="fa-solid fa-file-excel text-emerald-600"></i>
@@ -324,70 +325,306 @@
     <div class="space-y-4">
       
       <!-- Filter Toolbar -->
-      <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs relative z-30 overflow-x-auto custom-scrollbar" style="-webkit-overflow-scrolling: touch;">
-        <form method="GET" action="{{ route('admin.material.index') }}" class="flex items-center gap-2 w-max min-w-full flex-nowrap">
+      <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs relative z-10 max-w-full">
+        <form method="GET" action="{{ route('admin.material.index') }}" class="flex flex-wrap items-center gap-2.5 w-full max-w-full">
           <input type="hidden" name="tab" value="laporan">
 
-          <!-- 1. Dropdown Bulan (Januari - Desember) -->
-          <select id="filter-month" name="month" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 px-2.5 pr-7 shrink-0">
-            <option value="all" {{ $selectedMonth === 'all' ? 'selected' : '' }}>Semua Periode</option>
-            @foreach(\App\Http\Controllers\Admin\MaterialController::MONTHS as $mNum => $mTxt)
-              <option value="{{ $mNum }}" {{ (string)$selectedMonth === (string)$mNum ? 'selected' : '' }}>
-                {{ $mTxt }}
-              </option>
-            @endforeach
-          </select>
+          @php
+            $currentMonthText = 'Semua Periode';
+            if ((string)$selectedMonth !== 'all' && isset(\App\Http\Controllers\Admin\MaterialController::MONTHS[(int)$selectedMonth])) {
+              $currentMonthText = \App\Http\Controllers\Admin\MaterialController::MONTHS[(int)$selectedMonth];
+            }
 
-          <!-- 2. Dropdown Tahun -->
-          <select id="filter-year" name="year" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 px-2.5 pr-7 shrink-0">
-            <option value="all" {{ (string)$selectedYear === 'all' ? 'selected' : '' }}>Semua Tahun</option>
-            @foreach([2025, 2026, 2027, 2028] as $yVal)
-              <option value="{{ $yVal }}" {{ (string)$selectedYear === (string)$yVal ? 'selected' : '' }}>{{ $yVal }}</option>
-            @endforeach
-          </select>
+            $currentYearText = (string)$selectedYear === 'all' ? 'Semua Tahun' : (string)$selectedYear;
 
-          <!-- 3. Dropdown Status Stok -->
-          <select id="filter-status" name="status" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-bold text-slate-800 px-2.5 pr-7 shrink-0">
-            <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status ({{ $stats['total_items'] }})</option>
-            <option value="aman" {{ $statusFilter === 'aman' ? 'selected' : '' }}>🟢 Aman ({{ $stats['safe_stock_count'] }})</option>
-            <option value="menipis" {{ $statusFilter === 'menipis' ? 'selected' : '' }}>🟡 Menipis ({{ $stats['low_stock_count'] }})</option>
-            <option value="habis" {{ $statusFilter === 'habis' ? 'selected' : '' }}>🔴 Habis ({{ $stats['out_of_stock_count'] }})</option>
-            <option value="minus" {{ $statusFilter === 'minus' ? 'selected' : '' }}>🟣 Minus ({{ $stats['negative_stock_count'] }})</option>
-          </select>
+            $materialStatusLabels = [
+              'all' => 'Semua Status (' . $stats['total_items'] . ')',
+              'aman' => '🟢 Aman (' . $stats['safe_stock_count'] . ')',
+              'menipis' => '🟡 Menipis (' . $stats['low_stock_count'] . ')',
+              'habis' => '🔴 Habis (' . $stats['out_of_stock_count'] . ')',
+              'minus' => '🟣 Minus (' . $stats['negative_stock_count'] . ')',
+            ];
+            $currentStatusText = $materialStatusLabels[$statusFilter] ?? 'Semua Status';
 
-          <!-- 4. Filter Kategori Dropdown -->
-          <select name="category" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium px-2.5 pr-7 shrink-0">
-            <option value="all" {{ $categoryFilter === 'all' ? 'selected' : '' }}>Semua Kategori</option>
-            @foreach($categories as $cat)
-              <option value="{{ $cat }}" {{ $categoryFilter === $cat ? 'selected' : '' }}>{{ $cat }}</option>
-            @endforeach
-          </select>
+            $currentCategoryText = ($categoryFilter === 'all' || empty($categoryFilter)) ? 'Semua Kategori' : $categoryFilter;
 
-          <!-- 5. Filter Urutan (Sort) -->
-          <select name="sort" onchange="this.form.submit()"
-                  class="h-9 text-xs rounded-xl border-slate-200 bg-slate-50 focus:border-brand focus:ring-brand font-medium px-2.5 pr-7 shrink-0">
-            <option value="code_asc" {{ $sort === 'code_asc' ? 'selected' : '' }}>Kode (A001 &rarr; A135)</option>
-            <option value="code_desc" {{ $sort === 'code_desc' ? 'selected' : '' }}>Kode (A135 &rarr; A001)</option>
-            <option value="name_asc" {{ $sort === 'name_asc' ? 'selected' : '' }}>Nama Barang (A &rarr; Z)</option>
-            <option value="name_desc" {{ $sort === 'name_desc' ? 'selected' : '' }}>Nama Barang (Z &rarr; A)</option>
-            <option value="month_asc" {{ $sort === 'month_asc' ? 'selected' : '' }}>Bulan (Jan &rarr; Des)</option>
-            <option value="month_desc" {{ $sort === 'month_desc' ? 'selected' : '' }}>Bulan (Des &rarr; Jan)</option>
-            <option value="category_asc" {{ $sort === 'category_asc' ? 'selected' : '' }}>Kategori (A &rarr; Z)</option>
-            <option value="category_desc" {{ $sort === 'category_desc' ? 'selected' : '' }}>Kategori (Z &rarr; A)</option>
-            <option value="status_asc" {{ $sort === 'status_asc' ? 'selected' : '' }}>Status (Aman &rarr; Minus)</option>
-            <option value="status_desc" {{ $sort === 'status_desc' ? 'selected' : '' }}>Status (Minus &rarr; Aman)</option>
-            <option value="stock_desc" {{ $sort === 'stock_desc' ? 'selected' : '' }}>Stok Akhir Terbanyak</option>
-            <option value="stock_asc" {{ $sort === 'stock_asc' ? 'selected' : '' }}>Stok Sedikit / Minus</option>
-            <option value="in_desc" {{ $sort === 'in_desc' ? 'selected' : '' }}>Masuk Terbanyak</option>
-            <option value="out_desc" {{ $sort === 'out_desc' ? 'selected' : '' }}>Keluar Terbanyak</option>
-          </select>
+            $sortLabels = [
+              'code_asc' => 'Kode (A001 → A135)',
+              'code_desc' => 'Kode (A135 → A001)',
+              'name_asc' => 'Nama Barang (A → Z)',
+              'name_desc' => 'Nama Barang (Z → A)',
+              'month_asc' => 'Bulan (Jan → Des)',
+              'month_desc' => 'Bulan (Des → Jan)',
+              'category_asc' => 'Kategori (A → Z)',
+              'category_desc' => 'Kategori (Z → A)',
+              'status_asc' => 'Status (Aman → Minus)',
+              'status_desc' => 'Status (Minus → Aman)',
+              'stock_desc' => 'Stok Akhir Terbanyak',
+              'stock_asc' => 'Stok Sedikit / Minus',
+              'in_desc' => 'Masuk Terbanyak',
+              'out_desc' => 'Keluar Terbanyak',
+            ];
+            $currentSortText = $sortLabels[$sort] ?? 'Kode (A001 → A135)';
+          @endphp
+
+          <!-- 1. Dropdown Bulan (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah & Scrollable 5 Data) -->
+          <input type="hidden" name="month" id="filter-month" value="{{ $selectedMonth }}">
+          <div class="relative w-auto min-w-0 max-w-full shrink-0"
+               :class="{ 'z-50': openMonth, 'z-10': !openMonth }"
+               x-data="{
+                 openMonth: false,
+                 selectedMonth: {{ Js::from((string)$selectedMonth) }},
+                 selectedLabel: {{ Js::from($currentMonthText) }},
+                 selectMonth(val, label) {
+                   this.selectedMonth = String(val);
+                   this.selectedLabel = label;
+                   this.openMonth = false;
+                   document.getElementById('filter-month').value = val;
+                   $el.closest('form').submit();
+                 }
+               }"
+               @click.outside="openMonth = false">
+            <button type="button"
+                    @click="openMonth = !openMonth"
+                    class="h-9 w-auto max-w-full sm:max-w-[160px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+              <span class="truncate min-w-0" x-text="selectedLabel"></span>
+              <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openMonth }"></i>
+            </button>
+            <div x-show="openMonth"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1"
+                 class="absolute left-0 top-full mt-1.5 z-50 w-44 bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+              <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                <button type="button"
+                        @click="selectMonth('all', 'Semua Periode')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                        :class="selectedMonth === 'all' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                  <span class="truncate">Semua Periode</span>
+                  <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedMonth === 'all'"></i>
+                </button>
+                @foreach(\App\Http\Controllers\Admin\MaterialController::MONTHS as $mNum => $mTxt)
+                  <button type="button"
+                          @click="selectMonth('{{ $mNum }}', '{{ $mTxt }}')"
+                          class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                          :class="selectedMonth === '{{ $mNum }}' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                          title="{{ $mTxt }}">
+                    <span class="truncate">{{ $mTxt }}</span>
+                    <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedMonth === '{{ $mNum }}'"></i>
+                  </button>
+                @endforeach
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Dropdown Tahun (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah & Scrollable 5 Data) -->
+          <input type="hidden" name="year" id="filter-year" value="{{ $selectedYear }}">
+          <div class="relative w-auto min-w-0 max-w-full shrink-0"
+               :class="{ 'z-50': openYear, 'z-10': !openYear }"
+               x-data="{
+                 openYear: false,
+                 selectedYear: {{ Js::from((string)$selectedYear) }},
+                 selectedLabel: {{ Js::from($currentYearText) }},
+                 selectYear(val, label) {
+                   this.selectedYear = String(val);
+                   this.selectedLabel = label;
+                   this.openYear = false;
+                   document.getElementById('filter-year').value = val;
+                   $el.closest('form').submit();
+                 }
+               }"
+               @click.outside="openYear = false">
+            <button type="button"
+                    @click="openYear = !openYear"
+                    class="h-9 w-auto max-w-full sm:max-w-[140px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+              <span class="truncate min-w-0" x-text="selectedLabel"></span>
+              <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openYear }"></i>
+            </button>
+            <div x-show="openYear"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1"
+                 class="absolute left-0 top-full mt-1.5 z-50 w-36 bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+              <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                <button type="button"
+                        @click="selectYear('all', 'Semua Tahun')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                        :class="selectedYear === 'all' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                  <span class="truncate">Semua Tahun</span>
+                  <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedYear === 'all'"></i>
+                </button>
+                @foreach([2025, 2026, 2027, 2028] as $yVal)
+                  <button type="button"
+                          @click="selectYear('{{ $yVal }}', '{{ $yVal }}')"
+                          class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                          :class="selectedYear === '{{ $yVal }}' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                    <span class="truncate">{{ $yVal }}</span>
+                    <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedYear === '{{ $yVal }}'"></i>
+                  </button>
+                @endforeach
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Dropdown Status Stok (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah & Scrollable 5 Data) -->
+          <input type="hidden" name="status" id="filter-status" value="{{ $statusFilter }}">
+          <div class="relative w-auto min-w-0 max-w-full shrink-0"
+               :class="{ 'z-50': openStatus, 'z-10': !openStatus }"
+               x-data="{
+                 openStatus: false,
+                 selectedStatus: {{ Js::from($statusFilter) }},
+                 selectedLabel: {{ Js::from($currentStatusText) }},
+                 selectStatus(val, label) {
+                   this.selectedStatus = val;
+                   this.selectedLabel = label;
+                   this.openStatus = false;
+                   document.getElementById('filter-status').value = val;
+                   $el.closest('form').submit();
+                 }
+               }"
+               @click.outside="openStatus = false">
+            <button type="button"
+                    @click="openStatus = !openStatus"
+                    class="h-9 w-auto max-w-full sm:max-w-[210px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+              <span class="truncate min-w-0" x-text="selectedLabel"></span>
+              <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openStatus }"></i>
+            </button>
+            <div x-show="openStatus"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1"
+                 class="absolute left-0 top-full mt-1.5 z-50 w-52 bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+              <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                @foreach($materialStatusLabels as $stVal => $stTxt)
+                  <button type="button"
+                          @click="selectStatus({{ Js::from($stVal) }}, {{ Js::from($stTxt) }})"
+                          class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                          :class="selectedStatus === {{ Js::from($stVal) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                          title="{{ $stTxt }}">
+                    <span class="truncate">{{ $stTxt }}</span>
+                    <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedStatus === {{ Js::from($stVal) }}"></i>
+                  </button>
+                @endforeach
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Filter Kategori Dropdown (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah & Scrollable 5 Data) -->
+          <input type="hidden" name="category" id="selectedCategoryMaterialInput" value="{{ $categoryFilter }}">
+          <div class="relative w-auto min-w-0 max-w-full shrink-0"
+               :class="{ 'z-50': openCategory, 'z-10': !openCategory }"
+               x-data="{
+                 openCategory: false,
+                 selectedCategory: {{ Js::from($categoryFilter) }},
+                 selectedLabel: {{ Js::from($currentCategoryText) }},
+                 selectCategory(val, label) {
+                   this.selectedCategory = val;
+                   this.selectedLabel = label;
+                   this.openCategory = false;
+                   document.getElementById('selectedCategoryMaterialInput').value = val;
+                   $el.closest('form').submit();
+                 }
+               }"
+               @click.outside="openCategory = false">
+            <button type="button"
+                    @click="openCategory = !openCategory"
+                    class="h-9 w-auto max-w-full sm:max-w-[210px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+              <span class="truncate min-w-0" x-text="selectedLabel"></span>
+              <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openCategory }"></i>
+            </button>
+            <div x-show="openCategory"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1"
+                 class="absolute left-0 top-full mt-1.5 z-50 w-52 bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+              <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                <button type="button"
+                        @click="selectCategory('all', 'Semua Kategori')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                        :class="selectedCategory === 'all' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                  <span class="truncate">Semua Kategori</span>
+                  <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedCategory === 'all'"></i>
+                </button>
+                @foreach($categories as $cat)
+                  <button type="button"
+                          @click="selectCategory({{ Js::from($cat) }}, {{ Js::from($cat) }})"
+                          class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                          :class="selectedCategory === {{ Js::from($cat) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                          title="{{ $cat }}">
+                    <span class="truncate">{{ $cat }}</span>
+                    <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedCategory === {{ Js::from($cat) }}"></i>
+                  </button>
+                @endforeach
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Filter Urutan / Sort (Custom Alpine.js Dropdown, Pasti Buka Ke Bawah & Scrollable 5 Data) -->
+          <input type="hidden" name="sort" id="selectedSortMaterialInput" value="{{ $sort }}">
+          <div class="relative w-auto min-w-0 max-w-full shrink-0"
+               :class="{ 'z-50': openSort, 'z-10': !openSort }"
+               x-data="{
+                 openSort: false,
+                 selectedSort: {{ Js::from($sort) }},
+                 selectedLabel: {{ Js::from($currentSortText) }},
+                 selectSort(val, label) {
+                   this.selectedSort = val;
+                   this.selectedLabel = label;
+                   this.openSort = false;
+                   document.getElementById('selectedSortMaterialInput').value = val;
+                   $el.closest('form').submit();
+                 }
+               }"
+               @click.outside="openSort = false">
+            <button type="button"
+                    @click="openSort = !openSort"
+                    class="h-9 w-auto max-w-full sm:max-w-[230px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+              <span class="truncate min-w-0" x-text="selectedLabel"></span>
+              <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openSort }"></i>
+            </button>
+            <div x-show="openSort"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1"
+                 class="absolute left-0 top-full mt-1.5 z-50 w-60 bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+              <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                @foreach($sortLabels as $sKey => $sVal)
+                  <button type="button"
+                          @click="selectSort({{ Js::from($sKey) }}, {{ Js::from($sVal) }})"
+                          class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                          :class="selectedSort === {{ Js::from($sKey) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                          title="{{ $sVal }}">
+                    <span class="truncate">{{ $sVal }}</span>
+                    <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedSort === {{ Js::from($sKey) }}"></i>
+                  </button>
+                @endforeach
+              </div>
+            </div>
+          </div>
 
           <!-- 6. Input Search with Live Autocomplete Suggestions (Sesuai Fitur Data Pelanggan) -->
           <div class="relative flex-1 min-w-[140px]"
+               :class="{ 'z-50': showDropdown && suggestions.length > 0, 'z-10': !(showDropdown && suggestions.length > 0) }"
                x-data="{
                  searchVal: '{{ addslashes($search) }}',
                  suggestions: [],
@@ -475,7 +712,7 @@
                      @focus="if (suggestions.length > 0) showDropdown = true"
                      autocomplete="off"
                      placeholder="Cari inisial A-Z, nama, kode..."
-                     class="h-9 w-full text-xs rounded-xl border-slate-200 bg-slate-50 pl-8 pr-7 focus:border-brand focus:ring-brand font-medium">
+                     class="h-9 w-full text-xs rounded-xl border border-slate-300 bg-slate-50 pl-8 pr-7 focus:border-brand focus:ring-brand font-medium">
               <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
 
               <!-- Spinner Loading -->
