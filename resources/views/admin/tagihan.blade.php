@@ -20,8 +20,8 @@ function tagihanManager() {
         proofUrl: '',
         selectedBillIds: [],
         selectedBuktiCustomerIds: [],
-        billsList: @js($bills),
-        paidBillsList: @js(collect($bills)->where('status', 'Lunas')->values()),
+        billsList: @js(method_exists($bills, 'items') ? $bills->items() : $bills),
+        paidBillsList: @js(collect(method_exists($bills, 'items') ? $bills->items() : $bills)->where('status', 'Lunas')->values()),
         showDoneModal: true,
 
         confirmBulkDeleteTagihan() {
@@ -1185,6 +1185,13 @@ function tagihanManager() {
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination (Sama Persis Seperti Master Data Pelanggan) -->
+    @if(method_exists($bills, 'hasPages') && $bills->hasPages())
+      <div class="px-6 py-4 border-t border-slate-200 bg-slate-50/50">
+        {{ $bills->links() }}
+      </div>
+    @endif
   </div>
 
   <!-- ============================================== -->
@@ -1429,9 +1436,10 @@ function tagihanManager() {
           <!-- Multi-select Box Daftar Pelanggan Lunas -->
           <div class="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 max-h-56 overflow-y-auto space-y-1.5 custom-scrollbar">
             @php
-              $allLunas = collect($bills)->where('status', 'Lunas')->values();
+              $billsArray = method_exists($bills, 'items') ? $bills->items() : $bills;
+              $allLunas = collect($billsArray)->where('status', 'Lunas')->values();
               if ($allLunas->isEmpty()) {
-                  $allLunas = collect($bills);
+                  $allLunas = collect($billsArray);
               }
             @endphp
 

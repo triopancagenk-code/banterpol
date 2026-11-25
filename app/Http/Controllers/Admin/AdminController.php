@@ -13,6 +13,7 @@ use App\Services\CustomerImportService;
 use App\Services\WhatsappGatewayService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -2358,7 +2359,7 @@ class AdminController extends Controller
                 (stripos($item['receipt_number'] ?? '', $search) !== false);
 
             return $matchStatus && $matchWilayah && $matchMonth && $matchSearch;
-        })->values()->all();
+        })->values();
 
         $counts = [
             'all' => $activeBills->count(), // Total tagihan aktif Data Pelanggan yang perlu dimonitor (tanpa yang sudah lunas)
@@ -2370,8 +2371,24 @@ class AdminController extends Controller
         ];
 
         // Total nominal dan kuantiti untuk ringkasan rekap pembayaran
-        $rekapNominal = collect($bills)->where('status', 'Lunas')->sum('total_raw');
-        $rekapCount = collect($bills)->where('status', 'Lunas')->count();
+        $rekapNominal = $bills->where('status', 'Lunas')->sum('total_raw');
+        $rekapCount = $bills->where('status', 'Lunas')->count();
+
+        // Pagination: Menampilkan 20 data per page seperti tabel Master Data Pelanggan
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 20;
+        $currentItems = $bills->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        $bills = new TagihanPaginator(
+            $currentItems,
+            $bills->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'query' => $request->query(),
+            ]
+        );
 
         // Informasi MikroTik Router Live
         $routerInfo = [
@@ -3936,5 +3953,13 @@ class AdminController extends Controller
             'Content-Type' => 'application/vnd.google-earth.kml+xml',
             'Content-Disposition' => 'attachment; filename="Threefive_Network_' . date('Ymd_His') . '.kml"',
         ]);
+    }
+}
+
+class TagihanPaginator extends LengthAwarePaginator
+{
+    public function toArray()
+    {
+        return $this->items->all();
     }
 }
