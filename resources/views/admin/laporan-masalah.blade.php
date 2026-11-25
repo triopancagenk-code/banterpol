@@ -153,95 +153,96 @@
   <!-- ============================================== -->
   <!-- 4. SEARCH & FILTER BAR                         -->
   <!-- ============================================== -->
-  <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs w-full max-w-full relative z-30 overflow-x-auto custom-scrollbar" style="-webkit-overflow-scrolling: touch;">
-    <form method="GET" action="{{ route('admin.laporan') }}" class="flex items-end gap-3 w-max min-w-full flex-nowrap">
+  <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs max-w-full">
+    <form method="GET" action="{{ route('admin.laporan') }}" id="laporanFilterForm" class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 w-full max-w-full">
       
-      <!-- 1. Pencarian Laporan Masalah with Live Autocomplete Suggestions -->
-      <div class="w-72 sm:w-80 shrink-0 relative"
-           x-data="{
-             searchVal: '{{ addslashes($search) }}',
-             suggestions: [],
-             showDropdown: false,
-             loading: false,
-             selectedIndex: -1,
+      <!-- Kiri: Input Search & Filter Dropdowns -->
+      <div class="flex flex-1 flex-wrap items-center gap-2.5 min-w-0 w-full max-w-full">
+        
+        <!-- 1. Pencarian Laporan Masalah with Live Autocomplete Suggestions -->
+        <div class="relative w-full sm:flex-1 sm:min-w-[220px] max-w-full"
+             x-data="{
+               searchVal: '{{ addslashes($search) }}',
+               suggestions: [],
+               showDropdown: false,
+               loading: false,
+               selectedIndex: -1,
 
-             async onInput() {
-               const val = this.searchVal.trim();
-               if (!val) {
-                 this.suggestions = [];
-                 this.showDropdown = false;
-                 this.selectedIndex = -1;
-                 return;
-               }
-               this.loading = true;
-               try {
-                 const form = $el.closest('form');
-                 const statusVal = form ? (form.querySelector('[name=status]')?.value || 'all') : 'all';
-                 const priorityVal = form ? (form.querySelector('[name=priority]')?.value || 'all') : 'all';
-                 const categoryVal = form ? (form.querySelector('[name=category]')?.value || 'all') : 'all';
-                 const res = await fetch(`{{ route('admin.laporan') }}?autocomplete=1&q=${encodeURIComponent(val)}&status=${encodeURIComponent(statusVal)}&priority=${encodeURIComponent(priorityVal)}&category=${encodeURIComponent(categoryVal)}`, {
-                   headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                 });
-                 if (res.ok) {
-                   this.suggestions = await res.json();
-                   this.showDropdown = this.suggestions.length > 0;
+               async onInput() {
+                 const val = this.searchVal.trim();
+                 if (!val) {
+                   this.suggestions = [];
+                   this.showDropdown = false;
                    this.selectedIndex = -1;
+                   return;
                  }
-               } catch (err) {
-                 this.suggestions = [];
-               } finally {
-                 this.loading = false;
-               }
-             },
+                 this.loading = true;
+                 try {
+                   const form = document.getElementById('laporanFilterForm');
+                   const statusVal = form ? (form.querySelector('[name=status]')?.value || 'all') : 'all';
+                   const priorityVal = form ? (form.querySelector('[name=priority]')?.value || 'all') : 'all';
+                   const categoryVal = form ? (form.querySelector('[name=category]')?.value || 'all') : 'all';
+                   const res = await fetch(`{{ route('admin.laporan') }}?autocomplete=1&q=${encodeURIComponent(val)}&status=${encodeURIComponent(statusVal)}&priority=${encodeURIComponent(priorityVal)}&category=${encodeURIComponent(categoryVal)}`, {
+                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                   });
+                   if (res.ok) {
+                     this.suggestions = await res.json();
+                     this.showDropdown = this.suggestions.length > 0;
+                     this.selectedIndex = -1;
+                   }
+                 } catch (err) {
+                   this.suggestions = [];
+                 } finally {
+                   this.loading = false;
+                 }
+               },
 
-             selectItem(item) {
-               this.searchVal = item.customer_name || item.id;
-               this.showDropdown = false;
-               $nextTick(() => {
-                 $el.closest('form').submit();
-               });
-             },
-
-             onKeyDown(e) {
-               if (!this.showDropdown || this.suggestions.length === 0) return;
-               if (e.key === 'ArrowDown') {
-                 e.preventDefault();
-                 this.selectedIndex = (this.selectedIndex + 1) % this.suggestions.length;
-               } else if (e.key === 'ArrowUp') {
-                 e.preventDefault();
-                 this.selectedIndex = (this.selectedIndex - 1 + this.suggestions.length) % this.suggestions.length;
-               } else if (e.key === 'Enter' && this.selectedIndex >= 0) {
-                 e.preventDefault();
-                 this.selectItem(this.suggestions[this.selectedIndex]);
-               } else if (e.key === 'Escape') {
+               selectItem(item) {
+                 this.searchVal = item.customer_name || item.id;
                  this.showDropdown = false;
-               }
-             },
+                 $nextTick(() => {
+                   document.getElementById('laporanFilterForm').submit();
+                 });
+               },
 
-             highlightPrefix(name, prefix) {
-               if (!name) return '';
-               if (!prefix) return name;
-               const lowerName = name.toLowerCase();
-               const lowerPrefix = prefix.toLowerCase();
-               if (lowerName.startsWith(lowerPrefix)) {
-                 const matched = name.substring(0, prefix.length);
-                 const rest = name.substring(prefix.length);
-                 return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+               onKeyDown(e) {
+                 if (!this.showDropdown || this.suggestions.length === 0) return;
+                 if (e.key === 'ArrowDown') {
+                   e.preventDefault();
+                   this.selectedIndex = (this.selectedIndex + 1) % this.suggestions.length;
+                 } else if (e.key === 'ArrowUp') {
+                   e.preventDefault();
+                   this.selectedIndex = (this.selectedIndex - 1 + this.suggestions.length) % this.suggestions.length;
+                 } else if (e.key === 'Enter' && this.selectedIndex >= 0) {
+                   e.preventDefault();
+                   this.selectItem(this.suggestions[this.selectedIndex]);
+                 } else if (e.key === 'Escape') {
+                   this.showDropdown = false;
+                 }
+               },
+
+               highlightPrefix(name, prefix) {
+                 if (!name) return '';
+                 if (!prefix) return name;
+                 const lowerName = name.toLowerCase();
+                 const lowerPrefix = prefix.toLowerCase();
+                 if (lowerName.startsWith(lowerPrefix)) {
+                   const matched = name.substring(0, prefix.length);
+                   const rest = name.substring(prefix.length);
+                   return `<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+                 }
+                 const wordIdx = lowerName.indexOf(' ' + lowerPrefix);
+                 if (wordIdx !== -1) {
+                   const before = name.substring(0, wordIdx + 1);
+                   const matched = name.substring(wordIdx + 1, wordIdx + 1 + prefix.length);
+                   const rest = name.substring(wordIdx + 1 + prefix.length);
+                   return `${before}<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
+                 }
+                 return name;
                }
-               const wordIdx = lowerName.indexOf(' ' + lowerPrefix);
-               if (wordIdx !== -1) {
-                 const before = name.substring(0, wordIdx + 1);
-                 const matched = name.substring(wordIdx + 1, wordIdx + 1 + prefix.length);
-                 const rest = name.substring(wordIdx + 1 + prefix.length);
-                 return `${before}<strong class='font-black text-slate-900'>${matched}</strong>${rest}`;
-               }
-               return name;
-             }
-           }"
-           @click.outside="showDropdown = false">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Pencarian Laporan Masalah</label>
-        <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+             }"
+             @click.outside="showDropdown = false">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs pointer-events-none"></i>
           <input type="text" name="q"
                  x-model="searchVal"
                  @input.debounce.150ms="onInput()"
@@ -249,11 +250,11 @@
                  @focus="if (suggestions.length > 0) showDropdown = true"
                  autocomplete="off"
                  placeholder="Cari ID Tiket, Nama, No. HP, Titik ODP, Kendala..."
-                 class="h-10 w-full pl-9 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand transition font-medium text-slate-800 placeholder:text-slate-400">
+                 class="h-9 w-full pl-9 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand font-medium text-slate-800 placeholder:text-slate-400">
 
           <!-- Spinner Loading -->
-          <div x-show="loading" style="display: none;" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
-            <i class="fa-solid fa-spinner fa-spin"></i>
+          <div x-show="loading" style="display: none;" class="absolute right-3 top-2.5 text-slate-400 text-xs">
+            <i class="fa-solid fa-spinner fa-spin text-brand"></i>
           </div>
 
           <!-- Dropdown Autocomplete Awalan (Sesuai Omnibox Data Pelanggan) -->
@@ -293,51 +294,52 @@
             </template>
           </div>
         </div>
-      </div>
 
-      <!-- 2. Filter Status Tiket -->
-      <div class="w-52 shrink-0">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Status Tiket</label>
-        <select name="status" onchange="this.form.submit()" class="h-10 w-full text-xs px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer font-medium text-slate-800">
-          <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status ({{ $counts['all'] }} Tiket)</option>
-          <option value="Menunggu Respon" {{ $statusFilter === 'Menunggu Respon' ? 'selected' : '' }}>Menunggu Respon ({{ $counts['menunggu'] }})</option>
-          <option value="Sedang Ditangani" {{ $statusFilter === 'Sedang Ditangani' ? 'selected' : '' }}>Sedang Ditangani ({{ $counts['proses'] }})</option>
-          <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Pulih ({{ $counts['selesai'] }})</option>
-        </select>
-      </div>
-
-      <!-- 3. Tingkat Prioritas -->
-      <div class="w-40 shrink-0">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Tingkat Prioritas</label>
-        <select name="priority" onchange="this.form.submit()" class="h-10 w-full text-xs px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer font-medium text-slate-800">
-          <option value="all" {{ $priorityFilter === 'all' ? 'selected' : '' }}>Semua Prioritas</option>
-          <option value="Kritis" {{ $priorityFilter === 'Kritis' ? 'selected' : '' }}>Kritis ({{ $counts['kritis'] }})</option>
-          <option value="Tinggi" {{ $priorityFilter === 'Tinggi' ? 'selected' : '' }}>Tinggi</option>
-          <option value="Normal" {{ $priorityFilter === 'Normal' ? 'selected' : '' }}>Normal</option>
-        </select>
-      </div>
-
-      <!-- 4. Kategori Kendala -->
-      <div class="w-44 shrink-0">
-        <label class="block text-[11px] font-bold text-slate-700 mb-1.5 whitespace-nowrap">Kategori Kendala</label>
-        <select name="category" onchange="this.form.submit()" class="h-10 w-full text-xs px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-brand focus:border-brand cursor-pointer font-medium text-slate-800">
-          <option value="all" {{ ($categoryFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Kendala</option>
-          <option value="LOS" {{ ($categoryFilter ?? '') === 'LOS' ? 'selected' : '' }}>LOS / Lampu Merah</option>
-          <option value="Lambat" {{ ($categoryFilter ?? '') === 'Lambat' ? 'selected' : '' }}>Koneksi Lambat</option>
-          <option value="WiFi" {{ ($categoryFilter ?? '') === 'WiFi' ? 'selected' : '' }}>WiFi Lemah / Putus</option>
-          <option value="Kabel" {{ ($categoryFilter ?? '') === 'Kabel' ? 'selected' : '' }}>Kabel Putus / Fisik</option>
-        </select>
-      </div>
-
-      <!-- 5. Reset Filter -->
-      @if($search || $statusFilter !== 'all' || $priorityFilter !== 'all' || ($categoryFilter ?? 'all') !== 'all')
-        <div class="shrink-0">
-          <a href="{{ route('admin.laporan') }}" class="h-10 px-3.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-200 whitespace-nowrap" title="Reset Semua Filter">
-            <i class="fa-solid fa-arrow-rotate-left text-[11px]"></i>
-            <span>Reset</span>
-          </a>
+        <!-- 2. Filter Status Tiket -->
+        <div class="w-auto min-w-0 max-w-full">
+          <select name="status" onchange="document.getElementById('laporanFilterForm').submit()"
+                  class="h-9 w-auto max-w-full sm:max-w-[210px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer shadow-2xs">
+            <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status ({{ $counts['all'] }} Tiket)</option>
+            <option value="Menunggu Respon" {{ $statusFilter === 'Menunggu Respon' ? 'selected' : '' }}>Menunggu Respon ({{ $counts['menunggu'] }})</option>
+            <option value="Sedang Ditangani" {{ $statusFilter === 'Sedang Ditangani' ? 'selected' : '' }}>Sedang Ditangani ({{ $counts['proses'] }})</option>
+            <option value="Selesai" {{ $statusFilter === 'Selesai' ? 'selected' : '' }}>Selesai / Pulih ({{ $counts['selesai'] }})</option>
+          </select>
         </div>
-      @endif
+
+        <!-- 3. Tingkat Prioritas -->
+        <div class="w-auto min-w-0 max-w-full">
+          <select name="priority" onchange="document.getElementById('laporanFilterForm').submit()"
+                  class="h-9 w-auto max-w-full sm:max-w-[190px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer shadow-2xs">
+            <option value="all" {{ $priorityFilter === 'all' ? 'selected' : '' }}>Semua Prioritas</option>
+            <option value="Kritis" {{ $priorityFilter === 'Kritis' ? 'selected' : '' }}>Kritis ({{ $counts['kritis'] }})</option>
+            <option value="Tinggi" {{ $priorityFilter === 'Tinggi' ? 'selected' : '' }}>Tinggi</option>
+            <option value="Normal" {{ $priorityFilter === 'Normal' ? 'selected' : '' }}>Normal</option>
+          </select>
+        </div>
+
+        <!-- 4. Kategori Kendala -->
+        <div class="w-auto min-w-0 max-w-full">
+          <select name="category" onchange="document.getElementById('laporanFilterForm').submit()"
+                  class="h-9 w-auto max-w-full sm:max-w-[190px] text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 text-slate-700 focus:ring-brand focus:border-brand cursor-pointer shadow-2xs">
+            <option value="all" {{ ($categoryFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Kendala</option>
+            <option value="LOS" {{ ($categoryFilter ?? '') === 'LOS' ? 'selected' : '' }}>LOS / Lampu Merah</option>
+            <option value="Lambat" {{ ($categoryFilter ?? '') === 'Lambat' ? 'selected' : '' }}>Koneksi Lambat</option>
+            <option value="WiFi" {{ ($categoryFilter ?? '') === 'WiFi' ? 'selected' : '' }}>WiFi Lemah / Putus</option>
+            <option value="Kabel" {{ ($categoryFilter ?? '') === 'Kabel' ? 'selected' : '' }}>Kabel Putus / Fisik</option>
+          </select>
+        </div>
+
+        <button type="submit" class="h-9 bg-slate-800 hover:bg-slate-700 text-white px-3.5 rounded-xl text-xs font-bold transition shrink-0 shadow-2xs">
+          Filter
+        </button>
+
+        <!-- 5. Reset Filter -->
+        @if($search || $statusFilter !== 'all' || $priorityFilter !== 'all' || ($categoryFilter ?? 'all') !== 'all')
+          <a href="{{ route('admin.laporan') }}" class="text-xs text-slate-400 hover:text-red-500 font-bold shrink-0 ml-1" title="Reset Semua Filter">
+            <i class="fa-solid fa-rotate-left mr-0.5"></i> Reset
+          </a>
+        @endif
+      </div>
 
     </form>
   </div>
