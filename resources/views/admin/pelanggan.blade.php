@@ -247,8 +247,8 @@
       <!-- Total Pelanggan -->
       <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between min-w-0">
         <div class="min-w-0 pr-1.5 sm:pr-2">
-          <p class="text-[10px] sm:text-[11px] font-black tracking-wider text-slate-400 uppercase truncate">Total Pelanggan</p>
-          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5 font-mono">{{ number_format($stats['total'], 0, ',', '.') }}</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Pelanggan</p>
+          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5">{{ number_format($stats['total'], 0, ',', '.') }}</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Arsip Pendaftaran SIMS</span>
         </div>
         <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm sm:text-base shrink-0">
@@ -259,8 +259,8 @@
       <!-- Pelanggan Aktif -->
       <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between min-w-0">
         <div class="min-w-0 pr-1.5 sm:pr-2">
-          <p class="text-[10px] sm:text-[11px] font-black tracking-wider text-slate-400 uppercase truncate">Pelanggan Aktif</p>
-          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5 font-mono">{{ number_format($stats['active'], 0, ',', '.') }}</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Pelanggan Aktif</p>
+          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5">{{ number_format($stats['active'], 0, ',', '.') }}</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Koneksi Aktif / Online</span>
         </div>
         <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm sm:text-base shrink-0">
@@ -271,8 +271,8 @@
       <!-- KTP Terverifikasi -->
       <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between min-w-0">
         <div class="min-w-0 pr-1.5 sm:pr-2">
-          <p class="text-[10px] sm:text-[11px] font-black tracking-wider text-slate-400 uppercase truncate">KTP / NIK Valid</p>
-          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5 font-mono">{{ number_format($stats['verified_ktp'], 0, ',', '.') }}</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">KTP / NIK Valid</p>
+          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5">{{ number_format($stats['verified_ktp'], 0, ',', '.') }}</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Tercatat di Formulir</span>
         </div>
         <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm sm:text-base shrink-0">
@@ -283,8 +283,8 @@
       <!-- Estimasi MRR Bulanan -->
       <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between min-w-0">
         <div class="min-w-0 pr-1.5 sm:pr-2">
-          <p class="text-[10px] sm:text-[11px] font-black tracking-wider text-slate-400 uppercase truncate">Estimasi MRR</p>
-          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5 font-mono">Rp {{ number_format($stats['total_mrr'] / 1000000, 1, ',', '.') }} Jt</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Estimasi MRR</p>
+          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5">Rp{{ number_format($stats['total_mrr'] / 1000000, 1, ',', '.') }} Jt</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Omset Rutin Bulanan</span>
         </div>
         <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm sm:text-base shrink-0">
@@ -295,8 +295,8 @@
       <!-- Wilayah Cakupan -->
       <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between min-w-0">
         <div class="min-w-0 pr-1.5 sm:pr-2">
-          <p class="text-[10px] sm:text-[11px] font-black tracking-wider text-slate-400 uppercase truncate">Wilayah Cakupan</p>
-          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5 font-mono">{{ $stats['wilayah_count'] }} Desa</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Wilayah Cakupan</p>
+          <h3 class="text-lg sm:text-xl font-black text-slate-900 mt-0.5">{{ $stats['wilayah_count'] }} Desa</h3>
           <span class="text-[10px] text-slate-500 font-medium truncate block">Banyumas & Sekitarnya</span>
         </div>
         <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-red-50 text-brand flex items-center justify-center text-sm sm:text-base shrink-0">
