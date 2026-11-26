@@ -103,6 +103,13 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+    /* ── Dropdown 5-Item Scroll Standard ── */
+    .dropdown-scroll-5 {
+      max-height: 175px !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
     /* ── Line Clamp Utility ── */
     .line-clamp-2 {
       display: -webkit-box;
@@ -623,9 +630,41 @@
         ontSn: 'ZTEGC819A2B',
         additionalMaterials: '',
         transactionType: 'Biaya Pasang Baru (PSB)',
+        transactionTypeOptions: [
+          'Biaya Pasang Baru (PSB)',
+          'Biaya Perbaikan / Visit',
+          'Penjualan Router / ONT Tambahan',
+          'Penjualan Kabel FO Tambahan',
+          'Bebas Biaya / Free Garansi'
+        ],
+        getSelectedServiceLabel() {
+          if (!this.selectedServiceCode) return '-- Pilih Jasa Resmi (Price List 2026) --';
+          if (this.selectedServiceCode === 'CUSTOM') return 'Input / Kustom Jasa Lainnya...';
+          const item = this.priceList.find(i => i.code === this.selectedServiceCode);
+          return item ? `[${item.code}] ${item.description} • Rp ${Number(item.price).toLocaleString('id-ID')} / ${item.unit}` : this.selectedServiceCode;
+        },
         cashAmount: 150000,
         paymentMethod: 'Tunai (Cash)',
+        paymentMethodOptions: [
+          { value: 'Tunai (Cash)', label: '💵 Tunai (Cash)' },
+          { value: 'QRIS', label: '📱 QRIS' },
+          { value: 'Transfer Bank', label: '🏦 Transfer Bank' },
+          { value: 'Non-Tunai / Bebas Biaya', label: '🆓 Non-Tunai / Bebas Biaya' }
+        ],
+        getPaymentMethodLabel(val) {
+          const opt = this.paymentMethodOptions.find(o => o.value === val);
+          return opt ? opt.label : (val || 'Pilih Metode Bayar');
+        },
+
         cashDepositStatus: 'Belum Disetor',
+        cashDepositStatusOptions: [
+          { value: 'Belum Disetor', label: '⏳ Belum Disetor' },
+          { value: 'Sudah Disetor', label: '✅ Sudah Disetor' }
+        ],
+        getCashDepositStatusLabel(val) {
+          const opt = this.cashDepositStatusOptions.find(o => o.value === val);
+          return opt ? opt.label : (val || 'Pilih Status Setor');
+        },
         selectedOrderId: '',
 
         // Master Stok Barang & Kategori dari POV Admin
@@ -1325,22 +1364,42 @@
 
           <!-- Quick Autofill from Recent Tickets -->
           @if($recentOrders->isNotEmpty())
-            <div class="relative w-full sm:w-auto" x-data="{ openPick: false }">
+            <div class="relative w-full sm:w-auto"
+                 :class="{ 'z-50': openPick, 'z-10': !openPick }"
+                 x-data="{ openPick: false }"
+                 @click.outside="openPick = false">
               <button type="button" @click="openPick = !openPick"
-                      class="btn-ghost w-full sm:w-auto justify-center flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-brand hover:border-brand/40">
-                <i class="fa-solid fa-bolt text-brand"></i>
-                <span>Pilih Tiket Pemasangan</span>
-                <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
+                      class="h-9 w-full sm:w-auto px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2.5 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                <span class="flex items-center gap-1.5 min-w-0">
+                  <i class="fa-solid fa-bolt text-brand text-xs shrink-0"></i>
+                  <span class="truncate">Pilih Tiket Pemasangan</span>
+                </span>
+                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openPick }"></i>
               </button>
-              <div x-show="openPick" @click.outside="openPick = false" x-cloak
-                   class="absolute left-0 sm:left-auto right-0 z-30 mt-2 w-full sm:w-80 max-w-[calc(100vw-2.5rem)] bg-white rounded-2xl border border-gray-200/90 p-2 text-xs divide-y divide-gray-100 max-h-72 overflow-y-auto shadow-2xl">
-                @foreach($recentOrders as $ro)
-                  <button type="button" @click="autofillFromOrder({{ Js::from($ro) }}); openPick = false"
-                          class="w-full text-left p-2.5 rounded-xl hover:bg-red-50/60 transition flex flex-col gap-0.5 group">
-                    <span class="font-extrabold text-gray-900 group-hover:text-brand">{{ $ro->order_number }} — {{ $ro->customer_name }}</span>
-                    <span class="text-[10px] text-gray-500 truncate">{{ $ro->address }}</span>
-                  </button>
-                @endforeach
+
+              <!-- Dropdown Menu Tiket Pemasangan: Selalu Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+              <div x-show="openPick"
+                   x-cloak
+                   x-transition:enter="transition ease-out duration-150"
+                   x-transition:enter-start="opacity-0 translate-y-1"
+                   x-transition:enter-end="opacity-100 translate-y-0"
+                   x-transition:leave="transition ease-in duration-100"
+                   x-transition:leave-start="opacity-100 translate-y-0"
+                   x-transition:leave-end="opacity-0 translate-y-1"
+                   class="absolute left-0 sm:left-auto right-0 top-full mt-1.5 z-50 w-full sm:w-80 max-w-[calc(100vw-2.5rem)] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+                <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 220px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                  @foreach($recentOrders as $ro)
+                    <button type="button" @click="autofillFromOrder({{ Js::from($ro) }}); openPick = false"
+                            class="w-full text-left p-2.5 rounded-xl hover:bg-red-50/60 transition flex flex-col gap-0.5 group"
+                            :class="selectedOrderId == {{ $ro->id }} ? 'bg-red-50/80 border border-red-200/80' : ''">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="font-extrabold text-slate-900 group-hover:text-brand truncate">{{ $ro->order_number }} — {{ $ro->customer_name }}</span>
+                        <i class="fa-solid fa-check text-brand text-xs shrink-0" x-show="selectedOrderId == {{ $ro->id }}"></i>
+                      </div>
+                      <span class="text-[10px] text-slate-500 truncate">{{ $ro->address }}</span>
+                    </button>
+                  @endforeach
+                </div>
               </div>
             </div>
           @endif
@@ -1380,16 +1439,41 @@
             <label class="lbl">
               <i class="fa-solid fa-building text-brand"></i> Perusahaan / PT Mitra (ISP)
             </label>
-            <div class="relative">
-              <select name="partner_company" x-model="partnerCompany" required
-                      class="inp pr-9 font-semibold text-gray-800">
-                @foreach($partners as $p)
-                  <option value="{{ $p }}">
-                    {{ $p }}
-                  </option>
-                @endforeach
-              </select>
-              <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            <div class="relative"
+                 :class="{ 'z-40': openPartnerCompany, 'z-10': !openPartnerCompany }"
+                 x-data="{ openPartnerCompany: false }"
+                 @click.outside="openPartnerCompany = false">
+              <input type="hidden" name="partner_company" :value="partnerCompany">
+              
+              <button type="button"
+                      @click="openPartnerCompany = !openPartnerCompany"
+                      class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                <span class="truncate min-w-0" x-text="partnerCompany || 'Pilih Mitra'"></span>
+                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openPartnerCompany }"></i>
+              </button>
+
+              <!-- Dropdown Menu Mitra Perusahaan: Pasti Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+              <div x-show="openPartnerCompany"
+                   x-cloak
+                   x-transition:enter="transition ease-out duration-150"
+                   x-transition:enter-start="opacity-0 translate-y-1"
+                   x-transition:enter-end="opacity-100 translate-y-0"
+                   x-transition:leave="transition ease-in duration-100"
+                   x-transition:leave-start="opacity-100 translate-y-0"
+                   x-transition:leave-end="opacity-0 translate-y-1"
+                   class="absolute left-0 top-full mt-1.5 z-50 w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+                <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                  @foreach($partners as $p)
+                    <button type="button"
+                            @click="partnerCompany = {{ Js::from($p) }}; openPartnerCompany = false"
+                            class="w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between transition"
+                            :class="partnerCompany === {{ Js::from($p) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                      <span class="truncate">{{ $p }}</span>
+                      <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="partnerCompany === {{ Js::from($p) }}"></i>
+                    </button>
+                  @endforeach
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1404,24 +1488,66 @@
                 <span>Lihat 73 Tarif Jasa</span>
               </button>
             </div>
-            <div class="relative">
-              <select x-model="selectedServiceCode" @change="onServiceCodeChange()"
-                      class="inp pr-9 font-semibold text-gray-800 text-xs sm:text-sm">
-                <option value="">-- Pilih Jasa Resmi (Price List 2026) --</option>
-                @foreach($priceListGrouped as $category => $items)
-                  <optgroup label="── {{ strtoupper($category) }} ({{ count($items) }} Jasa) ──">
+            <div class="relative"
+                 :class="{ 'z-40': openServiceCode, 'z-10': !openServiceCode }"
+                 x-data="{ openServiceCode: false }"
+                 @click.outside="openServiceCode = false">
+              <input type="hidden" name="service_code" :value="selectedServiceCode">
+              
+              <button type="button"
+                      @click="openServiceCode = !openServiceCode"
+                      class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                <span class="truncate min-w-0" x-text="getSelectedServiceLabel()"></span>
+                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openServiceCode }"></i>
+              </button>
+
+              <!-- Dropdown Menu Jasa: Pasti Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+              <div x-show="openServiceCode"
+                   x-cloak
+                   x-transition:enter="transition ease-out duration-150"
+                   x-transition:enter-start="opacity-0 translate-y-1"
+                   x-transition:enter-end="opacity-100 translate-y-0"
+                   x-transition:leave="transition ease-in duration-100"
+                   x-transition:leave-start="opacity-100 translate-y-0"
+                   x-transition:leave-end="opacity-0 translate-y-1"
+                   class="absolute left-0 top-full mt-1.5 z-50 w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+                <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 220px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                  <button type="button"
+                          @click="selectedServiceCode = ''; onServiceCodeChange(); openServiceCode = false"
+                          class="w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between transition"
+                          :class="!selectedServiceCode ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                    <span class="truncate">-- Pilih Jasa Resmi (Price List 2026) --</span>
+                    <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="!selectedServiceCode"></i>
+                  </button>
+
+                  @foreach($priceListGrouped as $category => $items)
+                    <div class="px-2.5 pt-2 pb-1 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                      ── {{ strtoupper($category) }} ({{ count($items) }} Jasa) ──
+                    </div>
                     @foreach($items as $item)
-                      <option value="{{ $item['code'] }}">
-                        [{{ $item['code'] }}] {{ $item['description'] }} • Rp {{ number_format($item['price'], 0, ',', '.') }} / {{ $item['unit'] }}
-                      </option>
+                      <button type="button"
+                              @click="selectedServiceCode = {{ Js::from($item['code']) }}; onServiceCodeChange(); openServiceCode = false"
+                              class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                              :class="selectedServiceCode === {{ Js::from($item['code']) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'"
+                              title="[{{ $item['code'] }}] {{ $item['description'] }}">
+                        <span class="truncate min-w-0">[{{ $item['code'] }}] {{ $item['description'] }} • Rp {{ number_format($item['price'], 0, ',', '.') }} / {{ $item['unit'] }}</span>
+                        <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedServiceCode === {{ Js::from($item['code']) }}"></i>
+                      </button>
                     @endforeach
-                  </optgroup>
-                @endforeach
-                <optgroup label="── LAINNYA ──">
-                  <option value="CUSTOM">Input / Kustom Jasa Lainnya...</option>
-                </optgroup>
-              </select>
-              <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                  @endforeach
+
+                  <div class="px-2.5 pt-2 pb-1 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    ── LAINNYA ──
+                  </div>
+                  <button type="button"
+                          @click="selectedServiceCode = 'CUSTOM'; onServiceCodeChange(); openServiceCode = false"
+                          class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                          :class="selectedServiceCode === 'CUSTOM' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                    <span class="truncate">Input / Kustom Jasa Lainnya...</span>
+                    <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedServiceCode === 'CUSTOM'"></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- Input Deskripsi Pekerjaan (Otomatis terisi dari Price List & bisa disesuaikan) -->
@@ -1890,16 +2016,41 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div>
               <label class="lbl">Jenis Transaksi</label>
-              <div class="relative">
-                <select name="transaction_type" x-model="transactionType" required
-                        class="inp pr-9 font-semibold text-gray-800">
-                  <option value="Biaya Pasang Baru (PSB)">Biaya Pasang Baru (PSB)</option>
-                  <option value="Biaya Perbaikan / Visit">Biaya Perbaikan / Visit</option>
-                  <option value="Penjualan Router / ONT Tambahan">Penjualan Router / ONT Tambahan</option>
-                  <option value="Penjualan Kabel FO Tambahan">Penjualan Kabel FO Tambahan</option>
-                  <option value="Bebas Biaya / Free Garansi">Bebas Biaya / Free Garansi</option>
-                </select>
-                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+              <div class="relative"
+                   :class="{ 'z-40': openTransactionType, 'z-10': !openTransactionType }"
+                   x-data="{ openTransactionType: false }"
+                   @click.outside="openTransactionType = false">
+                <input type="hidden" name="transaction_type" :value="transactionType">
+                
+                <button type="button"
+                        @click="openTransactionType = !openTransactionType"
+                        class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                  <span class="truncate min-w-0" x-text="transactionType || 'Pilih Jenis Transaksi'"></span>
+                  <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openTransactionType }"></i>
+                </button>
+
+                <!-- Dropdown Menu Jenis Transaksi: Pasti Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+                <div x-show="openTransactionType"
+                     x-cloak
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 translate-y-1"
+                     class="absolute left-0 top-full mt-1.5 z-50 w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+                  <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                    <template x-for="opt in transactionTypeOptions" :key="opt">
+                      <button type="button"
+                              @click="transactionType = opt; openTransactionType = false"
+                              class="w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between transition"
+                              :class="transactionType === opt ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                        <span class="truncate" x-text="opt"></span>
+                        <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="transactionType === opt"></i>
+                      </button>
+                    </template>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1911,27 +2062,81 @@
 
             <div>
               <label class="lbl">Metode Bayar</label>
-              <div class="relative">
-                <select name="payment_method" x-model="paymentMethod" required
-                        class="inp pr-9 font-semibold text-gray-800">
-                  <option value="Tunai (Cash)">💵 Tunai (Cash)</option>
-                  <option value="QRIS">📱 QRIS</option>
-                  <option value="Transfer Bank">🏦 Transfer Bank</option>
-                  <option value="Non-Tunai / Bebas Biaya">🆓 Non-Tunai / Bebas Biaya</option>
-                </select>
-                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+              <div class="relative"
+                   :class="{ 'z-40': openPaymentMethod, 'z-10': !openPaymentMethod }"
+                   x-data="{ openPaymentMethod: false }"
+                   @click.outside="openPaymentMethod = false">
+                <input type="hidden" name="payment_method" :value="paymentMethod">
+                
+                <button type="button"
+                        @click="openPaymentMethod = !openPaymentMethod"
+                        class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                  <span class="truncate min-w-0" x-text="getPaymentMethodLabel(paymentMethod)"></span>
+                  <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openPaymentMethod }"></i>
+                </button>
+
+                <!-- Dropdown Menu Metode Bayar: Pasti Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+                <div x-show="openPaymentMethod"
+                     x-cloak
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 translate-y-1"
+                     class="absolute left-0 top-full mt-1.5 z-50 w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+                  <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                    <template x-for="opt in paymentMethodOptions" :key="opt.value">
+                      <button type="button"
+                              @click="paymentMethod = opt.value; openPaymentMethod = false"
+                              class="w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between transition"
+                              :class="paymentMethod === opt.value ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                        <span class="truncate" x-text="opt.label"></span>
+                        <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="paymentMethod === opt.value"></i>
+                      </button>
+                    </template>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div>
               <label class="lbl">Status Setor Kas</label>
-              <div class="relative">
-                <select name="cash_deposit_status" x-model="cashDepositStatus" required
-                        class="inp pr-9 font-semibold text-gray-800">
-                  <option value="Belum Disetor">⏳ Belum Disetor</option>
-                  <option value="Sudah Disetor">✅ Sudah Disetor</option>
-                </select>
-                <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+              <div class="relative"
+                   :class="{ 'z-40': openCashDepositStatus, 'z-10': !openCashDepositStatus }"
+                   x-data="{ openCashDepositStatus: false }"
+                   @click.outside="openCashDepositStatus = false">
+                <input type="hidden" name="cash_deposit_status" :value="cashDepositStatus">
+                
+                <button type="button"
+                        @click="openCashDepositStatus = !openCashDepositStatus"
+                        class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                  <span class="truncate min-w-0" x-text="getCashDepositStatusLabel(cashDepositStatus)"></span>
+                  <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openCashDepositStatus }"></i>
+                </button>
+
+                <!-- Dropdown Menu Status Setor Kas: Pasti Buka Ke Bawah (top-full mt-1.5) & Scrollable Standar -->
+                <div x-show="openCashDepositStatus"
+                     x-cloak
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 translate-y-1"
+                     class="absolute left-0 top-full mt-1.5 z-50 w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+                  <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                    <template x-for="opt in cashDepositStatusOptions" :key="opt.value">
+                      <button type="button"
+                              @click="cashDepositStatus = opt.value; openCashDepositStatus = false"
+                              class="w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between transition"
+                              :class="cashDepositStatus === opt.value ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                        <span class="truncate" x-text="opt.label"></span>
+                        <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="cashDepositStatus === opt.value"></i>
+                      </button>
+                    </template>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1978,35 +2183,111 @@
 
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <!-- Filter Mitra Dropdown (Di sebelah kiri Semua Tipe Pekerjaan) -->
-            <div class="relative flex-1 sm:w-44 md:w-48">
-              <select name="partner" onchange="this.form.submit()"
-                      class="inp pr-8 text-xs font-semibold text-gray-800 w-full truncate">
-                <option value="all" {{ ($partnerFilter ?? 'all') === 'all' ? 'selected' : '' }}>
-                  Semua Mitra
-                </option>
-                @foreach($partners as $p)
-                  <option value="{{ $p }}" {{ ($partnerFilter ?? 'all') === $p ? 'selected' : '' }}>
-                    {{ $p }}
-                  </option>
-                @endforeach
-              </select>
-              <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[10px]"></i>
+            <input type="hidden" name="partner" id="filter-partner" value="{{ $partnerFilter ?? 'all' }}">
+            <div class="relative flex-1 sm:w-44 md:w-48"
+                 :class="{ 'z-50': openPartner, 'z-10': !openPartner }"
+                 x-data="{
+                   openPartner: false,
+                   selectedPartner: {{ Js::from($partnerFilter ?? 'all') }},
+                   selectedLabel: {{ Js::from(($partnerFilter && $partnerFilter !== 'all') ? $partnerFilter : 'Semua Mitra') }},
+                   selectPartner(val, label) {
+                     this.selectedPartner = val;
+                     this.selectedLabel = label;
+                     this.openPartner = false;
+                     document.getElementById('filter-partner').value = val;
+                     $el.closest('form').submit();
+                   }
+                 }"
+                 @click.outside="openPartner = false">
+              <button type="button"
+                      @click="openPartner = !openPartner"
+                      class="h-9 w-full px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                <span class="truncate min-w-0" x-text="selectedLabel"></span>
+                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openPartner }"></i>
+              </button>
+
+              <div x-show="openPartner"
+                   x-cloak
+                   x-transition:enter="transition ease-out duration-150"
+                   x-transition:enter-start="opacity-0 translate-y-1"
+                   x-transition:enter-end="opacity-100 translate-y-0"
+                   x-transition:leave="transition ease-in duration-100"
+                   x-transition:leave-start="opacity-100 translate-y-0"
+                   x-transition:leave-end="opacity-0 translate-y-1"
+                   class="absolute left-0 top-full mt-1.5 z-50 w-full min-w-[190px] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+                <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                  <button type="button"
+                          @click="selectPartner('all', 'Semua Mitra')"
+                          class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                          :class="selectedPartner === 'all' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                    <span class="truncate">Semua Mitra</span>
+                    <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedPartner === 'all'"></i>
+                  </button>
+                  @foreach($partners as $p)
+                    <button type="button"
+                            @click="selectPartner({{ Js::from($p) }}, {{ Js::from($p) }})"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                            :class="selectedPartner === {{ Js::from($p) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                      <span class="truncate">{{ $p }}</span>
+                      <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedPartner === {{ Js::from($p) }}"></i>
+                    </button>
+                  @endforeach
+                </div>
+              </div>
             </div>
 
             <!-- Filter Job Type Dropdown -->
-            <div class="relative flex-1 sm:w-52 md:w-56">
-              <select name="job_type" onchange="this.form.submit()"
-                      class="inp pr-8 text-xs font-semibold text-gray-800 w-full truncate">
-                <option value="all" {{ $jobTypeFilter === 'all' ? 'selected' : '' }}>
-                  Semua Tipe Pekerjaan
-                </option>
-                @foreach($jobTypes as $jt)
-                  <option value="{{ $jt }}" {{ $jobTypeFilter === $jt ? 'selected' : '' }}>
-                    {{ $jt }}
-                  </option>
-                @endforeach
-              </select>
-              <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[10px]"></i>
+            <input type="hidden" name="job_type" id="filter-job-type" value="{{ $jobTypeFilter ?? 'all' }}">
+            <div class="relative flex-1 sm:w-52 md:w-56"
+                 :class="{ 'z-50': openJobType, 'z-10': !openJobType }"
+                 x-data="{
+                   openJobType: false,
+                   selectedJobType: {{ Js::from($jobTypeFilter ?? 'all') }},
+                   selectedLabel: {{ Js::from(($jobTypeFilter && $jobTypeFilter !== 'all') ? $jobTypeFilter : 'Semua Tipe Pekerjaan') }},
+                   selectJobType(val, label) {
+                     this.selectedJobType = val;
+                     this.selectedLabel = label;
+                     this.openJobType = false;
+                     document.getElementById('filter-job-type').value = val;
+                     $el.closest('form').submit();
+                   }
+                 }"
+                 @click.outside="openJobType = false">
+              <button type="button"
+                      @click="openJobType = !openJobType"
+                      class="h-9 w-full px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                <span class="truncate min-w-0" x-text="selectedLabel"></span>
+                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openJobType }"></i>
+              </button>
+
+              <div x-show="openJobType"
+                   x-cloak
+                   x-transition:enter="transition ease-out duration-150"
+                   x-transition:enter-start="opacity-0 translate-y-1"
+                   x-transition:enter-end="opacity-100 translate-y-0"
+                   x-transition:leave="transition ease-in duration-100"
+                   x-transition:leave-start="opacity-100 translate-y-0"
+                   x-transition:leave-end="opacity-0 translate-y-1"
+                   class="absolute left-0 top-full mt-1.5 z-50 w-full min-w-[210px] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 text-xs">
+                <div class="py-0.5 dropdown-scroll-5 custom-scrollbar space-y-0.5" style="max-height: 175px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;">
+                  <button type="button"
+                          @click="selectJobType('all', 'Semua Tipe Pekerjaan')"
+                          class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                          :class="selectedJobType === 'all' ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                    <span class="truncate">Semua Tipe Pekerjaan</span>
+                    <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedJobType === 'all'"></i>
+                  </button>
+                  @foreach($jobTypes as $jt)
+                    <button type="button"
+                            @click="selectJobType({{ Js::from($jt) }}, {{ Js::from($jt) }})"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition"
+                            :class="selectedJobType === {{ Js::from($jt) }} ? 'bg-red-50 text-brand font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'">
+                      <span class="truncate">{{ $jt }}</span>
+                      <i class="fa-solid fa-check text-brand text-xs shrink-0 ml-1.5" x-show="selectedJobType === {{ Js::from($jt) }}"></i>
+                    </button>
+                  @endforeach
+                </div>
+              </div>
             </div>
 
             @if(!empty($search) || $jobTypeFilter !== 'all' || ($partnerFilter ?? 'all') !== 'all')
