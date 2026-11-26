@@ -1010,7 +1010,7 @@ function tagihanManager() {
               <!-- Pelanggan: Nama & No WhatsApp -->
               <td class="px-4 py-4 text-left">
                 <div class="flex items-center gap-2">
-                  <p class="font-bold text-slate-900 text-sm leading-tight">{{ $bill['customer_name'] }}</p>
+                  <p class="font-bold text-slate-900 text-xs leading-tight">{{ $bill['customer_name'] }}</p>
                   <span class="text-[10px] font-mono text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">{{ $bill['id'] }}</span>
                 </div>
                 <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
@@ -1042,7 +1042,7 @@ function tagihanManager() {
 
                 <!-- Total Dibayar -->
                 <td class="px-4 py-4 text-center whitespace-nowrap">
-                  <span class="font-black text-emerald-600 text-sm">Rp {{ $bill['total'] }}</span>
+                  <span class="font-black text-emerald-600 text-xs">Rp {{ $bill['total'] }}</span>
                 </td>
 
                 <!-- Metode & Kuitansi -->
@@ -1055,7 +1055,7 @@ function tagihanManager() {
               @else
                 <!-- Tagihan Nett -->
                 <td class="px-4 py-4 text-center">
-                  <p class="font-black text-slate-900 text-sm">Rp {{ $bill['total'] }}</p>
+                  <p class="font-black text-slate-900 text-xs">Rp {{ $bill['total'] }}</p>
                   <p class="text-[10px] text-slate-400 font-medium mt-0.5">*(Disc/Tax)</p>
                 </td>
 
