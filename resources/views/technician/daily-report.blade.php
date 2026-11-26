@@ -110,6 +110,65 @@
       -webkit-overflow-scrolling: touch !important;
     }
 
+    /* ── Custom Dropdown Button Standard (Preserve 42px Form Height) ── */
+    .dropdown-custom-btn {
+      width: 100% !important;
+      min-height: 42px !important;
+      height: 42px !important;
+      padding: 10px 14px !important;
+      border-radius: 12px !important;
+      background-color: #f8fafc !important;
+      border: 1px solid #cbd5e1 !important;
+      color: #334155 !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 8px !important;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+      transition: all .15s ease-in-out !important;
+      outline: none !important;
+      box-sizing: border-box !important;
+    }
+    .dropdown-custom-btn:hover {
+      background-color: #f1f5f9 !important;
+    }
+    .dropdown-custom-btn:focus {
+      border-color: var(--brand) !important;
+      box-shadow: 0 0 0 3px rgba(211, 24, 24, 0.15) !important;
+      background-color: #ffffff !important;
+    }
+
+    /* ── Custom Dropdown Pill Button Standard (Toolbar & Quick Pick) ── */
+    .dropdown-pill-btn {
+      min-height: 38px !important;
+      height: 38px !important;
+      padding: 8px 14px !important;
+      border-radius: 12px !important;
+      background-color: #f8fafc !important;
+      border: 1px solid #cbd5e1 !important;
+      color: #334155 !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 8px !important;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+      transition: all .15s ease-in-out !important;
+      outline: none !important;
+      box-sizing: border-box !important;
+    }
+    .dropdown-pill-btn:hover {
+      background-color: #f1f5f9 !important;
+    }
+    .dropdown-pill-btn:focus {
+      border-color: var(--brand) !important;
+      box-shadow: 0 0 0 3px rgba(211, 24, 24, 0.15) !important;
+      background-color: #ffffff !important;
+    }
+
     /* ── Line Clamp Utility ── */
     .line-clamp-2 {
       display: -webkit-box;
@@ -1369,7 +1428,7 @@
                  x-data="{ openPick: false }"
                  @click.outside="openPick = false">
               <button type="button" @click="openPick = !openPick"
-                      class="h-9 w-full sm:w-auto px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2.5 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                      class="dropdown-pill-btn w-full sm:w-auto">
                 <span class="flex items-center gap-1.5 min-w-0">
                   <i class="fa-solid fa-bolt text-brand text-xs shrink-0"></i>
                   <span class="truncate">Pilih Tiket Pemasangan</span>
@@ -1447,7 +1506,7 @@
               
               <button type="button"
                       @click="openPartnerCompany = !openPartnerCompany"
-                      class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                      class="dropdown-custom-btn">
                 <span class="truncate min-w-0" x-text="partnerCompany || 'Pilih Mitra'"></span>
                 <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openPartnerCompany }"></i>
               </button>
@@ -1496,7 +1555,7 @@
               
               <button type="button"
                       @click="openServiceCode = !openServiceCode"
-                      class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                      class="dropdown-custom-btn">
                 <span class="truncate min-w-0" x-text="getSelectedServiceLabel()"></span>
                 <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openServiceCode }"></i>
               </button>
@@ -1785,10 +1844,10 @@
 
               <div class="flex items-center justify-between sm:justify-end gap-2 flex-wrap">
                 <!-- Status Checklist Otomatis -->
-                <span x-show="isPsb" class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-xl shadow-2xs">
+                <span x-show="isPsb" class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-800 bg-sky-50 border border-sky-200 px-3 py-1.5 rounded-xl shadow-2xs">
                   <i class="fa-solid fa-wand-magic-sparkles text-sky-600"></i> PSB: Material Standar Tercentang
                 </span>
-                <span x-show="!isPsb" class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl shadow-2xs">
+                <span x-show="!isPsb" class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl shadow-2xs">
                   <i class="fa-solid fa-square-check text-amber-600"></i> Pengembangan: Tidak Tercentang
                 </span>
 
@@ -2024,7 +2083,7 @@
                 
                 <button type="button"
                         @click="openTransactionType = !openTransactionType"
-                        class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                        class="dropdown-custom-btn">
                   <span class="truncate min-w-0" x-text="transactionType || 'Pilih Jenis Transaksi'"></span>
                   <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openTransactionType }"></i>
                 </button>
@@ -2070,7 +2129,7 @@
                 
                 <button type="button"
                         @click="openPaymentMethod = !openPaymentMethod"
-                        class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                        class="dropdown-custom-btn">
                   <span class="truncate min-w-0" x-text="getPaymentMethodLabel(paymentMethod)"></span>
                   <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openPaymentMethod }"></i>
                 </button>
@@ -2110,7 +2169,7 @@
                 
                 <button type="button"
                         @click="openCashDepositStatus = !openCashDepositStatus"
-                        class="h-[42px] w-full px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                        class="dropdown-custom-btn">
                   <span class="truncate min-w-0" x-text="getCashDepositStatusLabel(cashDepositStatus)"></span>
                   <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openCashDepositStatus }"></i>
                 </button>
@@ -2201,7 +2260,7 @@
                  @click.outside="openPartner = false">
               <button type="button"
                       @click="openPartner = !openPartner"
-                      class="h-9 w-full px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                      class="dropdown-pill-btn w-full">
                 <span class="truncate min-w-0" x-text="selectedLabel"></span>
                 <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openPartner }"></i>
               </button>
@@ -2255,7 +2314,7 @@
                  @click.outside="openJobType = false">
               <button type="button"
                       @click="openJobType = !openJobType"
-                      class="h-9 w-full px-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-300 text-slate-700 text-xs font-bold transition flex items-center justify-between gap-2 shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand/30">
+                      class="dropdown-pill-btn w-full">
                 <span class="truncate min-w-0" x-text="selectedLabel"></span>
                 <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': openJobType }"></i>
               </button>
